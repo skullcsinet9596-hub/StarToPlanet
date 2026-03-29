@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: star-to-planet-bot
+    runtime: node
+    rootDir: bot
+    buildCommand: npm install
+    startCommand: node bot.js
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: PORT
+        value: 3000
