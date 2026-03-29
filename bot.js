@@ -231,14 +231,3 @@ bot.help((ctx) => {
 });
 
 startBot();
-
-process.once('SIGINT', () => {
-    console.log('\n🛑 Остановка бота...');
-    bot.stop('SIGINT');
-    process.exit(0);
-});
-process.once('SIGTERM', () => {
-    console.log('\n🛑 Остановка бота...');
-    bot.stop('SIGTERM');
-    process.exit(0);
-});
