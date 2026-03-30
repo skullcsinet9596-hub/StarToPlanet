@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet</title>
     <style>
+        /* ========== ПОЛНЫЙ CSS (как в предыдущем сообщении, но с исправлением белой звезды) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -453,7 +454,12 @@
         .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-98px); }
         .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-98px); }
 
-        .coin-star { font-size: 72px; color: white; text-shadow: 0 0 12px rgba(255,255,240,0.8); }
+        /* БЕЛАЯ ЗВЕЗДА в Airdrop */
+        .coin-star {
+            font-size: 72px;
+            color: white;
+            text-shadow: 0 0 12px rgba(255,255,255,0.8);
+        }
 
         @keyframes coinFloat {
             0%,100% { transform: translateY(0px) scale(1); }
@@ -559,6 +565,13 @@
         }
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="app-container">
@@ -607,7 +620,7 @@
             </div>
         </div>
 
-        <!-- ЗАДАНИЯ -->
+        <!-- ЗАДАНИЯ (с правильными подвкладками) -->
         <div class="tab-panel" id="tasksPanel">
             <div class="tasks-header">
                 <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
@@ -617,15 +630,17 @@
             <div class="tasks-content active" id="dailyTasks">
                 <div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress">0/100</div></div><button class="task-claim-btn">100 🪙</button></div>
                 <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress">0/500</div></div><button class="task-claim-btn">500 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">👥 Пригласить 1 друга</div><div class="task-progress">0/1</div></div><button class="task-claim-btn">1000 🪙</button></div>
             </div>
             <div class="tasks-content" id="weeklyTasks">
                 <div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress">0/1000</div></div><button class="task-claim-btn">1000 🪙</button></div>
                 <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress">0/5000</div></div><button class="task-claim-btn">2500 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">👥 Пригласить 5 друзей</div><div class="task-progress">0/5</div></div><button class="task-claim-btn">5000 🪙</button></div>
             </div>
             <div class="tasks-content" id="premiumTasks">
-                <div class="task-card"><div class="task-info"><div class="task-name">🌕 ЛУНА</div><div class="task-progress">+20 000 монет/мин</div><div class="task-progress">50 ₽</div></div><button class="task-claim-btn">Купить</button></div>
-                <div class="task-card"><div class="task-info"><div class="task-name">🌍 ЗЕМЛЯ</div><div class="task-progress">+50 000 монет/мин</div><div class="task-progress">100 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
-                <div class="task-card"><div class="task-info"><div class="task-name">☀️ СОЛНЦЕ</div><div class="task-progress">+100 000 монет/мин</div><div class="task-progress">200 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">🌕 ЛУНА</div><div class="task-desc">+20 000 монет/мин</div><div class="task-progress">50 ₽</div></div><button class="task-claim-btn">Купить</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">🌍 ЗЕМЛЯ</div><div class="task-desc">+50 000 монет/мин</div><div class="task-progress">100 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">☀️ СОЛНЦЕ</div><div class="task-desc">+100 000 монет/мин</div><div class="task-progress">200 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
             </div>
         </div>
 
@@ -676,13 +691,6 @@
     </div>
     <div class="message" id="message"></div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
-        }
-    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
