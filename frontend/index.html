@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <!-- Игровая область -->
+        <!-- Игровая область (смещена в центр) -->
         <div class="game-area" id="gameArea">
             <div class="planet-container">
                 <div class="planet" id="planet">
@@ -51,113 +51,149 @@
                 <span id="passiveIncomeRate">0</span> монет/мин
             </div>
             
-            <button class="upgrade-btn" id="upgradeBtn">📈 Улучшить клик (100 🪙)</button>
+            <!-- Boost кнопка в левом нижнем углу -->
+            <button class="boost-btn" id="boostBtn">
+                <span class="boost-icon">⚡</span>
+                <span class="boost-text">Boost</span>
+            </button>
         </div>
 
         <!-- Навигация -->
         <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
-            <button class="nav-btn" data-tab="upgrades"><span class="nav-icon">📈</span><span>Улучшения</span></button>
+            <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
             <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
             <button class="nav-btn" data-tab="profile"><span class="nav-icon">👤</span><span>Профиль</span></button>
             <button class="nav-btn" data-tab="leaderboard"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
             <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
-        <!-- Панель улучшений -->
-        <div class="tab-panel" id="upgradesPanel">
-            <h2>📈 Улучшения</h2>
-            <div class="upgrades-list">
-                <div class="upgrade-card">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">⭐ Сила клика</div>
-                        <div class="upgrade-desc">Увеличивает доход за клик на +1</div>
-                        <div class="upgrade-level">Уровень: <span id="upgradeLevel">1</span>/100</div>
-                        <div class="upgrade-cost" id="clickUpgradeCostDisplay">Стоимость: 100 🪙</div>
+        <!-- Панель Заданий (вместо улучшений) с 2 подвкладками -->
+        <div class="tab-panel" id="tasksPanel">
+            <div class="tasks-header">
+                <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
+                <button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button>
+            </div>
+            
+            <!-- Ежедневные задания -->
+            <div class="tasks-content active" id="dailyTasks">
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">🎯 Сделать 100 кликов</div>
+                        <div class="task-progress">Прогресс: <span id="dailyClickProgress">0</span>/100</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="buyClickUpgrade">Купить</button>
+                    <button class="task-claim-btn disabled" id="dailyClickClaim">100 🪙</button>
                 </div>
-                <div class="upgrade-card">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">⚡ Энергия</div>
-                        <div class="upgrade-desc">Увеличивает максимальную энергию на +50</div>
-                        <div class="upgrade-level">Уровень: <span id="energyUpgradeLevel">1</span>/100</div>
-                        <div class="upgrade-cost" id="energyUpgradeCostDisplay">Стоимость: 200 🪙</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">⚡ Заработать 500 монет</div>
+                        <div class="task-progress">Прогресс: <span id="dailyCoinsProgress">0</span>/500</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="buyEnergyUpgrade">Купить</button>
+                    <button class="task-claim-btn disabled" id="dailyCoinsClaim">500 🪙</button>
                 </div>
-                <div class="upgrade-card">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">🤖 Пассивный доход</div>
-                        <div class="upgrade-desc">+5 монет в минуту за уровень</div>
-                        <div class="upgrade-level">Уровень: <span id="passiveUpgradeLevel">0</span>/100</div>
-                        <div class="upgrade-cost" id="passiveUpgradeCostDisplay">Стоимость: 500 🪙</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">👥 Пригласить 1 друга</div>
+                        <div class="task-progress">Приглашено: <span id="dailyReferralProgress">0</span>/1</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="buyPassiveUpgrade">Купить</button>
+                    <button class="task-claim-btn disabled" id="dailyReferralClaim">1000 🪙</button>
+                </div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">💪 Улучшить силу клика на 5 уровней</div>
+                        <div class="task-progress">Уровней: <span id="dailyUpgradeProgress">0</span>/5</div>
+                    </div>
+                    <button class="task-claim-btn disabled" id="dailyUpgradeClaim">750 🪙</button>
                 </div>
             </div>
-            <div class="upgrades-list" style="margin-top: 15px;">
-                <h3 style="font-size: 14px; margin-bottom: 8px;">🎁 Реферальные бонусы</h3>
-                <div class="upgrade-card" id="referralBonus1">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">👥 Менеджер</div>
-                        <div class="upgrade-desc">Пассивный доход +10 монет/мин</div>
-                        <div class="upgrade-level">Требуется: 1 друг</div>
+            
+            <!-- Еженедельные задания -->
+            <div class="tasks-content" id="weeklyTasks">
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">🎯 Сделать 1000 кликов</div>
+                        <div class="task-progress">Прогресс: <span id="weeklyClickProgress">0</span>/1000</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="claimReferralBonus1">Получить</button>
+                    <button class="task-claim-btn disabled" id="weeklyClickClaim">1000 🪙</button>
                 </div>
-                <div class="upgrade-card" id="referralBonus2">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">👥 Супервайзер</div>
-                        <div class="upgrade-desc">Пассивный доход +25 монет/мин</div>
-                        <div class="upgrade-level">Требуется: 3 друга</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">💰 Заработать 5000 монет</div>
+                        <div class="task-progress">Прогресс: <span id="weeklyCoinsProgress">0</span>/5000</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="claimReferralBonus2">Получить</button>
+                    <button class="task-claim-btn disabled" id="weeklyCoinsClaim">2500 🪙</button>
                 </div>
-                <div class="upgrade-card" id="referralBonus3">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">👥 Директор</div>
-                        <div class="upgrade-desc">Пассивный доход +50 монет/мин</div>
-                        <div class="upgrade-level">Требуется: 5 друзей</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">👥 Пригласить 5 друзей</div>
+                        <div class="task-progress">Приглашено: <span id="weeklyReferralProgress">0</span>/5</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="claimReferralBonus3">Получить</button>
+                    <button class="task-claim-btn disabled" id="weeklyReferralClaim">5000 🪙</button>
                 </div>
-                <div class="upgrade-card" id="referralBonus4">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">👥 Магнат</div>
-                        <div class="upgrade-desc">Пассивный доход +100 монет/мин</div>
-                        <div class="upgrade-level">Требуется: 10 друзей</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">💪 Улучшить силу клика на 20 уровней</div>
+                        <div class="task-progress">Уровней: <span id="weeklyUpgradeProgress">0</span>/20</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="claimReferralBonus4">Получить</button>
+                    <button class="task-claim-btn disabled" id="weeklyUpgradeClaim">3000 🪙</button>
                 </div>
-                <div class="upgrade-card" id="referralBonus5">
-                    <div class="upgrade-info">
-                        <div class="upgrade-name">👥 Легенда</div>
-                        <div class="upgrade-desc">Пассивный доход +250 монет/мин</div>
-                        <div class="upgrade-level">Требуется: 20 друзей</div>
+                <div class="task-card">
+                    <div class="task-info">
+                        <div class="task-name">⚡ Увеличить энергию до 500</div>
+                        <div class="task-progress">Энергия: <span id="weeklyEnergyProgress">0</span>/500</div>
                     </div>
-                    <button class="upgrade-buy-btn" id="claimReferralBonus5">Получить</button>
+                    <button class="task-claim-btn disabled" id="weeklyEnergyClaim">2000 🪙</button>
                 </div>
             </div>
         </div>
 
-        <!-- Панель друзей с многоуровневой структурой -->
+        <!-- Панель Boost (модальное окно) -->
+        <div class="modal-overlay" id="boostModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⚡ Улучшения</h3>
+                    <button class="modal-close" id="closeBoostModal">✕</button>
+                </div>
+                <div class="boost-list">
+                    <div class="boost-card">
+                        <div class="boost-info">
+                            <div class="boost-name">⭐ Сила клика</div>
+                            <div class="boost-desc">Увеличивает доход за клик на +1</div>
+                            <div class="boost-level">Уровень: <span id="upgradeLevel">1</span>/100</div>
+                            <div class="boost-cost" id="clickUpgradeCostDisplay">Стоимость: 100 🪙</div>
+                        </div>
+                        <button class="boost-buy-btn" id="buyClickUpgrade">Купить</button>
+                    </div>
+                    <div class="boost-card">
+                        <div class="boost-info">
+                            <div class="boost-name">⚡ Энергия</div>
+                            <div class="boost-desc">Увеличивает максимальную энергию на +50</div>
+                            <div class="boost-level">Уровень: <span id="energyUpgradeLevel">1</span>/100</div>
+                            <div class="boost-cost" id="energyUpgradeCostDisplay">Стоимость: 200 🪙</div>
+                        </div>
+                        <button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button>
+                    </div>
+                    <div class="boost-card">
+                        <div class="boost-info">
+                            <div class="boost-name">🤖 Пассивный доход</div>
+                            <div class="boost-desc">+5 монет в минуту за уровень</div>
+                            <div class="boost-level">Уровень: <span id="passiveUpgradeLevel">0</span>/100</div>
+                            <div class="boost-cost" id="passiveUpgradeCostDisplay">Стоимость: 500 🪙</div>
+                        </div>
+                        <button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Панель друзей -->
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
             <div class="referral-info">
                 <div class="referral-stats">
-                    <div class="stat-card">
-                        <span class="stat-value" id="referralCount">0</span>
-                        <span class="stat-label">Приглашено друзей</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="referralBonus">0</span>
-                        <span class="stat-label">Бонусов получено</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="leaderboardRank">#1</span>
-                        <span class="stat-label">Место в рейтинге</span>
-                    </div>
+                    <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span class="stat-label">Приглашено друзей</span></div>
+                    <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span class="stat-label">Бонусов получено</span></div>
+                    <div class="stat-card"><span class="stat-value" id="leaderboardRank">#1</span><span class="stat-label">Место в рейтинге</span></div>
                 </div>
                 
                 <div class="referral-link-container">
@@ -169,38 +205,25 @@
                     <button id="shareLinkBtn" class="share-btn">👥 Поделиться с друзьями</button>
                 </div>
                 
-                <!-- Многоуровневая структура -->
                 <div class="referral-levels">
                     <h3>📊 Ваша реферальная структура</h3>
                     <div class="level-card">
                         <div class="level-title">⭐ 1 уровень (50% бонуса)</div>
-                        <div id="level1List" class="level-list">
-                            <div class="level-item">Загрузка...</div>
-                        </div>
-                        <div class="level-info">Пригласите до 5 друзей для максимального бонуса</div>
+                        <div id="level1List" class="level-list"><div class="level-item">Загрузка...</div></div>
                     </div>
                     <div class="level-card">
                         <div class="level-title">🌟 2 уровень (20% бонуса)</div>
-                        <div id="level2List" class="level-list">
-                            <div class="level-item">Загрузка...</div>
-                        </div>
-                        <div class="level-info">Бонус от друзей ваших друзей</div>
+                        <div id="level2List" class="level-list"><div class="level-item">Загрузка...</div></div>
                     </div>
                     <div class="level-card">
                         <div class="level-title">✨ 3 уровень (10% бонуса)</div>
-                        <div id="level3List" class="level-list">
-                            <div class="level-item">Загрузка...</div>
-                        </div>
-                        <div class="level-info">Бонус от третьей линии рефералов</div>
+                        <div id="level3List" class="level-list"><div class="level-item">Загрузка...</div></div>
                     </div>
                 </div>
                 
-                <!-- Список друзей -->
                 <div class="referral-list">
                     <h3>👥 Список друзей</h3>
-                    <div class="friends-list" id="friendsList">
-                        <div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div>
-                    </div>
+                    <div class="friends-list" id="friendsList"><div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div></div>
                 </div>
             </div>
         </div>
@@ -244,17 +267,12 @@
             <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка рейтинга...</div></div>
         </div>
 
-        <!-- Панель Airdrop (бывший Листинг) -->
+        <!-- Панель Airdrop -->
         <div class="tab-panel" id="airdropPanel">
             <div class="listing-content">
-                <div class="listing-star">
-                    <div class="listing-star-core">⭐</div>
-                </div>
+                <div class="listing-star"><div class="listing-star-core">⭐</div></div>
                 <div class="listing-soon">Скоро</div>
-                <div class="listing-description" style="font-size: 12px; margin-top: 12px;">
-                    Airdrop скоро будет доступен<br>
-                    Следите за обновлениями!
-                </div>
+                <div class="listing-description">Airdrop скоро будет доступен<br>Следите за обновлениями!</div>
             </div>
         </div>
     </div>

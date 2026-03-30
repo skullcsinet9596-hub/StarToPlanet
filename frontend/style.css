@@ -771,3 +771,282 @@ body {
     .friend-item { flex-direction: column; text-align: center; gap: 5px; }
     .friend-coins { margin: 5px 0; }
 }
+/* ==================== BOOST КНОПКА ==================== */
+.boost-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border: none;
+    border-radius: 40px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255,215,0,0.4);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.boost-btn:active {
+    transform: scale(0.96);
+}
+
+.boost-icon {
+    font-size: 20px;
+}
+
+.boost-text {
+    font-weight: bold;
+    font-size: 16px;
+    color: #1a1a2e;
+}
+
+/* ==================== МОДАЛЬНОЕ ОКНО BOOST ==================== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1a3a, #0a0a2a);
+    border-radius: 24px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255,215,0,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,215,0,0.2);
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    color: #ffd700;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 8px;
+}
+
+.modal-close:hover {
+    color: #ffd700;
+}
+
+.boost-list {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.boost-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.boost-info {
+    flex: 1;
+}
+
+.boost-name {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.boost-desc {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.boost-level {
+    font-size: 11px;
+    color: #ffd700;
+    margin-top: 4px;
+}
+
+.boost-cost {
+    font-size: 11px;
+    color: #ffd700;
+    margin-top: 2px;
+    font-weight: bold;
+}
+
+.boost-buy-btn {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    color: #1a1a2e;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 12px;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.boost-buy-btn:active {
+    transform: scale(0.96);
+}
+
+/* ==================== ЗАДАНИЯ ==================== */
+.tasks-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 40px;
+    padding: 4px;
+}
+
+.tasks-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 32px;
+    color: #888;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tasks-tab.active {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a2e;
+}
+
+.tasks-content {
+    display: none;
+}
+
+.tasks-content.active {
+    display: block;
+}
+
+.task-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-name {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.task-progress {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.task-claim-btn {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    color: #1a1a2e;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 12px;
+    white-space: nowrap;
+}
+
+.task-claim-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.task-claim-btn:active:not(.disabled) {
+    transform: scale(0.96);
+}
+
+/* ==================== АДАПТАЦИЯ ==================== */
+.game-area {
+    position: relative;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+@media (max-width: 480px) {
+    .boost-btn {
+        padding: 8px 16px;
+        bottom: 15px;
+        left: 15px;
+    }
+    
+    .boost-text {
+        font-size: 14px;
+    }
+    
+    .boost-icon {
+        font-size: 16px;
+    }
+    
+    .task-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .task-claim-btn {
+        margin-left: 0;
+        margin-top: 10px;
+        width: 100%;
+    }
+    
+    .boost-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .boost-buy-btn {
+        margin-left: 0;
+        margin-top: 10px;
+        width: 100%;
+    }
+}
