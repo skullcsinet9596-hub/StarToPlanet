@@ -4,729 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
-            color: #fff;
-            min-height: 100vh;
-            overflow-x: hidden;
-            touch-action: manipulation;
-            padding-top: max(12px, env(safe-area-inset-top));
-            padding-left: max(12px, env(safe-area-inset-left));
-            padding-right: max(12px, env(safe-area-inset-right));
-            padding-bottom: max(12px, env(safe-area-inset-bottom));
-        }
-
-        .app-container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 0 0 80px 0;
-            min-height: 100vh;
-            position: relative;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(10,10,42,0.9);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 10px 16px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255,215,0,0.2);
-            position: relative;
-            z-index: 10;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .avatar {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-
-        .user-details {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #userName {
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        #userLevel {
-            font-size: 10px;
-            opacity: 0.8;
-        }
-
-        .balance {
-            background: rgba(0,0,0,0.6);
-            padding: 8px 14px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid rgba(255,215,0,0.3);
-        }
-
-        .game-area {
-            text-align: center;
-            margin-bottom: 16px;
-            display: block;
-        }
-
-        .planet-container {
-            position: relative;
-            margin: 5px 0;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .planet {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #ffd700, #ff8c00);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.05s ease;
-            box-shadow: 0 0 25px rgba(255,215,0,0.5);
-            animation: float 3s ease-in-out infinite;
-            margin: 0 auto;
-            cursor: pointer;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
-        }
-
-        .planet:active, .planet.pressed {
-            transform: scale(0.96);
-            transition: transform 0.05s ease;
-        }
-
-        .planet-core {
-            font-size: 55px;
-            text-shadow: 0 0 20px rgba(0,0,0,0.5);
-            pointer-events: none;
-        }
-
-        .energy-bar {
-            background: rgba(0,0,0,0.4);
-            border-radius: 12px;
-            padding: 8px 12px;
-            margin: 8px 0;
-        }
-
-        .energy-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 12px;
-        }
-
-        .energy-progress {
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
-            overflow: hidden;
-            height: 6px;
-        }
-
-        .energy-fill {
-            background: linear-gradient(90deg, #ffd700, #ff8c00);
-            width: 100%;
-            height: 100%;
-            border-radius: 8px;
-            transition: width 0.3s ease;
-        }
-
-        .click-power {
-            text-align: center;
-            font-size: 12px;
-            opacity: 0.8;
-            margin: 8px 0;
-        }
-
-        .passive-income {
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-            padding: 6px 10px;
-            margin: 6px 0;
-            font-size: 11px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .passive-income span {
-            color: #ffd700;
-            font-weight: bold;
-        }
-
-        .upgrade-btn {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            color: #1a1a2e;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-        }
-
-        .upgrade-btn:active {
-            transform: scale(0.98);
-        }
-
-        .nav-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(10,10,42,0.98);
-            backdrop-filter: blur(15px);
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0;
-            border-top: 1px solid rgba(255,215,0,0.2);
-            max-width: 500px;
-            margin: 0 auto;
-            z-index: 100;
-            padding-bottom: max(8px, env(safe-area-inset-bottom));
-        }
-
-        .nav-btn {
-            background: transparent;
-            border: none;
-            color: #888;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 6px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .nav-btn.active {
-            color: #ffd700;
-            background: rgba(255,215,0,0.15);
-        }
-
-        .nav-icon {
-            font-size: 20px;
-        }
-
-        .nav-btn span:last-child {
-            font-size: 10px;
-        }
-
-        .tab-panel {
-            display: none;
-            margin-top: 12px;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
-        .tab-panel h2 {
-            font-size: 18px;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .upgrades-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .upgrade-card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 14px;
-            padding: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .upgrade-info {
-            flex: 1;
-        }
-
-        .upgrade-name {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 2px;
-        }
-
-        .upgrade-desc {
-            font-size: 10px;
-            opacity: 0.7;
-        }
-
-        .upgrade-level {
-            font-size: 10px;
-            color: #ffd700;
-            margin-top: 2px;
-        }
-
-        .upgrade-cost {
-            font-size: 11px;
-            color: #ffd700;
-            margin-top: 2px;
-            font-weight: bold;
-        }
-
-        .upgrade-buy-btn {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border: none;
-            padding: 6px 14px;
-            border-radius: 20px;
-            color: #1a1a2e;
-            font-weight: bold;
-            cursor: pointer;
-            margin-left: 10px;
-            white-space: nowrap;
-            font-size: 12px;
-        }
-
-        .upgrade-buy-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .upgrade-buy-btn.locked {
-            background: linear-gradient(135deg, #666, #444);
-            cursor: not-allowed;
-        }
-
-        .profile-card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .profile-avatar {
-            width: 55px;
-            height: 55px;
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-        }
-
-        .profile-stats {
-            flex: 1;
-        }
-
-        .profile-stats p {
-            margin: 3px 0;
-            font-size: 12px;
-        }
-
-        .profile-stats span {
-            color: #ffd700;
-            font-weight: bold;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            font-size: 13px;
-        }
-
-        .info-label {
-            opacity: 0.7;
-        }
-
-        .info-value {
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        .auth-section {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .auth-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .auth-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .auth-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: none;
-            font-size: 13px;
-        }
-
-        .auth-btn.telegram {
-            background: #0088cc;
-            color: white;
-        }
-
-        .auth-btn.vk {
-            background: #4c75a3;
-            color: white;
-        }
-
-        .auth-btn.active {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: #1a1a2e;
-        }
-
-        .save-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        .save-btn {
-            flex: 1;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,215,0,0.3);
-            padding: 8px;
-            border-radius: 25px;
-            color: white;
-            font-size: 12px;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .referral-info {
-            padding: 12px;
-        }
-
-        .referral-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .stat-card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffd700;
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 10px;
-            opacity: 0.7;
-            margin-top: 2px;
-        }
-
-        .referral-link-container {
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 16px;
-        }
-
-        .link-box {
-            display: flex;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .link-box input {
-            flex: 1;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,215,0,0.3);
-            border-radius: 10px;
-            padding: 8px;
-            color: white;
-            font-size: 10px;
-            font-family: monospace;
-        }
-
-        .link-box button, .share-btn {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            border: none;
-            border-radius: 10px;
-            padding: 6px 12px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .share-btn {
-            width: 100%;
-            margin-top: 8px;
-            padding: 8px;
-            font-size: 14px;
-        }
-
-        .friends-list {
-            margin-top: 8px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .friend-item {
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .friend-name {
-            font-weight: 500;
-            font-size: 13px;
-            flex: 1;
-        }
-
-        .friend-coins {
-            color: #ffd700;
-            font-weight: bold;
-            font-size: 12px;
-            margin: 0 10px;
-        }
-
-        .friend-date {
-            font-size: 10px;
-            opacity: 0.6;
-        }
-
-        .leaderboard-list {
-            padding: 12px;
-        }
-
-        .leaderboard-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            margin-bottom: 6px;
-        }
-
-        .leaderboard-rank {
-            width: 40px;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .leaderboard-rank.top-1 { color: #ffd700; }
-        .leaderboard-rank.top-2 { color: #c0c0c0; }
-        .leaderboard-rank.top-3 { color: #cd7f32; }
-
-        .leaderboard-info {
-            flex: 1;
-        }
-
-        .leaderboard-name {
-            font-weight: 500;
-            font-size: 12px;
-        }
-
-        .leaderboard-level {
-            font-size: 9px;
-            opacity: 0.6;
-        }
-
-        .leaderboard-coins {
-            font-weight: bold;
-            color: #ffd700;
-            font-size: 12px;
-        }
-
-        .listing-content {
-            text-align: center;
-            padding: 30px 16px;
-        }
-
-        .listing-star {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto;
-            background: radial-gradient(circle at 30% 30%, #b8860b, #8b6508);
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            opacity: 0.7;
-            filter: blur(2px);
-            position: relative;
-        }
-
-        .listing-star::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            border-radius: 50%;
-        }
-
-        .listing-star-core {
-            font-size: 50px;
-            position: relative;
-            z-index: 2;
-            filter: grayscale(0.3);
-        }
-
-        .listing-soon {
-            margin-top: 16px;
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffd700;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            background: rgba(0,0,0,0.6);
-            padding: 6px 14px;
-            border-radius: 35px;
-            display: inline-block;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.7; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); }
-        }
-
-        .message {
-            position: fixed;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: #ffd700;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 1000;
-            display: none;
-            white-space: nowrap;
-        }
-
-        .message.show {
-            display: block;
-            animation: fadeOut 2s ease-out forwards;
-        }
-
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            70% { opacity: 1; }
-            100% { opacity: 0; visibility: hidden; }
-        }
-
-        .floating-number {
-            position: fixed;
-            color: #ffd700;
-            font-size: 20px;
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 1000;
-            text-shadow: 0 0 5px #000;
-            animation: floatUp 0.5s ease-out forwards;
-            white-space: nowrap;
-        }
-
-        @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0) scale(0.8); }
-            100% { opacity: 0; transform: translateY(-50px) scale(1); }
-        }
-
-        @media (max-width: 480px) {
-            .planet { width: 170px; height: 170px; }
-            .planet-core { font-size: 48px; }
-            .top-bar { padding: 6px 12px; }
-            .avatar { width: 38px; height: 38px; font-size: 20px; }
-            .balance { padding: 5px 10px; font-size: 14px; }
-            .nav-btn { padding: 4px 8px; }
-            .nav-icon { font-size: 18px; }
-            .auth-buttons { flex-direction: column; align-items: center; }
-            .auth-btn { width: 80%; justify-content: center; }
-            .friend-item { flex-direction: column; text-align: center; gap: 5px; }
-            .friend-coins { margin: 5px 0; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="app-container">
+        <!-- Верхняя панель -->
         <div class="top-bar">
             <div class="user-info">
                 <div class="avatar" id="userAvatar">⭐</div>
@@ -741,6 +24,7 @@
             </div>
         </div>
 
+        <!-- Игровая область -->
         <div class="game-area" id="gameArea">
             <div class="planet-container">
                 <div class="planet" id="planet">
@@ -770,15 +54,17 @@
             <button class="upgrade-btn" id="upgradeBtn">📈 Улучшить клик (100 🪙)</button>
         </div>
 
+        <!-- Навигация -->
         <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="upgrades"><span class="nav-icon">📈</span><span>Улучшения</span></button>
             <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
             <button class="nav-btn" data-tab="profile"><span class="nav-icon">👤</span><span>Профиль</span></button>
             <button class="nav-btn" data-tab="leaderboard"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
-            <button class="nav-btn" data-tab="listing"><span class="nav-icon">📊</span><span>Airdrop</span></button>
+            <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
+        <!-- Панель улучшений -->
         <div class="tab-panel" id="upgradesPanel">
             <h2>📈 Улучшения</h2>
             <div class="upgrades-list">
@@ -855,14 +141,25 @@
             </div>
         </div>
 
+        <!-- Панель друзей с многоуровневой структурой -->
         <div class="tab-panel" id="friendsPanel">
-            <h2>👥 Пригласи друзей</h2>
+            <h2>👥 Реферальная программа</h2>
             <div class="referral-info">
                 <div class="referral-stats">
-                    <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span class="stat-label">Приглашено друзей</span></div>
-                    <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span class="stat-label">Бонусов получено</span></div>
-                    <div class="stat-card"><span class="stat-value" id="leaderboardRank">#1</span><span class="stat-label">Место в рейтинге</span></div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="referralCount">0</span>
+                        <span class="stat-label">Приглашено друзей</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="referralBonus">0</span>
+                        <span class="stat-label">Бонусов получено</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="leaderboardRank">#1</span>
+                        <span class="stat-label">Место в рейтинге</span>
+                    </div>
                 </div>
+                
                 <div class="referral-link-container">
                     <p>Ваша реферальная ссылка:</p>
                     <div class="link-box">
@@ -871,13 +168,44 @@
                     </div>
                     <button id="shareLinkBtn" class="share-btn">👥 Поделиться с друзьями</button>
                 </div>
+                
+                <!-- Многоуровневая структура -->
+                <div class="referral-levels">
+                    <h3>📊 Ваша реферальная структура</h3>
+                    <div class="level-card">
+                        <div class="level-title">⭐ 1 уровень (50% бонуса)</div>
+                        <div id="level1List" class="level-list">
+                            <div class="level-item">Загрузка...</div>
+                        </div>
+                        <div class="level-info">Пригласите до 5 друзей для максимального бонуса</div>
+                    </div>
+                    <div class="level-card">
+                        <div class="level-title">🌟 2 уровень (20% бонуса)</div>
+                        <div id="level2List" class="level-list">
+                            <div class="level-item">Загрузка...</div>
+                        </div>
+                        <div class="level-info">Бонус от друзей ваших друзей</div>
+                    </div>
+                    <div class="level-card">
+                        <div class="level-title">✨ 3 уровень (10% бонуса)</div>
+                        <div id="level3List" class="level-list">
+                            <div class="level-item">Загрузка...</div>
+                        </div>
+                        <div class="level-info">Бонус от третьей линии рефералов</div>
+                    </div>
+                </div>
+                
+                <!-- Список друзей -->
                 <div class="referral-list">
-                    <h3>Ваши друзья</h3>
-                    <div class="friends-list" id="friendsList"><div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div></div>
+                    <h3>👥 Список друзей</h3>
+                    <div class="friends-list" id="friendsList">
+                        <div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Панель профиля -->
         <div class="tab-panel" id="profilePanel">
             <h2>👤 Профиль</h2>
             <div class="profile-card">
@@ -910,511 +238,28 @@
             </div>
         </div>
 
+        <!-- Панель рейтинга -->
         <div class="tab-panel" id="leaderboardPanel">
             <h2>🏆 Топ игроков</h2>
             <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка рейтинга...</div></div>
         </div>
 
-        <div class="tab-panel" id="listingPanel">
+        <!-- Панель Airdrop (бывший Листинг) -->
+        <div class="tab-panel" id="airdropPanel">
             <div class="listing-content">
-                <div class="listing-star"><div class="listing-star-core">⭐</div></div>
+                <div class="listing-star">
+                    <div class="listing-star-core">⭐</div>
+                </div>
                 <div class="listing-soon">Скоро</div>
-                <div class="listing-description" style="font-size: 12px; margin-top: 12px;">Airdrop на биржах скоро будет доступен</div>
+                <div class="listing-description" style="font-size: 12px; margin-top: 12px;">
+                    Airdrop скоро будет доступен<br>
+                    Следите за обновлениями!
+                </div>
             </div>
         </div>
     </div>
     <div class="message" id="message"></div>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.enableClosingConfirmation();
-
-        const tgUser = tg.initDataUnsafe?.user;
-        
-        let authMethod = 'telegram';
-        let userId = null;
-        let displayName = "Игрок";
-        let botUsername = 'StarToPlanet_bot';
-        
-        // API URL бота (после деплоя замените на ваш URL)
-        const BOT_API_URL = 'https://startoplanet.onrender.com';  // Для локального тестирования
-        // const BOT_API_URL = 'https://star-to-planet-bot.onrender.com';  // После деплоя
-
-        function getReferrerId() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const startapp = urlParams.get('startapp');
-            if (startapp && startapp.startsWith('ref_')) {
-                return startapp.replace('ref_', '');
-            }
-            return null;
-        }
-        
-        const referrerId = getReferrerId();
-        
-        if (tgUser) {
-            userId = tgUser.id;
-            if (tgUser.username) {
-                displayName = `@${tgUser.username}`;
-            } else if (tgUser.first_name && tgUser.last_name) {
-                displayName = `${tgUser.first_name} ${tgUser.last_name}`;
-            } else if (tgUser.first_name) {
-                displayName = tgUser.first_name;
-            }
-            authMethod = 'telegram';
-        } else {
-            userId = 'guest_' + Math.floor(Math.random() * 1000000000);
-            displayName = "Гость";
-            authMethod = 'guest';
-        }
-
-        let coins = 0, energy = 100, maxEnergy = 100, clickPower = 1;
-        let clickUpgradeCost = 100, clickUpgradeLevel = 1;
-        let energyUpgradeCost = 200, energyUpgradeLevel = 1;
-        let passiveIncomeLevel = 0, passiveIncomeUpgradeCost = 500, passiveIncomeRate = 0;
-        let referralBonusClaimed = { manager: false, supervisor: false, director: false, magnate: false, legend: false };
-        let referralCount = 0, referralBonusTotal = 0, leaderboardPosition = 1, registrationDate = new Date().toLocaleDateString();
-
-        const planet = document.getElementById('planet');
-        const planetCore = document.getElementById('planetCore');
-        const coinsSpan = document.getElementById('coins');
-        const energySpan = document.getElementById('energyValue');
-        const energyFill = document.getElementById('energyFill');
-        const clickPowerSpan = document.getElementById('clickPower');
-        const energyCostSpan = document.getElementById('energyCost');
-        const upgradeBtn = document.getElementById('upgradeBtn');
-        const userNameSpan = document.getElementById('userName');
-        const userLevelSpan = document.getElementById('userLevel');
-        const messageDiv = document.getElementById('message');
-
-        function showMessage(text, isError = false) {
-            if (!messageDiv) return;
-            messageDiv.textContent = text;
-            messageDiv.style.color = isError ? '#ff6b6b' : '#ffd700';
-            messageDiv.classList.add('show');
-            setTimeout(() => messageDiv.classList.remove('show'), 2000);
-        }
-
-        function formatNumber(num) {
-            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
-            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-            return num.toString();
-        }
-
-        function calculatePassiveIncome() {
-            let rate = passiveIncomeLevel * 5;
-            if (referralBonusClaimed.manager) rate += 10;
-            if (referralBonusClaimed.supervisor) rate += 25;
-            if (referralBonusClaimed.director) rate += 50;
-            if (referralBonusClaimed.magnate) rate += 100;
-            if (referralBonusClaimed.legend) rate += 250;
-            passiveIncomeRate = rate;
-            document.getElementById('passiveIncomeRate').textContent = formatNumber(passiveIncomeRate);
-            return rate;
-        }
-
-        async function syncToServer() {
-            if (authMethod !== 'telegram' || !userId) return;
-            try {
-                await fetch(`${BOT_API_URL}/api/update`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        telegramId: userId,
-                        coins: Math.floor(coins),
-                        clickPower: clickPower,
-                        maxEnergy: maxEnergy
-                    })
-                });
-            } catch (error) {
-                console.error('Ошибка синхронизации:', error);
-            }
-        }
-
-        function updateUI() {
-            coinsSpan.textContent = formatNumber(Math.floor(coins));
-            energySpan.textContent = `${Math.floor(energy)}/${maxEnergy}`;
-            energyFill.style.width = (energy / maxEnergy) * 100 + '%';
-            clickPowerSpan.textContent = clickPower;
-            energyCostSpan.textContent = clickPower;
-            upgradeBtn.textContent = `📈 Улучшить клик (${formatNumber(clickUpgradeCost)} 🪙)`;
-            document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
-            document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
-            document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
-            document.getElementById('clickUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(clickUpgradeCost)} 🪙`;
-            document.getElementById('energyUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(energyUpgradeCost)} 🪙`;
-            document.getElementById('passiveUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(passiveIncomeUpgradeCost)} 🪙`;
-            
-            calculatePassiveIncome();
-            
-            let level = 1;
-            if (coins >= 100000) level = 10;
-            else if (coins >= 50000) level = 9;
-            else if (coins >= 25000) level = 8;
-            else if (coins >= 10000) level = 7;
-            else if (coins >= 5000) level = 6;
-            else if (coins >= 2500) level = 5;
-            else if (coins >= 1000) level = 4;
-            else if (coins >= 500) level = 3;
-            else if (coins >= 100) level = 2;
-            userLevelSpan.textContent = `Уровень ${level}`;
-            
-            if (planet) {
-                if (level >= 8) { planetCore.textContent = '🌈'; planet.style.background = 'radial-gradient(circle at 30% 30%, #ff69b4, #ff1493)'; }
-                else if (level >= 6) { planetCore.textContent = '🌍'; planet.style.background = 'radial-gradient(circle at 30% 30%, #7cfc00, #32cd32)'; }
-                else if (level >= 4) { planetCore.textContent = '🪐'; planet.style.background = 'radial-gradient(circle at 30% 30%, #d2b48c, #cd853f)'; }
-                else if (level >= 2) { planetCore.textContent = '🌑'; planet.style.background = 'radial-gradient(circle at 30% 30%, #cd7f32, #8b4513)'; }
-                else { planetCore.textContent = '⭐'; planet.style.background = 'radial-gradient(circle at 30% 30%, #ffd700, #ff8c00)'; }
-            }
-            
-            document.getElementById('profileCoins').textContent = formatNumber(coins);
-            document.getElementById('profileClickPower').textContent = clickPower;
-            document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-            document.getElementById('profilePassiveIncome').textContent = formatNumber(passiveIncomeRate);
-            document.getElementById('profileReferrals').textContent = referralCount;
-            document.getElementById('profileRank').textContent = `#${leaderboardPosition}`;
-            document.getElementById('profileDate').textContent = registrationDate;
-            document.getElementById('profileName').textContent = displayName;
-            document.getElementById('profileId').textContent = authMethod === 'telegram' ? userId : (authMethod === 'vk' ? userId : 'Гость');
-            
-            syncToServer();
-        }
-
-        function saveGame() {
-            const saveData = { coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel, energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost, referralBonusClaimed, referralCount, referralBonusTotal, registrationDate, displayName };
-            localStorage.setItem('starToPlanetSave', JSON.stringify(saveData));
-        }
-
-        async function loadGame() {
-            const saveData = localStorage.getItem('starToPlanetSave');
-            if (saveData) {
-                try {
-                    const data = JSON.parse(saveData);
-                    coins = data.coins || 0;
-                    energy = data.energy !== undefined ? data.energy : 100;
-                    maxEnergy = data.maxEnergy !== undefined ? data.maxEnergy : 100;
-                    clickPower = data.clickPower || 1;
-                    clickUpgradeCost = data.clickUpgradeCost || 100;
-                    clickUpgradeLevel = data.clickUpgradeLevel || 1;
-                    energyUpgradeCost = data.energyUpgradeCost || 200;
-                    energyUpgradeLevel = data.energyUpgradeLevel || 1;
-                    passiveIncomeLevel = data.passiveIncomeLevel || 0;
-                    passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
-                    referralBonusClaimed = data.referralBonusClaimed || { manager: false, supervisor: false, director: false, magnate: false, legend: false };
-                    referralCount = data.referralCount || 0;
-                    referralBonusTotal = data.referralBonusTotal || 0;
-                    if (data.displayName) displayName = data.displayName;
-                    if (data.registrationDate) registrationDate = data.registrationDate;
-                } catch(e) { console.error(e); }
-            }
-            
-            if (authMethod === 'telegram' && userId) {
-                try {
-                    const response = await fetch(`${BOT_API_URL}/api/user/${userId}`);
-                    if (response.ok) {
-                        const serverData = await response.json();
-                        if (serverData.user) {
-                            coins = Math.max(coins, serverData.user.coins || 0);
-                            referralCount = serverData.referralsCount || 0;
-                            referralBonusTotal = serverData.totalReferralBonus || 0;
-                            clickPower = Math.max(clickPower, serverData.user.click_power || 1);
-                            maxEnergy = Math.max(maxEnergy, serverData.user.max_energy || 100);
-                            updateUI();
-                        }
-                    }
-                } catch(e) { console.error('Ошибка загрузки с сервера:', e); }
-            }
-            
-            if (referrerId && referrerId !== userId && !localStorage.getItem(`referral_${referrerId}_${userId}`)) {
-                localStorage.setItem(`referral_${referrerId}_${userId}`, 'claimed');
-                coins += 500;
-                showMessage('🎉 +500 монет за приглашение!');
-                saveGame();
-                syncToServer();
-            }
-            updateUI();
-        }
-
-        async function loadLeaderboard() {
-            const container = document.getElementById('leaderboardList');
-            if (!container) return;
-            
-            container.innerHTML = '<div class="leaderboard-item">🏆 Загрузка рейтинга...</div>';
-            
-            try {
-                const response = await fetch(`${BOT_API_URL}/api/leaderboard?limit=50`);
-                if (!response.ok) throw new Error('Ошибка загрузки');
-                
-                const players = await response.json();
-                
-                if (players.length === 0) {
-                    container.innerHTML = '<div class="leaderboard-item">🏆 Пока нет игроков. Будьте первым!</div>';
-                    return;
-                }
-                
-                const currentPlayerIndex = players.findIndex(p => p.telegram_id == userId);
-                leaderboardPosition = currentPlayerIndex !== -1 ? currentPlayerIndex + 1 : players.length + 1;
-                document.getElementById('leaderboardRank').textContent = `#${leaderboardPosition}`;
-                document.getElementById('profileRank').textContent = `#${leaderboardPosition}`;
-                
-                container.innerHTML = players.slice(0, 50).map((player, index) => {
-                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
-                    const playerName = player.first_name || player.username || `Игрок ${player.telegram_id}`;
-                    const coins = (player.coins || 0).toLocaleString();
-                    
-                    return `
-                        <div class="leaderboard-item">
-                            <div class="leaderboard-rank ${index < 3 ? `top-${index+1}` : ''}">${medal}</div>
-                            <div class="leaderboard-info">
-                                <div class="leaderboard-name">${escapeHtml(playerName)}</div>
-                                <div class="leaderboard-level">Ур. ${player.level || 1}</div>
-                            </div>
-                            <div class="leaderboard-coins">${coins} 🪙</div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('Ошибка загрузки рейтинга:', error);
-                container.innerHTML = '<div class="leaderboard-item">❌ Ошибка загрузки рейтинга</div>';
-            }
-        }
-
-        async function loadFriends() {
-            const friendsList = document.getElementById('friendsList');
-            if (!friendsList) return;
-            
-            if (authMethod !== 'telegram' || !userId) {
-                friendsList.innerHTML = '<div class="friend-item">👥 Авторизуйтесь через Telegram, чтобы видеть друзей</div>';
-                return;
-            }
-            
-            friendsList.innerHTML = '<div class="friend-item">👥 Загрузка списка друзей...</div>';
-            
-            try {
-                const response = await fetch(`${BOT_API_URL}/api/friends/${userId}`);
-                if (!response.ok) throw new Error('Ошибка загрузки');
-                
-                const friends = await response.json();
-                
-                if (friends.length === 0) {
-                    friendsList.innerHTML = '<div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div>';
-                    document.getElementById('referralCount').textContent = '0';
-                    document.getElementById('referralBonus').textContent = '0';
-                    document.getElementById('profileReferrals').textContent = '0';
-                } else {
-                    friendsList.innerHTML = friends.map(friend => `
-                        <div class="friend-item">
-                            <div class="friend-name">${escapeHtml(friend.first_name || friend.username || 'Игрок')}</div>
-                            <div class="friend-coins">${(friend.coins || 0).toLocaleString()} 🪙</div>
-                            <div class="friend-date">${new Date(friend.created_at).toLocaleDateString()}</div>
-                        </div>
-                    `).join('');
-                    
-                    document.getElementById('referralCount').textContent = friends.length;
-                    document.getElementById('referralBonus').textContent = (friends.length * 1000).toLocaleString();
-                    document.getElementById('profileReferrals').textContent = friends.length;
-                    referralCount = friends.length;
-                    referralBonusTotal = friends.length * 1000;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки друзей:', error);
-                friendsList.innerHTML = '<div class="friend-item">❌ Ошибка загрузки списка друзей</div>';
-            }
-        }
-
-        function handleClick(event) {
-            event.preventDefault();
-            let clientX, clientY;
-            if (event.touches) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; }
-            else { clientX = event.clientX; clientY = event.clientY; }
-            if (energy < clickPower) { showMessage('❌ Нет энергии!', true); return; }
-            energy -= clickPower;
-            coins += clickPower;
-            updateUI();
-            saveGame();
-            if (planet) { planet.classList.add('pressed'); setTimeout(() => planet.classList.remove('pressed'), 100); }
-            const popup = document.createElement('div');
-            popup.className = 'floating-number';
-            popup.textContent = `+${clickPower}`;
-            popup.style.left = (clientX - 20) + 'px';
-            popup.style.top = (clientY - 20) + 'px';
-            document.body.appendChild(popup);
-            setTimeout(() => popup.remove(), 500);
-        }
-
-        function setupTouchHandlers() {
-            if (!planet) return;
-            planet.addEventListener('touchstart', (e) => { e.preventDefault(); for (let i = 0; i < e.touches.length; i++) { const touch = e.touches[i]; handleClick({ clientX: touch.clientX, clientY: touch.clientY, touches: null, preventDefault: () => {} }); } }, { passive: false });
-            planet.addEventListener('mousedown', (e) => { e.preventDefault(); handleClick(e); });
-        }
-
-        function upgradeClick() {
-            if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
-                coins -= clickUpgradeCost;
-                clickPower += 1;
-                clickUpgradeLevel++;
-                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
-                updateUI(); saveGame();
-                showMessage('✅ Сила клика +1');
-            } else if (clickUpgradeLevel >= 100) { showMessage('⚠️ Максимальный уровень!', true); }
-            else { showMessage('❌ Не хватает монет!', true); }
-        }
-
-        function upgradeEnergy() {
-            if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
-                coins -= energyUpgradeCost;
-                maxEnergy += 50;
-                energy += 50;
-                energyUpgradeLevel++;
-                energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
-                updateUI(); saveGame();
-                showMessage('✅ Энергия +50');
-            } else if (energyUpgradeLevel >= 100) { showMessage('⚠️ Максимальный уровень!', true); }
-            else { showMessage('❌ Не хватает монет!', true); }
-        }
-
-        function upgradePassiveIncome() {
-            if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
-                coins -= passiveIncomeUpgradeCost;
-                passiveIncomeLevel++;
-                passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
-                updateUI(); saveGame();
-                showMessage('✅ Пассивный доход +5/мин');
-            } else if (passiveIncomeLevel >= 100) { showMessage('⚠️ Максимальный уровень!', true); }
-            else { showMessage('❌ Не хватает монет!', true); }
-        }
-
-        function applyPassiveIncome() { if (passiveIncomeRate > 0) { coins += passiveIncomeRate; updateUI(); saveGame(); } }
-        function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy + 3, maxEnergy); updateUI(); } }
-
-        function updateReferralUI() {
-            const referralLinkInput = document.getElementById('referralLink');
-            if (referralLinkInput && userId) {
-                referralLinkInput.value = `https://t.me/${botUsername}?start=ref_${userId}`;
-            }
-            updateReferralBonusButtons();
-        }
-
-        function updateReferralBonusButtons() {
-            const bonuses = [
-                { id: 'manager', count: 1, claimed: referralBonusClaimed.manager, btnId: 'claimReferralBonus1' },
-                { id: 'supervisor', count: 3, claimed: referralBonusClaimed.supervisor, btnId: 'claimReferralBonus2' },
-                { id: 'director', count: 5, claimed: referralBonusClaimed.director, btnId: 'claimReferralBonus3' },
-                { id: 'magnate', count: 10, claimed: referralBonusClaimed.magnate, btnId: 'claimReferralBonus4' },
-                { id: 'legend', count: 20, claimed: referralBonusClaimed.legend, btnId: 'claimReferralBonus5' }
-            ];
-            bonuses.forEach((bonus) => {
-                const btn = document.getElementById(bonus.btnId);
-                if (btn) {
-                    if (bonus.claimed) {
-                        btn.textContent = '✓ Получено';
-                        btn.classList.add('disabled');
-                        btn.disabled = true;
-                    } else if (referralCount >= bonus.count) {
-                        btn.textContent = 'Получить';
-                        btn.classList.remove('disabled', 'locked');
-                        btn.disabled = false;
-                    } else {
-                        btn.textContent = `🔒 ${bonus.count} друзей`;
-                        btn.classList.add('locked');
-                        btn.disabled = true;
-                    }
-                }
-            });
-        }
-
-        function claimReferralBonus(bonusId, bonusRate) {
-            let canClaim = false;
-            switch(bonusId) {
-                case 'manager': canClaim = !referralBonusClaimed.manager && referralCount >= 1; if(canClaim) referralBonusClaimed.manager = true; break;
-                case 'supervisor': canClaim = !referralBonusClaimed.supervisor && referralCount >= 3; if(canClaim) referralBonusClaimed.supervisor = true; break;
-                case 'director': canClaim = !referralBonusClaimed.director && referralCount >= 5; if(canClaim) referralBonusClaimed.director = true; break;
-                case 'magnate': canClaim = !referralBonusClaimed.magnate && referralCount >= 10; if(canClaim) referralBonusClaimed.magnate = true; break;
-                case 'legend': canClaim = !referralBonusClaimed.legend && referralCount >= 20; if(canClaim) referralBonusClaimed.legend = true; break;
-            }
-            if (canClaim) {
-                referralBonusTotal += bonusRate;
-                updateUI(); saveGame();
-                showMessage(`🎉 +${bonusRate} монет/мин`);
-            } else {
-                showMessage(`❌ Нужно друзей`, true);
-            }
-        }
-
-        function copyReferralLink() {
-            const linkInput = document.getElementById('referralLink');
-            if (linkInput) {
-                linkInput.select();
-                document.execCommand('copy');
-                showMessage('✅ Ссылка скопирована');
-            }
-        }
-
-        function shareReferralLink() {
-            const linkInput = document.getElementById('referralLink');
-            if (linkInput && tg.openTelegramLink) {
-                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(linkInput.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
-            } else if (linkInput) {
-                window.open(`https://t.me/share/url?url=${encodeURIComponent(linkInput.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
-            }
-        }
-
-        function escapeHtml(text) { if (!text) return 'Игрок'; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-
-        function setupTabs() {
-            const panels = ['gameArea','upgradesPanel','friendsPanel','profilePanel','leaderboardPanel','listingPanel'];
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.dataset.tab;
-                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    panels.forEach(p => { const el = document.getElementById(p); if(el) { if(p === 'gameArea') el.style.display = 'none'; else el.classList.remove('active'); } });
-                    if (tab === 'game') { document.getElementById('gameArea').style.display = 'block'; }
-                    else { document.getElementById(`${tab}Panel`).classList.add('active'); if(tab === 'leaderboard') loadLeaderboard(); if(tab === 'friends') loadFriends(); if(tab === 'friends') updateReferralUI(); }
-                });
-            });
-        }
-
-        function authTelegram() { if(tgUser) { authMethod='telegram'; userId=tgUser.id; displayName=tgUser.username?`@${tgUser.username}`:(tgUser.first_name||'Игрок'); updateUI(); loadGame(); showMessage('✅ Telegram'); } else showMessage('❌ Откройте через Telegram',true); }
-        function authVK() { const id=prompt('Введите ID ВКонтакте:'); if(id&&/^\d+$/.test(id)) { authMethod='vk'; userId=`vk_${id}`; displayName=prompt('Ваше имя:',`VK${id}`)||`VK${id}`; updateUI(); saveGame(); showMessage('✅ VK'); } }
-        function exportSave() { const data={version:1,coins,energy,maxEnergy,clickPower,clickUpgradeCost,clickUpgradeLevel,energyUpgradeCost,energyUpgradeLevel,passiveIncomeLevel,passiveIncomeUpgradeCost,referralBonusClaimed,referralCount,referralBonusTotal,registrationDate,displayName}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='star_to_planet_save.json'; a.click(); URL.revokeObjectURL(a.href); showMessage('💾 Экспорт'); }
-        function importSave(file) { const reader=new FileReader(); reader.onload=e=>{ try{ const data=JSON.parse(e.target.result); if(data.version===1){ coins=data.coins||0; energy=data.energy!==undefined?data.energy:100; maxEnergy=data.maxEnergy!==undefined?data.maxEnergy:100; clickPower=data.clickPower||1; clickUpgradeCost=data.clickUpgradeCost||100; clickUpgradeLevel=data.clickUpgradeLevel||1; energyUpgradeCost=data.energyUpgradeCost||200; energyUpgradeLevel=data.energyUpgradeLevel||1; passiveIncomeLevel=data.passiveIncomeLevel||0; passiveIncomeUpgradeCost=data.passiveIncomeUpgradeCost||500; referralBonusClaimed=data.referralBonusClaimed||{}; referralCount=data.referralCount||0; referralBonusTotal=data.referralBonusTotal||0; if(data.displayName)displayName=data.displayName; if(data.registrationDate)registrationDate=data.registrationDate; updateUI(); saveGame(); showMessage('✅ Импорт'); } else showMessage('❌ Версия',true); }catch(e){showMessage('❌ Ошибка',true);} }; reader.readAsText(file); }
-
-        async function init() {
-            if (userNameSpan) userNameSpan.textContent = displayName;
-            await loadGame();
-            setupTouchHandlers();
-            
-            if (authMethod === 'telegram' && userId) {
-                await loadLeaderboard();
-                await loadFriends();
-            }
-            
-            upgradeBtn?.addEventListener('click', upgradeClick);
-            document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
-            document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
-            document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassiveIncome);
-            for(let i=1;i<=5;i++) document.getElementById(`claimReferralBonus${i}`)?.addEventListener('click', () => claimReferralBonus(['manager','supervisor','director','magnate','legend'][i-1], [10,25,50,100,250][i-1]));
-            document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
-            document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
-            document.getElementById('authTelegramBtn')?.addEventListener('click', authTelegram);
-            document.getElementById('authVkBtn')?.addEventListener('click', authVK);
-            document.getElementById('exportSaveBtn')?.addEventListener('click', exportSave);
-            document.getElementById('importSaveBtn')?.addEventListener('click', () => document.getElementById('importFile')?.click());
-            document.getElementById('importFile')?.addEventListener('change', (e) => { if(e.target.files[0]) importSave(e.target.files[0]); });
-            
-            setInterval(applyPassiveIncome, 60000);
-            setInterval(rechargeEnergy, 1000);
-            
-            setupTabs();
-            document.getElementById('gameArea').style.display = 'block';
-            updateReferralUI();
-            
-            console.log('✅ Игра загружена! Энергия: 100');
-        }
-        
-        init();
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

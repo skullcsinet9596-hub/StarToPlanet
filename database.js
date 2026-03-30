@@ -10,14 +10,14 @@ async function initializeDatabase() {
         driver: sqlite3.Database
     });
 
-    // Таблица пользователей
+    // Таблица пользователей (с новыми полями)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            energy INTEGER DEFAULT 1000,
-            max_energy INTEGER DEFAULT 1000,
+            energy INTEGER DEFAULT 100,
+            max_energy INTEGER DEFAULT 100,
             coins BIGINT DEFAULT 0,
             total_coins_earned BIGINT DEFAULT 0,
             level INTEGER DEFAULT 1,
@@ -28,7 +28,11 @@ async function initializeDatabase() {
             last_energy_recharge DATETIME DEFAULT CURRENT_TIMESTAMP,
             referrer_id INTEGER,
             referrals_count INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            total_passive_earned BIGINT DEFAULT 0,
+            referral_level1_count INTEGER DEFAULT 0,
+            referral_level2_count INTEGER DEFAULT 0,
+            referral_level3_count INTEGER DEFAULT 0
         )
     `);
 
@@ -56,11 +60,127 @@ async function initializeDatabase() {
         )
     `);
 
+    // Таблица бонусов
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS referral_bonuses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referrer_id INTEGER,
+            referred_id INTEGER,
+            amount INTEGER,
+            level INTEGER,
+            source TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     return db;
 }
 
 async function getUser(telegramId) {
     return await db.get('SELECT * FROM users WHERE telegram_id = ?', telegramId);
+}
+
+// Получение всей реферальной цепочки (вверх)
+async function getReferralChain(telegramId) {
+    const chain = { level1: null, level2: null, level3: null };
+    let currentId = telegramId;
+    let level = 1;
+    
+    while (currentId && level <= 3) {
+        const user = await getUser(currentId);
+        if (user && user.referrer_id) {
+            if (level === 1) chain.level1 = user.referrer_id;
+            if (level === 2) chain.level2 = user.referrer_id;
+            if (level === 3) chain.level3 = user.referrer_id;
+            currentId = user.referrer_id;
+            level++;
+        } else {
+            break;
+        }
+    }
+    return chain;
+}
+
+// Получение рефералов по уровням (вниз)
+async function getReferralsByLevel(telegramId) {
+    const level1 = await db.all(`
+        SELECT * FROM users WHERE referrer_id = ? LIMIT 5
+    `, telegramId);
+    
+    const level1Ids = level1.map(u => u.telegram_id);
+    
+    let level2 = [];
+    if (level1Ids.length) {
+        level2 = await db.all(`
+            SELECT * FROM users WHERE referrer_id IN (${level1Ids.map(() => '?').join(',')}) LIMIT 5
+        `, level1Ids);
+    }
+    
+    const level2Ids = level2.map(u => u.telegram_id);
+    
+    let level3 = [];
+    if (level2Ids.length) {
+        level3 = await db.all(`
+            SELECT * FROM users WHERE referrer_id IN (${level2Ids.map(() => '?').join(',')}) LIMIT 5
+        `, level2Ids);
+    }
+    
+    return { level1, level2, level3 };
+}
+
+// Логирование бонусов
+async function logReferralBonus(referrerId, referredId, amount, level, source) {
+    await db.run(`
+        INSERT INTO referral_bonuses (referrer_id, referred_id, amount, level, source)
+        VALUES (?, ?, ?, ?, ?)
+    `, referrerId, referredId, amount, level, source);
+}
+
+// Начисление бонусов по реферальной цепочке
+async function distributeReferralBonus(telegramId, amount, source = 'click') {
+    const chain = await getReferralChain(telegramId);
+    
+    if (chain.level1) {
+        const bonus1 = Math.floor(amount * 0.5);
+        if (bonus1 > 0) {
+            await addCoins(chain.level1, bonus1);
+            await logReferralBonus(chain.level1, telegramId, bonus1, 1, source);
+        }
+    }
+    
+    if (chain.level2) {
+        const bonus2 = Math.floor(amount * 0.2);
+        if (bonus2 > 0) {
+            await addCoins(chain.level2, bonus2);
+            await logReferralBonus(chain.level2, telegramId, bonus2, 2, source);
+        }
+    }
+    
+    if (chain.level3) {
+        const bonus3 = Math.floor(amount * 0.1);
+        if (bonus3 > 0) {
+            await addCoins(chain.level3, bonus3);
+            await logReferralBonus(chain.level3, telegramId, bonus3, 3, source);
+        }
+    }
+}
+
+async function addCoins(telegramId, amount, source = 'click') {
+    await db.run(`
+        UPDATE users 
+        SET coins = coins + ?, total_coins_earned = total_coins_earned + ?
+        WHERE telegram_id = ?
+    `, amount, amount, telegramId);
+    
+    await db.run(`
+        UPDATE leaderboard 
+        SET coins = coins + ?, updated_at = CURRENT_TIMESTAMP
+        WHERE telegram_id = ?
+    `, amount, telegramId);
+    
+    if (source === 'click' || source === 'passive') {
+        await distributeReferralBonus(telegramId, amount, source);
+    }
 }
 
 async function createUser(telegramId, username, firstName, referrerId = null) {
@@ -82,7 +202,8 @@ async function createUser(telegramId, username, firstName, referrerId = null) {
 
             await db.run(`
                 UPDATE users 
-                SET referrals_count = referrals_count + 1
+                SET referrals_count = referrals_count + 1,
+                    referral_level1_count = referral_level1_count + 1
                 WHERE telegram_id = ?
             `, referrerId);
 
@@ -97,20 +218,6 @@ async function createUser(telegramId, username, firstName, referrerId = null) {
     `, telegramId, 0);
 
     return await getUser(telegramId);
-}
-
-async function addCoins(telegramId, amount) {
-    await db.run(`
-        UPDATE users 
-        SET coins = coins + ?, total_coins_earned = total_coins_earned + ?
-        WHERE telegram_id = ?
-    `, amount, amount, telegramId);
-    
-    await db.run(`
-        UPDATE leaderboard 
-        SET coins = coins + ?, updated_at = CURRENT_TIMESTAMP
-        WHERE telegram_id = ?
-    `, amount, telegramId);
 }
 
 async function updateUserProgress(telegramId, coins, clickPower, maxEnergy) {
@@ -172,6 +279,7 @@ module.exports = {
     addCoins,
     updateUserProgress,
     getReferrals,
+    getReferralsByLevel,
     getLeaderboard,
     getStats
 };
