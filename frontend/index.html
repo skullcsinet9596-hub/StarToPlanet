@@ -3,64 +3,705 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Star to Planet</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Star to Planet — 3D & iOS 26</title>
+    <!-- Three.js CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: -apple-system, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, sans-serif;
+            background: #111215;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        /* iOS 26 glass + gray palette */
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* верхняя панель — стекло */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(20, 20, 24, 0.75);
+            backdrop-filter: blur(28px);
+            border-radius: 32px;
+            padding: 8px 18px;
+            margin: 12px 16px 0 16px;
+            border: 0.5px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #8E8E93, #636366);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userName {
+            font-weight: 590;
+            font-size: 15px;
+            letter-spacing: -0.2px;
+        }
+
+        #userLevel {
+            font-size: 11px;
+            opacity: 0.7;
+            color: #98989E;
+        }
+
+        .balance {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: 590;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 0.5px solid rgba(255, 214, 10, 0.3);
+            backdrop-filter: blur(8px);
+        }
+
+        /* игровая зона — здесь будет canvas Three.js */
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            min-height: 460px;
+            pointer-events: auto;
+        }
+
+        /* контейнер для 3D */
+        #canvas-container {
+            width: 100%;
+            height: 280px;
+            max-width: 300px;
+            margin: 10px auto;
+            position: relative;
+            cursor: pointer;
+            border-radius: 50%;
+            overflow: visible;
+        }
+
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 50%;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+        }
+
+        .stats-container {
+            width: 100%;
+            max-width: 300px;
+            margin: 16px auto 0;
+            position: relative;
+        }
+
+        .energy-bar {
+            background: rgba(28, 28, 32, 0.75);
+            backdrop-filter: blur(16px);
+            border-radius: 40px;
+            padding: 8px 18px;
+            margin-bottom: 12px;
+            border: 0.5px solid rgba(255,255,255,0.1);
+        }
+
+        .energy-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #98989E;
+        }
+
+        .energy-progress {
+            background: rgba(255,255,255,0.12);
+            border-radius: 20px;
+            overflow: hidden;
+            height: 6px;
+        }
+
+        .energy-fill {
+            background: linear-gradient(90deg, #FFD60A, #FF9F0A);
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+        }
+
+        .boost-btn {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            background: rgba(44, 44, 48, 0.85);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 214, 10, 0.4);
+            border-radius: 44px;
+            padding: 10px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 104px;
+            z-index: 20;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+
+        .boost-btn:active {
+            transform: scale(0.96);
+        }
+
+        .boost-icon {
+            font-size: 18px;
+        }
+
+        .boost-text {
+            font-weight: 590;
+            font-size: 15px;
+            color: #FFD60A;
+        }
+
+        .click-power, .passive-income {
+            text-align: center;
+            font-size: 12px;
+            color: #98989E;
+            margin: 8px 0 4px;
+        }
+
+        .passive-income span {
+            color: #FFD60A;
+            font-weight: 500;
+        }
+
+        /* нижняя навигация — iOS */
+        .nav-bar {
+            position: sticky;
+            bottom: 0;
+            background: rgba(20, 20, 24, 0.94);
+            backdrop-filter: blur(28px);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 12px;
+            border-top: 0.5px solid rgba(255,255,255,0.1);
+            max-width: 500px;
+            margin: 0 auto;
+            z-index: 100;
+            width: 100%;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: #8E8E93;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border-radius: 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .nav-btn.active {
+            color: #FFD60A;
+            background: rgba(255, 214, 10, 0.12);
+        }
+
+        .nav-icon {
+            font-size: 22px;
+        }
+
+        /* панели */
+        .tab-panel {
+            display: none;
+            margin-top: 12px;
+            padding: 0 16px 80px 16px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .tab-panel h2 {
+            font-size: 20px;
+            font-weight: 590;
+            margin-bottom: 16px;
+            text-align: center;
+            color: #FFD60A;
+        }
+
+        /* модалка */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1C1C1E;
+            border-radius: 32px 32px 0 0;
+            width: 100%;
+            max-width: 500px;
+            max-height: 75vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            padding-bottom: 20px;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            border-bottom: 0.5px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 590;
+            color: #FFD60A;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #FFD60A;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .boost-list {
+            padding: 12px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .boost-card {
+            background: rgba(44, 44, 48, 0.7);
+            border-radius: 24px;
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        .boost-info {
+            flex: 1;
+        }
+
+        .boost-name {
+            font-weight: 590;
+            font-size: 15px;
+        }
+
+        .boost-desc {
+            font-size: 11px;
+            opacity: 0.7;
+            color: #98989E;
+        }
+
+        .boost-level, .boost-cost {
+            font-size: 12px;
+            color: #FFD60A;
+            margin-top: 4px;
+        }
+
+        .boost-buy-btn {
+            background: #FFD60A;
+            border: none;
+            padding: 8px 22px;
+            border-radius: 44px;
+            color: #1C1C1E;
+            font-weight: 590;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* остальные стили (задания, друзья и т.д.) */
+        .tasks-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            background: rgba(44,44,48,0.5);
+            border-radius: 44px;
+            padding: 4px;
+        }
+
+        .tasks-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 40px;
+            color: #98989E;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .tasks-tab.active {
+            background: #FFD60A;
+            color: #1C1C1E;
+        }
+
+        .task-card {
+            background: rgba(44,44,48,0.6);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        .task-claim-btn {
+            background: #FFD60A;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 590;
+        }
+
+        .referral-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(44,44,48,0.6);
+            border-radius: 24px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FFD60A;
+        }
+
+        .level-card {
+            background: rgba(44,44,48,0.5);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .level-title {
+            font-weight: 590;
+            margin-bottom: 8px;
+            color: #FFD60A;
+        }
+
+        .link-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .link-box input {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 0.5px solid rgba(255,215,0,0.3);
+            border-radius: 36px;
+            padding: 12px;
+            color: white;
+            font-size: 11px;
+        }
+
+        .link-box button {
+            background: #FFD60A;
+            border: none;
+            border-radius: 36px;
+            padding: 0 20px;
+            font-weight: 590;
+        }
+
+        .golden-coin {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 20px auto;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #FFE55C, #E5A800);
+            box-shadow: inset -20px -20px 40px rgba(0,0,0,0.45), inset 12px 12px 28px rgba(255,255,200,0.5), 0 20px 35px -8px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: coinFloat 2.2s ease-in-out infinite;
+        }
+
+        .golden-coin .rays {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .ray {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 58px;
+            background: linear-gradient(180deg, #FFD966, transparent);
+            transform-origin: center;
+            opacity: 0.55;
+            animation: rayShine 1.3s ease-in-out infinite alternate;
+        }
+
+        .ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-98px); }
+        .ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-98px); }
+        .ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-98px); }
+        .ray:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(-98px); }
+        .ray:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(-98px); }
+        .ray:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(-98px); }
+        .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(-98px); }
+        .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(-98px); }
+        .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(-98px); }
+        .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-98px); }
+        .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-98px); }
+        .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-98px); }
+
+        .coin-star {
+            font-size: 72px;
+            color: white;
+            text-shadow: 0 0 12px rgba(255,255,240,0.8);
+        }
+
+        @keyframes coinFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-6px) scale(1.01); }
+        }
+
+        @keyframes rayShine {
+            0% { opacity: 0.3; height: 50px; }
+            100% { opacity: 0.9; height: 72px; }
+        }
+
+        .airdrop-soon {
+            font-size: 28px;
+            font-weight: 700;
+            color: #FFD60A;
+            margin: 20px 0 12px;
+        }
+
+        .airdrop-subscribe {
+            background: #FFD60A;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 48px;
+            color: #1C1C1E;
+            font-weight: 590;
+            font-size: 16px;
+            margin-top: 16px;
+            cursor: pointer;
+        }
+
+        .profile-card, .auth-section {
+            background: rgba(44,44,48,0.6);
+            border-radius: 28px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #8E8E93, #636366);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        .leaderboard-list {
+            padding: 8px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(44,44,48,0.5);
+            border-radius: 24px;
+            margin-bottom: 8px;
+        }
+
+        .leaderboard-rank {
+            width: 48px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+        }
+
+        .leaderboard-coins {
+            font-weight: 600;
+            color: #FFD60A;
+        }
+
+        .message {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1C1C1E;
+            color: #FFD60A;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 1100;
+            display: none;
+            backdrop-filter: blur(20px);
+            white-space: nowrap;
+        }
+
+        .message.show {
+            display: block;
+            animation: fadeOut 2s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        @media (max-width: 480px) {
+            .golden-coin { width: 140px; height: 140px; }
+            .coin-star { font-size: 54px; }
+            .ray { height: 42px; transform-origin: center; }
+            .ray:nth-child(1), .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(0deg) translateY(-72px); }
+            .ray:nth-child(2), .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(30deg) translateY(-72px); }
+            .ray:nth-child(3), .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(60deg) translateY(-72px); }
+            .ray:nth-child(4), .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(90deg) translateY(-72px); }
+            .ray:nth-child(5), .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(120deg) translateY(-72px); }
+            .ray:nth-child(6), .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(150deg) translateY(-72px); }
+            .boost-btn { padding: 8px 16px; min-width: 88px; }
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Верхняя панель -->
         <div class="top-bar">
             <div class="user-info">
-                <div class="avatar" id="userAvatar">⭐</div>
+                <div class="avatar">⭐</div>
                 <div class="user-details">
-                    <span id="userName">Загрузка...</span>
-                    <span id="userLevel">Уровень 1</span>
+                    <span id="userName">@username</span>
+                    <span id="userLevel">Уровень 7 · Юпитер</span>
                 </div>
             </div>
-            <div class="balance">
-                <span>🪙</span>
-                <span id="coins">0</span>
-            </div>
+            <div class="balance">🪙 <span id="coins">1 234 567</span></div>
         </div>
 
-        <!-- Игровая область (по центру) -->
         <div class="game-area" id="gameArea">
-            <div class="planet-container">
-                <div class="planet" id="planet">
-                    <div class="planet-core" id="planetCore">⭐</div>
-                </div>
-            </div>
-            
+            <div id="canvas-container"></div>
             <div class="stats-container">
-                <!-- Boost кнопка между звездой и энергией -->
-                <button class="boost-btn" id="boostBtn">
-                    <span class="boost-icon">⚡</span>
-                    <span class="boost-text">Boost</span>
-                </button>
-                
                 <div class="energy-bar">
-                    <div class="energy-label">
-                        <span>⚡ Энергия</span>
-                        <span id="energyValue">100/100</span>
-                    </div>
-                    <div class="energy-progress">
-                        <div class="energy-fill" id="energyFill" style="width: 100%"></div>
-                    </div>
+                    <div class="energy-label"><span>⚡ Энергия</span><span id="energyValue">1000/1000</span></div>
+                    <div class="energy-progress"><div class="energy-fill" id="energyFill" style="width:100%"></div></div>
                 </div>
+                <button class="boost-btn" id="boostBtn"><span class="boost-icon">⚡</span><span class="boost-text">BOOST</span></button>
             </div>
-            
-            <div class="click-power">
-                💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span>
-            </div>
-
-            <div class="passive-income">
-                <span>🤖 Пассивный доход:</span>
-                <span id="passiveIncomeRate">0</span> монет/мин
-            </div>
+            <div class="click-power">💪 Сила клика: <span id="clickPower">150</span> монет | ⚡ Затраты: <span id="energyCost">150</span></div>
+            <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">1 500</span> монет/мин</div>
         </div>
 
-        <!-- Навигация -->
         <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
@@ -70,216 +711,195 @@
             <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
-        <!-- Панель Заданий -->
-        <div class="tab-panel" id="tasksPanel">
-            <div class="tasks-header">
-                <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
-                <button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button>
-            </div>
-            
-            <!-- Ежедневные задания -->
-            <div class="tasks-content active" id="dailyTasks">
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">🎯 Сделать 100 кликов</div>
-                        <div class="task-progress">Прогресс: <span id="dailyClickProgress">0</span>/100</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="dailyClickClaim">100 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">💰 Заработать 500 монет</div>
-                        <div class="task-progress">Прогресс: <span id="dailyCoinsProgress">0</span>/500</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="dailyCoinsClaim">500 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">👥 Пригласить 1 друга</div>
-                        <div class="task-progress">Приглашено: <span id="dailyReferralProgress">0</span>/1</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="dailyReferralClaim">1000 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">💪 Улучшить силу клика на 5 уровней</div>
-                        <div class="task-progress">Уровней: <span id="dailyUpgradeProgress">0</span>/5</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="dailyUpgradeClaim">750 🪙</button>
-                </div>
-            </div>
-            
-            <!-- Еженедельные задания -->
-            <div class="tasks-content" id="weeklyTasks">
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">🎯 Сделать 1000 кликов</div>
-                        <div class="task-progress">Прогресс: <span id="weeklyClickProgress">0</span>/1000</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="weeklyClickClaim">1000 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">💰 Заработать 5000 монет</div>
-                        <div class="task-progress">Прогресс: <span id="weeklyCoinsProgress">0</span>/5000</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="weeklyCoinsClaim">2500 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">👥 Пригласить 5 друзей</div>
-                        <div class="task-progress">Приглашено: <span id="weeklyReferralProgress">0</span>/5</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="weeklyReferralClaim">5000 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">💪 Улучшить силу клика на 20 уровней</div>
-                        <div class="task-progress">Уровней: <span id="weeklyUpgradeProgress">0</span>/20</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="weeklyUpgradeClaim">3000 🪙</button>
-                </div>
-                <div class="task-card">
-                    <div class="task-info">
-                        <div class="task-name">⚡ Увеличить энергию до 500</div>
-                        <div class="task-progress">Энергия: <span id="weeklyEnergyProgress">0</span>/500</div>
-                    </div>
-                    <button class="task-claim-btn disabled" id="weeklyEnergyClaim">2000 🪙</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Панель Boost (модальное окно) -->
+        <!-- BOOST модалка -->
         <div class="modal-overlay" id="boostModal">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h3>⚡ Улучшения</h3>
-                    <button class="modal-close" id="closeBoostModal">✕</button>
-                </div>
+                <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
                 <div class="boost-list">
-                    <div class="boost-card">
-                        <div class="boost-info">
-                            <div class="boost-name">⭐ Сила клика</div>
-                            <div class="boost-desc">Увеличивает доход за клик на +1</div>
-                            <div class="boost-level">Уровень: <span id="upgradeLevel">1</span>/100</div>
-                            <div class="boost-cost" id="clickUpgradeCostDisplay">Стоимость: 100 🪙</div>
-                        </div>
-                        <button class="boost-buy-btn" id="buyClickUpgrade">Купить</button>
-                    </div>
-                    <div class="boost-card">
-                        <div class="boost-info">
-                            <div class="boost-name">⚡ Энергия</div>
-                            <div class="boost-desc">Увеличивает максимальную энергию на +50</div>
-                            <div class="boost-level">Уровень: <span id="energyUpgradeLevel">1</span>/100</div>
-                            <div class="boost-cost" id="energyUpgradeCostDisplay">Стоимость: 200 🪙</div>
-                        </div>
-                        <button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button>
-                    </div>
-                    <div class="boost-card">
-                        <div class="boost-info">
-                            <div class="boost-name">🤖 Пассивный доход</div>
-                            <div class="boost-desc">+5 монет в минуту за уровень</div>
-                            <div class="boost-level">Уровень: <span id="passiveUpgradeLevel">0</span>/100</div>
-                            <div class="boost-cost" id="passiveUpgradeCostDisplay">Стоимость: 500 🪙</div>
-                        </div>
-                        <button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button>
-                    </div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень 50/100</div><div class="boost-cost">1 234 567 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень 30/100</div><div class="boost-cost">2 345 678 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень 25/100</div><div class="boost-cost">3 456 789 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
                 </div>
             </div>
         </div>
 
-        <!-- Панель друзей -->
+        <!-- ЗАДАНИЯ (кратко, чтобы не раздувать) -->
+        <div class="tab-panel" id="tasksPanel">
+            <div class="tasks-header"><button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button><button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button><button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button></div>
+            <div class="tasks-content active" id="dailyTasks"><div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress">67/100</div></div><button class="task-claim-btn">100 🪙</button></div></div>
+            <div class="tasks-content" id="weeklyTasks"><div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress">0/1000</div></div><button class="task-claim-btn">1000 🪙</button></div></div>
+            <div class="tasks-content" id="premiumTasks"><div class="task-card"><div class="task-info"><div class="task-name">🌕 Луна</div><div class="task-progress">+20 000/мин</div><div class="task-progress">50 ₽</div></div><button class="task-claim-btn">Купить</button></div></div>
+        </div>
+
+        <!-- ДРУЗЬЯ (пример) -->
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
-            <div class="referral-info">
-                <div class="referral-stats">
-                    <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span class="stat-label">Приглашено друзей</span></div>
-                    <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span class="stat-label">Бонусов получено</span></div>
-                    <div class="stat-card"><span class="stat-value" id="leaderboardRank">#1</span><span class="stat-label">Место в рейтинге</span></div>
-                </div>
-                
-                <div class="referral-link-container">
-                    <p>Ваша реферальная ссылка:</p>
-                    <div class="link-box">
-                        <input type="text" id="referralLink" readonly value="Загрузка...">
-                        <button id="copyLinkBtn">📋 Копировать</button>
-                    </div>
-                    <button id="shareLinkBtn" class="share-btn">👥 Поделиться с друзьями</button>
-                </div>
-                
-                <div class="referral-levels">
-                    <h3>📊 Ваша реферальная структура</h3>
-                    <div class="level-card">
-                        <div class="level-title">⭐ 1 уровень (50% бонуса)</div>
-                        <div id="level1List" class="level-list"><div class="level-item">Загрузка...</div></div>
-                    </div>
-                    <div class="level-card">
-                        <div class="level-title">🌟 2 уровень (20% бонуса)</div>
-                        <div id="level2List" class="level-list"><div class="level-item">Загрузка...</div></div>
-                    </div>
-                    <div class="level-card">
-                        <div class="level-title">✨ 3 уровень (10% бонуса)</div>
-                        <div id="level3List" class="level-list"><div class="level-item">Загрузка...</div></div>
-                    </div>
-                </div>
-                
-                <div class="referral-list">
-                    <h3>👥 Список друзей</h3>
-                    <div class="friends-list" id="friendsList"><div class="friend-item">👥 Пока нет друзей. Пригласите первого!</div></div>
-                </div>
-            </div>
+            <div class="referral-stats"><div class="stat-card"><span class="stat-value">15</span><span>Приглашено</span></div><div class="stat-card"><span class="stat-value">15K</span><span>Бонусов</span></div><div class="stat-card"><span class="stat-value">#127</span><span>Рейтинг</span></div></div>
+            <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div class="level-item"><span>@ivan</span><span>+750/мин</span></div></div>
+            <div class="referral-link-container"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="https://t.me/startoplanet_bot?start=ref_123456789"><button id="copyLinkBtn">📋</button></div></div>
         </div>
 
-        <!-- Панель профиля -->
-        <div class="tab-panel" id="profilePanel">
-            <h2>👤 Профиль</h2>
-            <div class="profile-card">
-                <div class="profile-header">
-                    <div class="profile-avatar" id="profileAvatar">⭐</div>
-                    <div class="profile-stats">
-                        <p><span id="profileName">Игрок</span></p>
-                        <p>ID: <span id="profileId">-</span></p>
-                        <p>Регистрация: <span id="profileDate">-</span></p>
-                    </div>
-                </div>
-                <div class="info-row"><span class="info-label">📊 Всего монет</span><span class="info-value" id="profileCoins">0</span></div>
-                <div class="info-row"><span class="info-label">⭐ Сила клика</span><span class="info-value" id="profileClickPower">1</span></div>
-                <div class="info-row"><span class="info-label">⚡ Макс. энергия</span><span class="info-value" id="profileMaxEnergy">100</span></div>
-                <div class="info-row"><span class="info-label">🤖 Пассивный доход</span><span class="info-value" id="profilePassiveIncome">0</span></div>
-                <div class="info-row"><span class="info-label">👥 Приглашено друзей</span><span class="info-value" id="profileReferrals">0</span></div>
-                <div class="info-row"><span class="info-label">🏆 Место в рейтинге</span><span class="info-value" id="profileRank">#1</span></div>
-            </div>
-            <div class="auth-section">
-                <div class="auth-title">🔐 Авторизация</div>
-                <div class="auth-buttons">
-                    <button class="auth-btn telegram" id="authTelegramBtn"><span>📱</span> Telegram</button>
-                    <button class="auth-btn vk" id="authVkBtn"><span>📘</span> ВКонтакте</button>
-                </div>
-                <div class="save-buttons">
-                    <div class="save-btn" id="exportSaveBtn">💾 Экспорт</div>
-                    <div class="save-btn" id="importSaveBtn">📂 Импорт</div>
-                    <input type="file" id="importFile" style="display: none;" accept=".json">
-                </div>
-            </div>
-        </div>
+        <!-- ПРОФИЛЬ -->
+        <div class="tab-panel" id="profilePanel"><h2>👤 Профиль</h2><div class="profile-card"><div class="profile-header"><div class="profile-avatar">⭐</div><div><div><strong>@username</strong></div><div>ID: 123456789</div></div></div><div class="info-row"><span>📊 Всего монет</span><span>1 234 567 890</span></div><div class="info-row"><span>⭐ Сила клика</span><span>150</span></div></div><div class="auth-section"><div class="auth-title">🔐 Авторизация</div><div class="auth-buttons" style="display:flex; gap:12px;"><button class="boost-buy-btn">Telegram ✅</button><button class="boost-buy-btn">VK</button></div></div></div>
 
-        <!-- Панель рейтинга -->
-        <div class="tab-panel" id="leaderboardPanel">
-            <h2>🏆 Топ игроков</h2>
-            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка рейтинга...</div></div>
-        </div>
+        <!-- РЕЙТИНГ -->
+        <div class="tab-panel" id="leaderboardPanel"><h2>🏆 Топ игроков</h2><div class="leaderboard-list"><div class="leaderboard-item"><div class="leaderboard-rank top-1">🥇</div><div class="leaderboard-name">@cosmic_warrior</div><div class="leaderboard-coins">1.2B 🪙</div></div><div class="leaderboard-item"><div class="leaderboard-rank">📊</div><div class="leaderboard-name">Ваша позиция: #127</div></div></div></div>
 
-        <!-- Панель Airdrop -->
+        <!-- AIRDROP -->
         <div class="tab-panel" id="airdropPanel">
-            <div class="listing-content">
-                <div class="listing-star"><div class="listing-star-core">⭐</div></div>
-                <div class="listing-soon">Скоро</div>
-                <div class="listing-description">Airdrop скоро будет доступен<br>Следите за обновлениями!</div>
+            <div class="airdrop-content">
+                <div class="golden-coin"><div class="rays">${[...Array(12)].map((_,i)=>`<div class="ray"></div>`).join('')}</div><div class="coin-star">⭐</div></div>
+                <div class="airdrop-soon">СКОРО</div>
+                <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
             </div>
         </div>
     </div>
     <div class="message" id="message"></div>
 
-    <script src="app.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        // === 3D ПЛАНЕТА ===
+        const container = document.getElementById('canvas-container');
+        const width = Math.min(300, window.innerWidth * 0.7);
+        const height = width;
+        container.style.width = `${width}px`;
+        container.style.height = `${height}px`;
+
+        const scene = new THREE.Scene();
+        scene.background = null; // прозрачный фон, чтобы видеть стеклянный UI
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 0, 3.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Текстура планеты (красивый газовый гигант)
+        const textureLoader = new THREE.TextureLoader();
+        const planetMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const planetSpecular = textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+        const planetNormal = textureLoader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+        const cloudMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+
+        const geometry = new THREE.SphereGeometry(1.2, 128, 128);
+        const material = new THREE.MeshPhongMaterial({
+            map: planetMap,
+            specularMap: planetSpecular,
+            specular: new THREE.Color('grey'),
+            shininess: 25,
+            normalMap: planetNormal
+        });
+        const planet = new THREE.Mesh(geometry, material);
+        scene.add(planet);
+
+        // облака
+        const cloudGeometry = new THREE.SphereGeometry(1.22, 128, 128);
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: cloudMap,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending
+        });
+        const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        scene.add(clouds);
+
+        // освещение
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(5, 3, 5);
+        scene.add(mainLight);
+        const backLight = new THREE.PointLight(0x4466cc, 0.4);
+        backLight.position.set(-2, -1, -3);
+        scene.add(backLight);
+        const fillLight = new THREE.PointLight(0xffaa66, 0.3);
+        fillLight.position.set(2, 1, 2);
+        scene.add(fillLight);
+
+        // анимация вращения
+        function animate() {
+            requestAnimationFrame(animate);
+            planet.rotation.y += 0.003;
+            clouds.rotation.y += 0.0015;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            const newWidth = Math.min(300, window.innerWidth * 0.7);
+            const newHeight = newWidth;
+            container.style.width = `${newWidth}px`;
+            container.style.height = `${newHeight}px`;
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(newWidth, newHeight);
+        });
+
+        // клик по планете (имитация)
+        const planetEl = document.getElementById('canvas-container');
+        planetEl.addEventListener('click', () => {
+            const msg = document.getElementById('message');
+            msg.textContent = '✨ +150 монет';
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 800);
+        });
+
+        // остальной UI: модалка, вкладки, копирование
+        const modal = document.getElementById('boostModal');
+        document.getElementById('boostBtn').onclick = () => modal.classList.add('active');
+        document.getElementById('closeBoostModal').onclick = () => modal.classList.remove('active');
+        modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('active'); };
+
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const panels = {
+            game: document.getElementById('gameArea'),
+            tasks: document.getElementById('tasksPanel'),
+            friends: document.getElementById('friendsPanel'),
+            profile: document.getElementById('profilePanel'),
+            leaderboard: document.getElementById('leaderboardPanel'),
+            airdrop: document.getElementById('airdropPanel')
+        };
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                navBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
+                if(panels[tab]) panels[tab].style.display = 'block';
+                if(tab === 'game') panels.game.style.display = 'flex';
+            });
+        });
+        panels.game.style.display = 'flex';
+
+        document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+            const inp = document.getElementById('referralLink');
+            inp.select(); inp.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            const msg = document.getElementById('message');
+            msg.textContent = '✅ Ссылка скопирована';
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 2000);
+        });
+
+        // подвкладки заданий
+        const taskTabs = document.querySelectorAll('.tasks-tab');
+        const taskContents = {
+            daily: document.getElementById('dailyTasks'),
+            weekly: document.getElementById('weeklyTasks'),
+            premium: document.getElementById('premiumTasks')
+        };
+        taskTabs.forEach(t => {
+            t.addEventListener('click', () => {
+                const target = t.dataset.tasksTab;
+                taskTabs.forEach(tt => tt.classList.remove('active'));
+                t.classList.add('active');
+                Object.values(taskContents).forEach(c => c?.classList.remove('active'));
+                if(taskContents[target]) taskContents[target].classList.add('active');
+            });
+        });
+    </script>
 </body>
 </html>
