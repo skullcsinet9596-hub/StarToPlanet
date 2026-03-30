@@ -189,7 +189,6 @@
             z-index: 20;
             box-shadow: 0 4px 14px rgba(0,0,0,0.3);
         }
-
         .boost-btn:active { transform: scale(0.96); }
         .boost-icon { font-size: 18px; }
         .boost-text { font-weight: 590; font-size: 15px; color: #FFD60A; }
@@ -478,7 +477,10 @@
         <!-- AIRDROP -->
         <div class="tab-panel" id="airdropPanel">
             <div class="airdrop-content">
-                <div class="golden-coin"><div class="rays" id="rays-container"></div><div class="coin-star">⭐</div></div>
+                <div class="golden-coin">
+                    <div class="rays" id="rays-container"></div>
+                    <div class="coin-star">⭐</div>
+                </div>
                 <div class="airdrop-soon">СКОРО</div>
                 <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
             </div>
@@ -489,7 +491,7 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // === 3D ПЛАНЕТА (ЗЕМЛЯ) ===
+        // === 3D ПЛАНЕТА ===
         const container = document.getElementById('canvas-container');
         const width = 260, height = 260;
         container.style.width = `${width}px`;
@@ -551,15 +553,12 @@
             msg.textContent = '✨ +1 монета';
             msg.classList.add('show');
             setTimeout(() => msg.classList.remove('show'), 800);
-            // обновление счёта (демо)
-            const coinsSpan = document.getElementById('coins');
-            let coins = parseInt(coinsSpan.innerText.replace(/\D/g, '')) || 0;
+            let coins = parseInt(document.getElementById('coins').innerText.replace(/\D/g, '')) || 0;
             coins += 1;
-            coinsSpan.innerText = coins.toLocaleString();
+            document.getElementById('coins').innerText = coins.toLocaleString();
         });
 
-        // === UI ЛОГИКА ===
-        // вкладки
+        // === ВКЛАДКИ ===
         const navBtns = document.querySelectorAll('.nav-btn');
         const panels = {
             game: document.getElementById('gameArea'),
@@ -581,7 +580,7 @@
         });
         panels.game.style.display = 'flex';
 
-        // подвкладки заданий
+        // === ПОДВКЛАДКИ ЗАДАНИЙ ===
         const taskTabs = document.querySelectorAll('.tasks-tab');
         const taskContents = {
             daily: document.getElementById('dailyTasks'),
@@ -598,13 +597,13 @@
             });
         });
 
-        // модалка BOOST
+        // === МОДАЛКА BOOST ===
         const modal = document.getElementById('boostModal');
         document.getElementById('boostBtn').onclick = () => modal.classList.add('active');
         document.getElementById('closeBoostModal').onclick = () => modal.classList.remove('active');
         modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('active'); };
 
-        // копирование ссылки
+        // === КОПИРОВАНИЕ ССЫЛКИ ===
         document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
             const inp = document.getElementById('referralLink');
             inp.select(); inp.setSelectionRange(0, 99999);
@@ -615,7 +614,7 @@
             setTimeout(() => msg.classList.remove('show'), 2000);
         });
 
-        // лучи для монеты
+        // === ЛУЧИ ДЛЯ МОНЕТЫ AIRDROP ===
         const raysContainer = document.getElementById('rays-container');
         for(let i=0; i<12; i++) {
             const ray = document.createElement('div');
