@@ -43,14 +43,64 @@ let weeklyClickCount = 0;
 let weeklyCoinsEarned = 0;
 let weeklyTasksClaimed = { click: false, coins: false };
 
-// ==================== 3D ПЛАНЕТА ====================
-let scene, camera, renderer, planet3d;
+// ==================== ЭЛЕМЕНТЫ ====================
+let planetElement = null;
 
+// ==================== СОЗДАНИЕ ЗВЕЗДЫ (ЗАПАСНОЙ ВАРИАНТ) ====================
+function createFallbackStar() {
+    const container = document.getElementById('canvas-container');
+    if (!container) return;
+    
+    // Очищаем контейнер
+    container.innerHTML = '';
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.background = 'radial-gradient(circle at 30% 30%, #ffd700, #ff8c00)';
+    container.style.borderRadius = '50%';
+    container.style.boxShadow = '0 0 30px rgba(255,215,0,0.5)';
+    container.style.cursor = 'pointer';
+    container.style.transition = 'transform 0.1s';
+    
+    const star = document.createElement('div');
+    star.textContent = '⭐';
+    star.style.fontSize = '80px';
+    star.style.textShadow = '0 0 20px rgba(0,0,0,0.5)';
+    star.style.pointerEvents = 'none';
+    container.appendChild(star);
+    
+    // Сохраняем элемент для клика
+    planetElement = container;
+    
+    // Добавляем анимацию
+    container.addEventListener('click', handleClick);
+    container.style.animation = 'float 3s ease-in-out infinite';
+    
+    // Добавляем стиль анимации, если его нет
+    if (!document.querySelector('#star-animation-style')) {
+        const style = document.createElement('style');
+        style.id = 'star-animation-style';
+        style.textContent = `
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-8px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// ==================== 3D ПЛАНЕТА ====================
 function init3D() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
+    
     const width = 240, height = 240;
+    
     import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
+        // Очищаем контейнер
+        container.innerHTML = '';
+        
         scene = new THREE.Scene();
         scene.background = null;
         camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -78,7 +128,24 @@ function init3D() {
             renderer.render(scene, camera);
         }
         animate();
+        
+        // Сохраняем элемент для клика
+        planetElement = container;
+        container.style.cursor = 'pointer';
+        container.addEventListener('click', handleClick);
+        
+    }).catch(err => {
+        console.error('Three.js error:', err);
+        createFallbackStar();
     });
+    
+    // Таймаут на случай долгой загрузки
+    setTimeout(() => {
+        const container = document.getElementById('canvas-container');
+        if (container && container.children.length === 0) {
+            createFallbackStar();
+        }
+    }, 3000);
 }
 
 // ==================== UI ФУНКЦИИ ====================
@@ -229,9 +296,27 @@ function handleClick() {
     updateUI();
     saveGame();
     
-    const star = document.getElementById('canvas-container');
-    star.style.transform = 'scale(0.95)';
-    setTimeout(() => star.style.transform = 'scale(1)', 100);
+    // Анимация
+    if (planetElement) {
+        planetElement.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            if (planetElement) planetElement.style.transform = 'scale(1)';
+        }, 100);
+    }
+    
+    // Всплывающая цифра
+    const popup = document.createElement('div');
+    popup.textContent = `+${clickPower}`;
+    popup.style.position = 'fixed';
+    popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
+    popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
+    popup.style.color = '#ffd700';
+    popup.style.fontSize = '24px';
+    popup.style.fontWeight = 'bold';
+    popup.style.pointerEvents = 'none';
+    popup.style.animation = 'popup 0.5s ease-out forwards';
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 500);
     
     showMessage(`✨ +${clickPower} монет`);
 }
@@ -419,9 +504,6 @@ function init() {
     document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
     document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
     
-    const starContainer = document.getElementById('canvas-container');
-    if (starContainer) starContainer.addEventListener('click', handleClick);
-    
     const boostBtn = document.getElementById('boostBtn');
     const boostModal = document.getElementById('boostModal');
     const closeBoost = document.getElementById('closeBoostModal');
@@ -444,6 +526,22 @@ function init() {
     
     document.getElementById('gameArea').style.display = 'flex';
     console.log('✅ Игра загружена!');
+    
+    // Добавляем стиль для анимации всплывающих цифр
+    if (!document.querySelector('#popup-animation')) {
+        const style = document.createElement('style');
+        style.id = 'popup-animation';
+        style.textContent = `
+            @keyframes popup {
+                0% { opacity: 1; transform: translateY(0) scale(0.8); }
+                100% { opacity: 0; transform: translateY(-50px) scale(1); }
+            }
+            .floating-number {
+                animation: popup 0.5s ease-out forwards !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 init();
