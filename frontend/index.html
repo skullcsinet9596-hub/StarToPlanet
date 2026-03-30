@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <!-- Игровая область (смещена в центр) -->
+        <!-- Игровая область (по центру) -->
         <div class="game-area" id="gameArea">
             <div class="planet-container">
                 <div class="planet" id="planet">
@@ -32,13 +32,21 @@
                 </div>
             </div>
             
-            <div class="energy-bar">
-                <div class="energy-label">
-                    <span>⚡ Энергия</span>
-                    <span id="energyValue">100/100</span>
-                </div>
-                <div class="energy-progress">
-                    <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+            <div class="stats-container">
+                <!-- Boost кнопка между звездой и энергией -->
+                <button class="boost-btn" id="boostBtn">
+                    <span class="boost-icon">⚡</span>
+                    <span class="boost-text">Boost</span>
+                </button>
+                
+                <div class="energy-bar">
+                    <div class="energy-label">
+                        <span>⚡ Энергия</span>
+                        <span id="energyValue">100/100</span>
+                    </div>
+                    <div class="energy-progress">
+                        <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+                    </div>
                 </div>
             </div>
             
@@ -50,12 +58,6 @@
                 <span>🤖 Пассивный доход:</span>
                 <span id="passiveIncomeRate">0</span> монет/мин
             </div>
-            
-            <!-- Boost кнопка в левом нижнем углу -->
-            <button class="boost-btn" id="boostBtn">
-                <span class="boost-icon">⚡</span>
-                <span class="boost-text">Boost</span>
-            </button>
         </div>
 
         <!-- Навигация -->
@@ -68,7 +70,7 @@
             <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
-        <!-- Панель Заданий (вместо улучшений) с 2 подвкладками -->
+        <!-- Панель Заданий -->
         <div class="tab-panel" id="tasksPanel">
             <div class="tasks-header">
                 <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
@@ -86,7 +88,7 @@
                 </div>
                 <div class="task-card">
                     <div class="task-info">
-                        <div class="task-name">⚡ Заработать 500 монет</div>
+                        <div class="task-name">💰 Заработать 500 монет</div>
                         <div class="task-progress">Прогресс: <span id="dailyCoinsProgress">0</span>/500</div>
                     </div>
                     <button class="task-claim-btn disabled" id="dailyCoinsClaim">500 🪙</button>
