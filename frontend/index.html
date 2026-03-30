@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet — 3D & iOS 26</title>
-    <!-- Three.js CDN -->
+    <!-- Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -32,7 +32,6 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        /* iOS 26 glass + gray palette */
         .app-container {
             max-width: 500px;
             margin: 0 auto;
@@ -40,11 +39,9 @@
             display: flex;
             flex-direction: column;
             position: relative;
-            pointer-events: auto;
-            z-index: 10;
         }
 
-        /* верхняя панель — стекло */
+        /* стеклянная панель iOS */
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -106,7 +103,6 @@
             backdrop-filter: blur(8px);
         }
 
-        /* игровая зона — здесь будет canvas Three.js */
         .game-area {
             flex: 1;
             display: flex;
@@ -118,11 +114,9 @@
             pointer-events: auto;
         }
 
-        /* контейнер для 3D */
         #canvas-container {
-            width: 100%;
-            height: 280px;
-            max-width: 300px;
+            width: 260px;
+            height: 260px;
             margin: 10px auto;
             position: relative;
             cursor: pointer;
@@ -196,19 +190,9 @@
             box-shadow: 0 4px 14px rgba(0,0,0,0.3);
         }
 
-        .boost-btn:active {
-            transform: scale(0.96);
-        }
-
-        .boost-icon {
-            font-size: 18px;
-        }
-
-        .boost-text {
-            font-weight: 590;
-            font-size: 15px;
-            color: #FFD60A;
-        }
+        .boost-btn:active { transform: scale(0.96); }
+        .boost-icon { font-size: 18px; }
+        .boost-text { font-weight: 590; font-size: 15px; color: #FFD60A; }
 
         .click-power, .passive-income {
             text-align: center;
@@ -216,13 +200,8 @@
             color: #98989E;
             margin: 8px 0 4px;
         }
+        .passive-income span { color: #FFD60A; font-weight: 500; }
 
-        .passive-income span {
-            color: #FFD60A;
-            font-weight: 500;
-        }
-
-        /* нижняя навигация — iOS */
         .nav-bar {
             position: sticky;
             bottom: 0;
@@ -252,17 +231,9 @@
             transition: all 0.2s;
             font-weight: 500;
         }
+        .nav-btn.active { color: #FFD60A; background: rgba(255, 214, 10, 0.12); }
+        .nav-icon { font-size: 22px; }
 
-        .nav-btn.active {
-            color: #FFD60A;
-            background: rgba(255, 214, 10, 0.12);
-        }
-
-        .nav-icon {
-            font-size: 22px;
-        }
-
-        /* панели */
         .tab-panel {
             display: none;
             margin-top: 12px;
@@ -270,20 +241,10 @@
             overflow-y: auto;
             max-height: calc(100vh - 140px);
         }
+        .tab-panel.active { display: block; }
+        .tab-panel h2 { font-size: 20px; font-weight: 590; margin-bottom: 16px; text-align: center; color: #FFD60A; }
 
-        .tab-panel.active {
-            display: block;
-        }
-
-        .tab-panel h2 {
-            font-size: 20px;
-            font-weight: 590;
-            margin-bottom: 16px;
-            text-align: center;
-            color: #FFD60A;
-        }
-
-        /* модалка */
+        /* модалка BOOST */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -297,11 +258,7 @@
             align-items: flex-end;
             justify-content: center;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
+        .modal-overlay.active { display: flex; }
         .modal-content {
             background: #1C1C1E;
             border-radius: 32px 32px 0 0;
@@ -312,41 +269,11 @@
             animation: slideUp 0.3s ease;
             padding-bottom: 20px;
         }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 22px;
-            border-bottom: 0.5px solid rgba(255,255,255,0.1);
-        }
-
-        .modal-header h3 {
-            font-size: 18px;
-            font-weight: 590;
-            color: #FFD60A;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: #FFD60A;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .boost-list {
-            padding: 12px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 0.5px solid rgba(255,255,255,0.1); }
+        .modal-header h3 { font-size: 18px; font-weight: 590; color: #FFD60A; }
+        .modal-close { background: none; border: none; color: #FFD60A; font-size: 24px; cursor: pointer; }
+        .boost-list { padding: 12px 18px; display: flex; flex-direction: column; gap: 12px; }
         .boost-card {
             background: rgba(44, 44, 48, 0.7);
             border-radius: 24px;
@@ -356,142 +283,31 @@
             align-items: center;
             border: 0.5px solid rgba(255,255,255,0.08);
         }
+        .boost-info { flex: 1; }
+        .boost-name { font-weight: 590; font-size: 15px; }
+        .boost-desc { font-size: 11px; opacity: 0.7; color: #98989E; }
+        .boost-level, .boost-cost { font-size: 12px; color: #FFD60A; margin-top: 4px; }
+        .boost-buy-btn { background: #FFD60A; border: none; padding: 8px 22px; border-radius: 44px; color: #1C1C1E; font-weight: 590; cursor: pointer; font-size: 14px; }
 
-        .boost-info {
-            flex: 1;
-        }
+        /* задания */
+        .tasks-header { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(44,44,48,0.5); border-radius: 44px; padding: 4px; }
+        .tasks-tab { flex: 1; background: transparent; border: none; padding: 10px 12px; border-radius: 40px; color: #98989E; font-weight: 500; cursor: pointer; font-size: 13px; }
+        .tasks-tab.active { background: #FFD60A; color: #1C1C1E; }
+        .task-card { background: rgba(44,44,48,0.6); border-radius: 24px; padding: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 0.5px solid rgba(255,255,255,0.08); }
+        .task-claim-btn { background: #FFD60A; border: none; padding: 6px 18px; border-radius: 40px; font-weight: 590; }
 
-        .boost-name {
-            font-weight: 590;
-            font-size: 15px;
-        }
+        /* рефералы */
+        .referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: rgba(44,44,48,0.6); border-radius: 24px; padding: 12px; text-align: center; }
+        .stat-value { font-size: 22px; font-weight: 700; color: #FFD60A; }
+        .level-card { background: rgba(44,44,48,0.5); border-radius: 24px; padding: 14px; margin-bottom: 12px; }
+        .level-title { font-weight: 590; margin-bottom: 8px; color: #FFD60A; }
+        .link-box { display: flex; gap: 10px; margin-top: 8px; }
+        .link-box input { flex: 1; background: rgba(0,0,0,0.5); border: 0.5px solid rgba(255,215,0,0.3); border-radius: 36px; padding: 12px; color: white; font-size: 11px; }
+        .link-box button { background: #FFD60A; border: none; border-radius: 36px; padding: 0 20px; font-weight: 590; }
 
-        .boost-desc {
-            font-size: 11px;
-            opacity: 0.7;
-            color: #98989E;
-        }
-
-        .boost-level, .boost-cost {
-            font-size: 12px;
-            color: #FFD60A;
-            margin-top: 4px;
-        }
-
-        .boost-buy-btn {
-            background: #FFD60A;
-            border: none;
-            padding: 8px 22px;
-            border-radius: 44px;
-            color: #1C1C1E;
-            font-weight: 590;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        /* остальные стили (задания, друзья и т.д.) */
-        .tasks-header {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            background: rgba(44,44,48,0.5);
-            border-radius: 44px;
-            padding: 4px;
-        }
-
-        .tasks-tab {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 10px 12px;
-            border-radius: 40px;
-            color: #98989E;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .tasks-tab.active {
-            background: #FFD60A;
-            color: #1C1C1E;
-        }
-
-        .task-card {
-            background: rgba(44,44,48,0.6);
-            border-radius: 24px;
-            padding: 14px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 0.5px solid rgba(255,255,255,0.08);
-        }
-
-        .task-claim-btn {
-            background: #FFD60A;
-            border: none;
-            padding: 6px 18px;
-            border-radius: 40px;
-            font-weight: 590;
-        }
-
-        .referral-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: rgba(44,44,48,0.6);
-            border-radius: 24px;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: #FFD60A;
-        }
-
-        .level-card {
-            background: rgba(44,44,48,0.5);
-            border-radius: 24px;
-            padding: 14px;
-            margin-bottom: 12px;
-        }
-
-        .level-title {
-            font-weight: 590;
-            margin-bottom: 8px;
-            color: #FFD60A;
-        }
-
-        .link-box {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
-
-        .link-box input {
-            flex: 1;
-            background: rgba(0,0,0,0.5);
-            border: 0.5px solid rgba(255,215,0,0.3);
-            border-radius: 36px;
-            padding: 12px;
-            color: white;
-            font-size: 11px;
-        }
-
-        .link-box button {
-            background: #FFD60A;
-            border: none;
-            border-radius: 36px;
-            padding: 0 20px;
-            font-weight: 590;
-        }
-
+        /* Airdrop */
+        .airdrop-content { text-align: center; padding: 30px 16px; display: flex; flex-direction: column; align-items: center; }
         .golden-coin {
             position: relative;
             width: 180px;
@@ -505,28 +321,14 @@
             justify-content: center;
             animation: coinFloat 2.2s ease-in-out infinite;
         }
-
-        .golden-coin .rays {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        }
-
+        .golden-coin .rays { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; }
         .ray {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 6px;
-            height: 58px;
+            position: absolute; top: 50%; left: 50%;
+            width: 6px; height: 58px;
             background: linear-gradient(180deg, #FFD966, transparent);
-            transform-origin: center;
-            opacity: 0.55;
+            transform-origin: center; opacity: 0.55;
             animation: rayShine 1.3s ease-in-out infinite alternate;
         }
-
         .ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-98px); }
         .ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-98px); }
         .ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-98px); }
@@ -539,128 +341,29 @@
         .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-98px); }
         .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-98px); }
         .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-98px); }
+        .coin-star { font-size: 72px; color: white; text-shadow: 0 0 12px rgba(255,255,240,0.8); }
+        @keyframes coinFloat { 0%,100% { transform: translateY(0px) scale(1); } 50% { transform: translateY(-6px) scale(1.01); } }
+        @keyframes rayShine { 0% { opacity: 0.3; height: 50px; } 100% { opacity: 0.9; height: 72px; } }
+        .airdrop-soon { font-size: 28px; font-weight: 700; color: #FFD60A; margin: 20px 0 12px; }
+        .airdrop-subscribe { background: #FFD60A; border: none; padding: 12px 28px; border-radius: 48px; color: #1C1C1E; font-weight: 590; font-size: 16px; margin-top: 16px; cursor: pointer; }
 
-        .coin-star {
-            font-size: 72px;
-            color: white;
-            text-shadow: 0 0 12px rgba(255,255,240,0.8);
-        }
-
-        @keyframes coinFloat {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-6px) scale(1.01); }
-        }
-
-        @keyframes rayShine {
-            0% { opacity: 0.3; height: 50px; }
-            100% { opacity: 0.9; height: 72px; }
-        }
-
-        .airdrop-soon {
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFD60A;
-            margin: 20px 0 12px;
-        }
-
-        .airdrop-subscribe {
-            background: #FFD60A;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 48px;
-            color: #1C1C1E;
-            font-weight: 590;
-            font-size: 16px;
-            margin-top: 16px;
-            cursor: pointer;
-        }
-
-        .profile-card, .auth-section {
-            background: rgba(44,44,48,0.6);
-            border-radius: 28px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-
-        .profile-avatar {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #8E8E93, #636366);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 0.5px solid rgba(255,255,255,0.08);
-        }
-
-        .leaderboard-list {
-            padding: 8px;
-        }
-
-        .leaderboard-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: rgba(44,44,48,0.5);
-            border-radius: 24px;
-            margin-bottom: 8px;
-        }
-
-        .leaderboard-rank {
-            width: 48px;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .leaderboard-name {
-            flex: 1;
-        }
-
-        .leaderboard-coins {
-            font-weight: 600;
-            color: #FFD60A;
-        }
+        .profile-card, .auth-section { background: rgba(44,44,48,0.6); border-radius: 28px; padding: 16px; margin-bottom: 16px; }
+        .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+        .profile-avatar { width: 60px; height: 60px; background: linear-gradient(135deg, #8E8E93, #636366); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
+        .leaderboard-list { padding: 8px; }
+        .leaderboard-item { display: flex; align-items: center; padding: 10px; background: rgba(44,44,48,0.5); border-radius: 24px; margin-bottom: 8px; }
+        .leaderboard-rank { width: 48px; font-size: 18px; font-weight: 600; }
+        .leaderboard-name { flex: 1; }
+        .leaderboard-coins { font-weight: 600; color: #FFD60A; }
 
         .message {
-            position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1C1C1E;
-            color: #FFD60A;
-            padding: 8px 18px;
-            border-radius: 40px;
-            font-size: 13px;
-            z-index: 1100;
-            display: none;
-            backdrop-filter: blur(20px);
-            white-space: nowrap;
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+            background: #1C1C1E; color: #FFD60A; padding: 8px 18px; border-radius: 40px; font-size: 13px;
+            z-index: 1100; display: none; backdrop-filter: blur(20px); white-space: nowrap;
         }
-
-        .message.show {
-            display: block;
-            animation: fadeOut 2s forwards;
-        }
-
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            70% { opacity: 1; }
-            100% { opacity: 0; visibility: hidden; }
-        }
+        .message.show { display: block; animation: fadeOut 2s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
         @media (max-width: 480px) {
             .golden-coin { width: 140px; height: 140px; }
@@ -683,10 +386,10 @@
                 <div class="avatar">⭐</div>
                 <div class="user-details">
                     <span id="userName">@username</span>
-                    <span id="userLevel">Уровень 7 · Юпитер</span>
+                    <span id="userLevel">Уровень 1 · Звезда</span>
                 </div>
             </div>
-            <div class="balance">🪙 <span id="coins">1 234 567</span></div>
+            <div class="balance">🪙 <span id="coins">0</span></div>
         </div>
 
         <div class="game-area" id="gameArea">
@@ -698,8 +401,8 @@
                 </div>
                 <button class="boost-btn" id="boostBtn"><span class="boost-icon">⚡</span><span class="boost-text">BOOST</span></button>
             </div>
-            <div class="click-power">💪 Сила клика: <span id="clickPower">150</span> монет | ⚡ Затраты: <span id="energyCost">150</span></div>
-            <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">1 500</span> монет/мин</div>
+            <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
+            <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
         <div class="nav-bar">
@@ -716,39 +419,66 @@
             <div class="modal-content">
                 <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
                 <div class="boost-list">
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень 50/100</div><div class="boost-cost">1 234 567 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень 30/100</div><div class="boost-cost">2 345 678 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень 25/100</div><div class="boost-cost">3 456 789 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень 1/100</div><div class="boost-cost">100 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень 1/100</div><div class="boost-cost">200 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень 0/100</div><div class="boost-cost">500 🪙</div></div><button class="boost-buy-btn">Купить</button></div>
                 </div>
             </div>
         </div>
 
-        <!-- ЗАДАНИЯ (кратко, чтобы не раздувать) -->
+        <!-- ЗАДАНИЯ -->
         <div class="tab-panel" id="tasksPanel">
-            <div class="tasks-header"><button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button><button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button><button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button></div>
-            <div class="tasks-content active" id="dailyTasks"><div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress">67/100</div></div><button class="task-claim-btn">100 🪙</button></div></div>
-            <div class="tasks-content" id="weeklyTasks"><div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress">0/1000</div></div><button class="task-claim-btn">1000 🪙</button></div></div>
-            <div class="tasks-content" id="premiumTasks"><div class="task-card"><div class="task-info"><div class="task-name">🌕 Луна</div><div class="task-progress">+20 000/мин</div><div class="task-progress">50 ₽</div></div><button class="task-claim-btn">Купить</button></div></div>
+            <div class="tasks-header">
+                <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
+                <button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button>
+                <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
+            </div>
+            <div class="tasks-content active" id="dailyTasks">
+                <div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress">0/100</div></div><button class="task-claim-btn">100 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress">0/500</div></div><button class="task-claim-btn">500 🪙</button></div>
+            </div>
+            <div class="tasks-content" id="weeklyTasks">
+                <div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress">0/1000</div></div><button class="task-claim-btn">1000 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress">0/5000</div></div><button class="task-claim-btn">2500 🪙</button></div>
+            </div>
+            <div class="tasks-content" id="premiumTasks">
+                <div class="task-card"><div class="task-info"><div class="task-name">🌕 ЛУНА</div><div class="task-progress">+20 000 монет/мин</div><div class="task-progress">50 ₽</div></div><button class="task-claim-btn">Купить</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">🌍 ЗЕМЛЯ</div><div class="task-progress">+50 000 монет/мин</div><div class="task-progress">100 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">☀️ СОЛНЦЕ</div><div class="task-progress">+100 000 монет/мин</div><div class="task-progress">200 ₽</div></div><button class="task-claim-btn disabled">🔒</button></div>
+            </div>
         </div>
 
-        <!-- ДРУЗЬЯ (пример) -->
+        <!-- ДРУЗЬЯ -->
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
-            <div class="referral-stats"><div class="stat-card"><span class="stat-value">15</span><span>Приглашено</span></div><div class="stat-card"><span class="stat-value">15K</span><span>Бонусов</span></div><div class="stat-card"><span class="stat-value">#127</span><span>Рейтинг</span></div></div>
-            <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div class="level-item"><span>@ivan</span><span>+750/мин</span></div></div>
-            <div class="referral-link-container"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="https://t.me/startoplanet_bot?start=ref_123456789"><button id="copyLinkBtn">📋</button></div></div>
+            <div class="referral-stats">
+                <div class="stat-card"><span class="stat-value">0</span><span>Приглашено</span></div>
+                <div class="stat-card"><span class="stat-value">0</span><span>Бонусов</span></div>
+                <div class="stat-card"><span class="stat-value">#—</span><span>Рейтинг</span></div>
+            </div>
+            <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div class="level-item">Пригласите друзей для бонуса</div></div>
+            <div class="referral-link-container"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="https://t.me/ваш_бот?start=ref_123"><button id="copyLinkBtn">📋</button></div></div>
         </div>
 
         <!-- ПРОФИЛЬ -->
-        <div class="tab-panel" id="profilePanel"><h2>👤 Профиль</h2><div class="profile-card"><div class="profile-header"><div class="profile-avatar">⭐</div><div><div><strong>@username</strong></div><div>ID: 123456789</div></div></div><div class="info-row"><span>📊 Всего монет</span><span>1 234 567 890</span></div><div class="info-row"><span>⭐ Сила клика</span><span>150</span></div></div><div class="auth-section"><div class="auth-title">🔐 Авторизация</div><div class="auth-buttons" style="display:flex; gap:12px;"><button class="boost-buy-btn">Telegram ✅</button><button class="boost-buy-btn">VK</button></div></div></div>
+        <div class="tab-panel" id="profilePanel">
+            <h2>👤 Профиль</h2>
+            <div class="profile-card"><div class="profile-header"><div class="profile-avatar">⭐</div><div><div><strong>@username</strong></div><div>ID: 123456789</div><div>Регистрация: сегодня</div></div></div>
+            <div class="info-row"><span>📊 Всего монет</span><span>0</span></div><div class="info-row"><span>⭐ Сила клика</span><span>1</span></div>
+            <div class="info-row"><span>⚡ Макс. энергия</span><span>1000</span></div><div class="info-row"><span>🤖 Пассивный доход</span><span>0/мин</span></div><div class="info-row"><span>👥 Приглашено</span><span>0</span></div><div class="info-row"><span>🏆 Рейтинг</span><span>#—</span></div></div>
+            <div class="auth-section"><div class="auth-title">🔐 Авторизация</div><div class="auth-buttons" style="display:flex; gap:12px; justify-content:center;"><button class="boost-buy-btn" style="background:#FFD60A;">Telegram ✅</button><button class="boost-buy-btn" style="background:#4C75A3;">VK</button></div></div>
+        </div>
 
         <!-- РЕЙТИНГ -->
-        <div class="tab-panel" id="leaderboardPanel"><h2>🏆 Топ игроков</h2><div class="leaderboard-list"><div class="leaderboard-item"><div class="leaderboard-rank top-1">🥇</div><div class="leaderboard-name">@cosmic_warrior</div><div class="leaderboard-coins">1.2B 🪙</div></div><div class="leaderboard-item"><div class="leaderboard-rank">📊</div><div class="leaderboard-name">Ваша позиция: #127</div></div></div></div>
+        <div class="tab-panel" id="leaderboardPanel">
+            <h2>🏆 Топ игроков</h2>
+            <div class="leaderboard-list"><div class="leaderboard-item"><div class="leaderboard-rank">🥇</div><div class="leaderboard-name">@cosmic</div><div class="leaderboard-coins">1.2B 🪙</div></div><div class="leaderboard-item"><div class="leaderboard-rank">📊</div><div class="leaderboard-name">Ваша позиция: —</div></div></div>
+        </div>
 
         <!-- AIRDROP -->
         <div class="tab-panel" id="airdropPanel">
             <div class="airdrop-content">
-                <div class="golden-coin"><div class="rays">${[...Array(12)].map((_,i)=>`<div class="ray"></div>`).join('')}</div><div class="coin-star">⭐</div></div>
+                <div class="golden-coin"><div class="rays" id="rays-container"></div><div class="coin-star">⭐</div></div>
                 <div class="airdrop-soon">СКОРО</div>
                 <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
             </div>
@@ -759,15 +489,14 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // === 3D ПЛАНЕТА ===
+        // === 3D ПЛАНЕТА (ЗЕМЛЯ) ===
         const container = document.getElementById('canvas-container');
-        const width = Math.min(300, window.innerWidth * 0.7);
-        const height = width;
+        const width = 260, height = 260;
         container.style.width = `${width}px`;
         container.style.height = `${height}px`;
 
         const scene = new THREE.Scene();
-        scene.background = null; // прозрачный фон, чтобы видеть стеклянный UI
+        scene.background = null;
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         camera.position.set(0, 0, 3.5);
@@ -777,7 +506,6 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
-        // Текстура планеты (красивый газовый гигант)
         const textureLoader = new THREE.TextureLoader();
         const planetMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
         const planetSpecular = textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
@@ -795,18 +523,11 @@
         const planet = new THREE.Mesh(geometry, material);
         scene.add(planet);
 
-        // облака
         const cloudGeometry = new THREE.SphereGeometry(1.22, 128, 128);
-        const cloudMaterial = new THREE.MeshPhongMaterial({
-            map: cloudMap,
-            transparent: true,
-            opacity: 0.15,
-            blending: THREE.AdditiveBlending
-        });
+        const cloudMaterial = new THREE.MeshPhongMaterial({ map: cloudMap, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending });
         const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
         scene.add(clouds);
 
-        // освещение
         const ambientLight = new THREE.AmbientLight(0x404060);
         scene.add(ambientLight);
         const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -815,11 +536,7 @@
         const backLight = new THREE.PointLight(0x4466cc, 0.4);
         backLight.position.set(-2, -1, -3);
         scene.add(backLight);
-        const fillLight = new THREE.PointLight(0xffaa66, 0.3);
-        fillLight.position.set(2, 1, 2);
-        scene.add(fillLight);
 
-        // анимация вращения
         function animate() {
             requestAnimationFrame(animate);
             planet.rotation.y += 0.003;
@@ -828,31 +545,21 @@
         }
         animate();
 
-        window.addEventListener('resize', () => {
-            const newWidth = Math.min(300, window.innerWidth * 0.7);
-            const newHeight = newWidth;
-            container.style.width = `${newWidth}px`;
-            container.style.height = `${newHeight}px`;
-            camera.aspect = newWidth / newHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(newWidth, newHeight);
-        });
-
-        // клик по планете (имитация)
-        const planetEl = document.getElementById('canvas-container');
-        planetEl.addEventListener('click', () => {
+        // клик по планете
+        container.addEventListener('click', () => {
             const msg = document.getElementById('message');
-            msg.textContent = '✨ +150 монет';
+            msg.textContent = '✨ +1 монета';
             msg.classList.add('show');
             setTimeout(() => msg.classList.remove('show'), 800);
+            // обновление счёта (демо)
+            const coinsSpan = document.getElementById('coins');
+            let coins = parseInt(coinsSpan.innerText.replace(/\D/g, '')) || 0;
+            coins += 1;
+            coinsSpan.innerText = coins.toLocaleString();
         });
 
-        // остальной UI: модалка, вкладки, копирование
-        const modal = document.getElementById('boostModal');
-        document.getElementById('boostBtn').onclick = () => modal.classList.add('active');
-        document.getElementById('closeBoostModal').onclick = () => modal.classList.remove('active');
-        modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('active'); };
-
+        // === UI ЛОГИКА ===
+        // вкладки
         const navBtns = document.querySelectorAll('.nav-btn');
         const panels = {
             game: document.getElementById('gameArea'),
@@ -874,16 +581,6 @@
         });
         panels.game.style.display = 'flex';
 
-        document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
-            const inp = document.getElementById('referralLink');
-            inp.select(); inp.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            const msg = document.getElementById('message');
-            msg.textContent = '✅ Ссылка скопирована';
-            msg.classList.add('show');
-            setTimeout(() => msg.classList.remove('show'), 2000);
-        });
-
         // подвкладки заданий
         const taskTabs = document.querySelectorAll('.tasks-tab');
         const taskContents = {
@@ -900,6 +597,31 @@
                 if(taskContents[target]) taskContents[target].classList.add('active');
             });
         });
+
+        // модалка BOOST
+        const modal = document.getElementById('boostModal');
+        document.getElementById('boostBtn').onclick = () => modal.classList.add('active');
+        document.getElementById('closeBoostModal').onclick = () => modal.classList.remove('active');
+        modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('active'); };
+
+        // копирование ссылки
+        document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+            const inp = document.getElementById('referralLink');
+            inp.select(); inp.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            const msg = document.getElementById('message');
+            msg.textContent = '✅ Ссылка скопирована';
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 2000);
+        });
+
+        // лучи для монеты
+        const raysContainer = document.getElementById('rays-container');
+        for(let i=0; i<12; i++) {
+            const ray = document.createElement('div');
+            ray.className = 'ray';
+            raysContainer.appendChild(ray);
+        }
     </script>
 </body>
 </html>
