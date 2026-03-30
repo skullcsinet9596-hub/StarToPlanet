@@ -46,7 +46,88 @@ let weeklyTasksClaimed = { click: false, coins: false };
 // ==================== ЭЛЕМЕНТЫ ====================
 let planetElement = null;
 
-// ==================== СОЗДАНИЕ ЗВЕЗДЫ (ЗАПАСНОЙ ВАРИАНТ) ====================
+// ==================== ДЕМО-ДАННЫЕ ДЛЯ РЕЙТИНГА И ДРУЗЕЙ ====================
+const DEMO_PLAYERS = [
+    { name: displayName, coins: 0, level: 1, isCurrent: true },
+    { name: "⭐ Космический_воин", coins: 1250000, level: 8 },
+    { name: "🌙 Звездный_странник", coins: 850000, level: 7 },
+    { name: "🪐 Планетарный_гигант", coins: 420000, level: 6 },
+    { name: "✨ Галактический_рейнджер", coins: 180000, level: 5 }
+];
+
+const DEMO_FRIENDS = [
+    { name: "@friend1", coins: 25000, date: "15.03.2026" },
+    { name: "@friend2", coins: 12000, date: "16.03.2026" },
+    { name: "@friend3", coins: 5000, date: "17.03.2026" }
+];
+
+// ==================== СОЗДАНИЕ 3D ПЛАНЕТЫ ====================
+let scene, camera, renderer, planet3d;
+
+function init3D() {
+    const container = document.getElementById('canvas-container');
+    if (!container) return;
+    
+    const width = 260, height = 260;
+    container.style.width = `${width}px`;
+    container.style.height = `${height}px`;
+    
+    import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
+        container.innerHTML = '';
+        
+        scene = new THREE.Scene();
+        scene.background = null;
+        
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 0, 3);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        const textureLoader = new THREE.TextureLoader();
+        const map = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const geometry = new THREE.SphereGeometry(1, 64, 64);
+        const material = new THREE.MeshPhongMaterial({ map: map, shininess: 25 });
+        planet3d = new THREE.Mesh(geometry, material);
+        scene.add(planet3d);
+        
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(1, 1, 1);
+        scene.add(mainLight);
+        const backLight = new THREE.PointLight(0x4466cc, 0.3);
+        backLight.position.set(-1, -0.5, -2);
+        scene.add(backLight);
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (planet3d) planet3d.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        planetElement = container;
+        container.style.cursor = 'pointer';
+        container.style.touchAction = 'manipulation';
+        setupTouchHandlers(container);
+        
+    }).catch(err => {
+        console.error('Three.js error:', err);
+        createFallbackStar();
+    });
+    
+    setTimeout(() => {
+        const container = document.getElementById('canvas-container');
+        if (container && container.children.length === 0) {
+            createFallbackStar();
+        }
+    }, 3000);
+}
+
+// ==================== ЗАПАСНАЯ ЗВЕЗДА (если 3D не загрузился) ====================
 function createFallbackStar() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
@@ -69,7 +150,6 @@ function createFallbackStar() {
     container.appendChild(star);
     
     planetElement = container;
-    
     container.style.animation = 'float 3s ease-in-out infinite';
     
     if (!document.querySelector('#star-animation-style')) {
@@ -91,18 +171,15 @@ function createFallbackStar() {
 function setupTouchHandlers(element) {
     if (!element) return;
     
-    // Удаляем старые обработчики, если есть
     element.removeEventListener('touchstart', touchHandler);
     element.removeEventListener('mousedown', mouseHandler);
     
-    // Добавляем новые
     element.addEventListener('touchstart', touchHandler, { passive: false });
     element.addEventListener('mousedown', mouseHandler);
 }
 
 function touchHandler(e) {
     e.preventDefault();
-    // Обрабатываем каждое касание
     for (let i = 0; i < e.touches.length; i++) {
         const touch = e.touches[i];
         processClick({
@@ -120,7 +197,6 @@ function mouseHandler(e) {
     });
 }
 
-// ==================== ОСНОВНАЯ ЛОГИКА КЛИКА ====================
 function processClick(eventData) {
     if (energy < clickPower) {
         showMessage('❌ Нет энергии!', true);
@@ -161,64 +237,6 @@ function processClick(eventData) {
     setTimeout(() => popup.remove(), 500);
 }
 
-// ==================== 3D ПЛАНЕТА ====================
-let scene, camera, renderer, planet3d;
-
-function init3D() {
-    const container = document.getElementById('canvas-container');
-    if (!container) return;
-    
-    const width = 240, height = 240;
-    
-    import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
-        container.innerHTML = '';
-        
-        scene = new THREE.Scene();
-        scene.background = null;
-        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 0, 3);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(width, height);
-        container.appendChild(renderer.domElement);
-        
-        const textureLoader = new THREE.TextureLoader();
-        const map = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
-        const geometry = new THREE.SphereGeometry(1, 64, 64);
-        const material = new THREE.MeshPhongMaterial({ map: map });
-        planet3d = new THREE.Mesh(geometry, material);
-        scene.add(planet3d);
-        
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(1, 1, 1);
-        scene.add(light);
-        const ambient = new THREE.AmbientLight(0x404060);
-        scene.add(ambient);
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            if (planet3d) planet3d.rotation.y += 0.005;
-            renderer.render(scene, camera);
-        }
-        animate();
-        
-        planetElement = container;
-        container.style.cursor = 'pointer';
-        container.style.touchAction = 'manipulation';
-        setupTouchHandlers(container);
-        
-    }).catch(err => {
-        console.error('Three.js error:', err);
-        createFallbackStar();
-    });
-    
-    setTimeout(() => {
-        const container = document.getElementById('canvas-container');
-        if (container && container.children.length === 0) {
-            createFallbackStar();
-        }
-    }, 3000);
-}
-
 // ==================== UI ФУНКЦИИ ====================
 function updateUI() {
     document.getElementById('coins').textContent = Math.floor(coins);
@@ -249,6 +267,7 @@ function updateUI() {
     else if (coins >= 100) level = 2;
     document.getElementById('userLevel').textContent = `Уровень ${level}`;
     
+    // Обновляем профиль
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
@@ -257,12 +276,21 @@ function updateUI() {
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
     document.getElementById('profileName').textContent = displayName;
     
+    // Обновляем задания
     document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
     document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
     document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
     
     updateTaskButtons();
+    
+    // Обновляем демо-рейтинг с твоими монетами
+    DEMO_PLAYERS[0].coins = coins;
+    DEMO_PLAYERS[0].level = level;
+    DEMO_PLAYERS[0].name = displayName;
+    
+    updateLeaderboardUI();
+    updateFriendsUI();
 }
 
 function saveGame() {
@@ -422,56 +450,107 @@ function showMessage(text, isError = false) {
     setTimeout(() => msg.classList.remove('show'), 2000);
 }
 
-// ==================== РЕЙТИНГ ====================
-async function loadLeaderboard() {
+// ==================== РЕЙТИНГ (ДЕМО-ВЕРСИЯ) ====================
+function updateLeaderboardUI() {
     const container = document.getElementById('leaderboardList');
     if (!container) return;
-    container.innerHTML = '<div class="leaderboard-item">🏆 Загрузка...</div>';
+    
+    const sorted = [...DEMO_PLAYERS].sort((a, b) => b.coins - a.coins);
+    
+    container.innerHTML = sorted.slice(0, 10).map((player, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
+        const isCurrent = player.isCurrent;
+        return `
+            <div class="leaderboard-item" style="${isCurrent ? 'border: 1px solid #ffd700; background: rgba(255,215,0,0.1);' : ''}">
+                <div class="leaderboard-rank ${index < 3 ? `top-${index+1}` : ''}">${medal}</div>
+                <div class="leaderboard-name">${player.name} ${isCurrent ? '👤' : ''}</div>
+                <div class="leaderboard-coins">${player.coins.toLocaleString()} 🪙</div>
+                <div class="leaderboard-level">Ур.${player.level}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ==================== ДРУЗЬЯ (ДЕМО-ВЕРСИЯ) ====================
+function updateFriendsUI() {
+    const container = document.getElementById('level1List');
+    if (!container) return;
+    
+    container.innerHTML = DEMO_FRIENDS.map(friend => `
+        <div class="level-item">
+            <span>${friend.name}</span>
+            <span>${friend.coins.toLocaleString()} 🪙</span>
+            <span style="font-size: 10px; opacity:0.6;">${friend.date}</span>
+        </div>
+    `).join('');
+    
+    document.getElementById('referralCount').textContent = DEMO_FRIENDS.length;
+    document.getElementById('referralBonus').textContent = (DEMO_FRIENDS.length * 1000).toLocaleString();
+    document.getElementById('profileReferrals').textContent = DEMO_FRIENDS.length;
+}
+
+// ==================== РЕАЛЬНЫЙ API (ЗАГЛУШКА, ЕСЛИ НЕ РАБОТАЕТ) ====================
+async function loadLeaderboardFromAPI() {
     try {
         const response = await fetch(`https://startoplanet.onrender.com/api/leaderboard?limit=20`);
-        if (!response.ok) throw new Error();
-        const players = await response.json();
-        if (players.length === 0) {
-            container.innerHTML = '<div class="leaderboard-item">🏆 Пока нет игроков</div>';
-            return;
+        if (response.ok) {
+            const players = await response.json();
+            if (players.length > 0) {
+                const allPlayers = [...players];
+                const currentExists = allPlayers.some(p => p.telegram_id == userId);
+                if (!currentExists && coins > 0) {
+                    allPlayers.push({
+                        telegram_id: userId,
+                        first_name: displayName,
+                        coins: coins,
+                        level: Math.floor(Math.log10(coins + 1) / 3) + 1
+                    });
+                }
+                const sorted = allPlayers.sort((a, b) => b.coins - a.coins);
+                const container = document.getElementById('leaderboardList');
+                if (container) {
+                    container.innerHTML = sorted.slice(0, 10).map((p, i) => {
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+                        const name = p.first_name || p.username || `Игрок ${p.telegram_id}`;
+                        const isCurrent = p.telegram_id == userId;
+                        return `<div class="leaderboard-item" style="${isCurrent ? 'border: 1px solid #ffd700; background: rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i+1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${(p.coins || 0).toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level || 1}</div></div>`;
+                    }).join('');
+                    return;
+                }
+            }
         }
-        container.innerHTML = players.slice(0, 10).map((p, i) => {
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-            const name = p.first_name || p.username || `Игрок ${p.telegram_id}`;
-            return `<div class="leaderboard-item"><div class="leaderboard-rank ${i < 3 ? `top-${i+1}` : ''}">${medal}</div><div class="leaderboard-name">${name}</div><div class="leaderboard-coins">${(p.coins || 0).toLocaleString()} 🪙</div></div>`;
-        }).join('');
     } catch(e) {
-        container.innerHTML = '<div class="leaderboard-item">❌ Ошибка</div>';
+        console.log('API недоступен, используем демо-данные');
     }
+    updateLeaderboardUI();
 }
 
-// ==================== ДРУЗЬЯ ====================
-async function loadFriends() {
-    if (!userId || userId.toString().startsWith('guest')) return;
+async function loadFriendsFromAPI() {
     try {
         const response = await fetch(`https://startoplanet.onrender.com/api/friends/${userId}`);
-        if (!response.ok) throw new Error();
-        const friends = await response.json();
-        const container = document.getElementById('level1List');
-        if (container) {
-            if (friends.length === 0) container.innerHTML = '<div class="level-item">👥 Пока нет друзей</div>';
-            else container.innerHTML = friends.slice(0, 5).map(f => `<div class="level-item"><span>${f.first_name || f.username}</span><span>${(f.coins || 0).toLocaleString()} 🪙</span></div>`).join('');
+        if (response.ok) {
+            const friends = await response.json();
+            if (friends.length > 0) {
+                const container = document.getElementById('level1List');
+                if (container) {
+                    container.innerHTML = friends.slice(0, 5).map(f => `
+                        <div class="level-item">
+                            <span>${f.first_name || f.username}</span>
+                            <span>${(f.coins || 0).toLocaleString()} 🪙</span>
+                            <span style="font-size: 10px; opacity:0.6;">${new Date(f.created_at).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                    document.getElementById('referralCount').textContent = friends.length;
+                    document.getElementById('referralBonus').textContent = (friends.length * 1000).toLocaleString();
+                    document.getElementById('profileReferrals').textContent = friends.length;
+                    return;
+                }
+            }
         }
-        document.getElementById('referralCount').textContent = friends.length;
-        document.getElementById('referralBonus').textContent = (friends.length * 1000).toLocaleString();
-    } catch(e) { console.error(e); }
-}
-
-function updateReferralLink() {
-    const linkInput = document.getElementById('referralLink');
-    if (linkInput && userId) {
-        linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`;
+    } catch(e) {
+        console.log('API друзей недоступен, используем демо');
     }
-}
-
-function copyReferralLink() {
-    const input = document.getElementById('referralLink');
-    if (input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); }
+    updateFriendsUI();
 }
 
 // ==================== ВКЛАДКИ ====================
@@ -492,8 +571,8 @@ function setupTabs() {
             Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
             if (panels[tab]) panels[tab].style.display = 'block';
             if (tab === 'game') panels.game.style.display = 'flex';
-            if (tab === 'leaderboard') loadLeaderboard();
-            if (tab === 'friends') { loadFriends(); updateReferralLink(); }
+            if (tab === 'leaderboard') loadLeaderboardFromAPI();
+            if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
         });
     });
 }
@@ -514,6 +593,18 @@ function setupTasksTabs() {
             if (contents[target]) contents[target].classList.add('active');
         });
     });
+}
+
+function updateReferralLink() {
+    const linkInput = document.getElementById('referralLink');
+    if (linkInput && userId) {
+        linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`;
+    }
+}
+
+function copyReferralLink() {
+    const input = document.getElementById('referralLink');
+    if (input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); }
 }
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -554,7 +645,7 @@ function init() {
     }
     
     document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена! Мультитач активен');
+    console.log('✅ Игра загружена! 3D-планета и мультитач активны');
     
     if (!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
@@ -570,6 +661,12 @@ function init() {
         `;
         document.head.appendChild(style);
     }
+    
+    // Загружаем рейтинг и друзей
+    setTimeout(() => {
+        loadLeaderboardFromAPI();
+        loadFriendsFromAPI();
+    }, 1000);
 }
 
 init();

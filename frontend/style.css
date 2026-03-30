@@ -81,17 +81,28 @@ body {
 }
 
 #canvas-container {
-    width: 240px;
-    height: 240px;
-    margin: 0 auto;
+    width: 260px;
+    height: 260px;
+    margin: 10px auto;
+    position: relative;
     cursor: pointer;
+    border-radius: 50%;
+    overflow: visible;
+    touch-action: manipulation;
 }
 
 canvas {
+    display: block;
     width: 100% !important;
     height: 100% !important;
     border-radius: 50%;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+}
+
+.top-bar {
+    background: rgba(20, 20, 24, 0.75);
+    backdrop-filter: blur(28px);
+    border: 0.5px solid rgba(255, 255, 255, 0.15);
 }
 
 .stats-container {
@@ -102,10 +113,9 @@ canvas {
 }
 
 .energy-bar {
-    background: rgba(0,0,0,0.4);
-    border-radius: 12px;
-    padding: 10px;
-    margin-bottom: 12px;
+    background: rgba(28, 28, 32, 0.75);
+    backdrop-filter: blur(16px);
+    border: 0.5px solid rgba(255,255,255,0.1);
 }
 
 .energy-label {
@@ -134,8 +144,9 @@ canvas {
     position: absolute;
     bottom: -10px;
     left: 0;
-    background: linear-gradient(135deg, #ffd700, #ff8c00);
-    border: none;
+    background: rgba(44, 44, 48, 0.85);
+    backdrop-filter: blur(20px);
+    border: 0.5px solid rgba(255, 214, 10, 0.4);
     border-radius: 40px;
     padding: 8px 20px;
     display: flex;
