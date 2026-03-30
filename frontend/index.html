@@ -664,6 +664,18 @@
                 renderer.render(scene, camera);
             }
             animate();
+
+            // Клик по 3D-планете
+            container.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const msg = document.getElementById('message');
+                msg.textContent = '✨ +1 монета';
+                msg.classList.add('show');
+                setTimeout(() => msg.classList.remove('show'), 800);
+                let coins = parseInt(document.getElementById('coins').innerText.replace(/\D/g, '')) || 0;
+                coins += 1;
+                document.getElementById('coins').innerText = coins.toLocaleString();
+            });
         }
 
         // ========== TELEGRAM ДАННЫЕ ==========
@@ -673,6 +685,9 @@
         const tgUser = tg.initDataUnsafe?.user;
         let userId = tgUser?.id || 'guest_' + Math.random();
         let displayName = tgUser?.username || tgUser?.first_name || 'Игрок';
+
+        // Обновляем имя
+        document.getElementById('userName').textContent = displayName;
 
         // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
         let coins = 0;
@@ -694,7 +709,6 @@
         const energyFill = document.getElementById('energyFill');
         const clickPowerSpan = document.getElementById('clickPower');
         const energyCostSpan = document.getElementById('energyCost');
-        const userNameSpan = document.getElementById('userName');
         const userLevelSpan = document.getElementById('userLevel');
         const messageDiv = document.getElementById('message');
 
@@ -720,16 +734,24 @@
             clickPowerSpan.textContent = clickPower;
             energyCostSpan.textContent = clickPower;
 
-            document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
-            document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
-            document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
-            document.getElementById('clickUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(clickUpgradeCost)} 🪙`;
-            document.getElementById('energyUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(energyUpgradeCost)} 🪙`;
-            document.getElementById('passiveUpgradeCostDisplay').textContent = `Стоимость: ${formatNumber(passiveIncomeUpgradeCost)} 🪙`;
+            const upgradeLevelSpan = document.getElementById('upgradeLevel');
+            const energyUpgradeLevelSpan = document.getElementById('energyUpgradeLevel');
+            const passiveUpgradeLevelSpan = document.getElementById('passiveUpgradeLevel');
+            const clickCostDisplay = document.getElementById('clickUpgradeCostDisplay');
+            const energyCostDisplay = document.getElementById('energyUpgradeCostDisplay');
+            const passiveCostDisplay = document.getElementById('passiveUpgradeCostDisplay');
+            
+            if (upgradeLevelSpan) upgradeLevelSpan.textContent = clickUpgradeLevel;
+            if (energyUpgradeLevelSpan) energyUpgradeLevelSpan.textContent = energyUpgradeLevel;
+            if (passiveUpgradeLevelSpan) passiveUpgradeLevelSpan.textContent = passiveIncomeLevel;
+            if (clickCostDisplay) clickCostDisplay.textContent = `Стоимость: ${formatNumber(clickUpgradeCost)} 🪙`;
+            if (energyCostDisplay) energyCostDisplay.textContent = `Стоимость: ${formatNumber(energyUpgradeCost)} 🪙`;
+            if (passiveCostDisplay) passiveCostDisplay.textContent = `Стоимость: ${formatNumber(passiveIncomeUpgradeCost)} 🪙`;
 
             let rate = passiveIncomeLevel * 5;
             passiveIncomeRate = rate;
-            document.getElementById('passiveIncomeRate').textContent = formatNumber(passiveIncomeRate);
+            const passiveSpan = document.getElementById('passiveIncomeRate');
+            if (passiveSpan) passiveSpan.textContent = formatNumber(passiveIncomeRate);
 
             // Уровни (правильные!)
             let level = 1;
@@ -745,14 +767,21 @@
             userLevelSpan.textContent = `Уровень ${level}`;
 
             // Профиль
-            document.getElementById('profileName').textContent = displayName;
-            document.getElementById('profileId').textContent = userId;
-            document.getElementById('profileCoins').textContent = formatNumber(coins);
-            document.getElementById('profileClickPower').textContent = clickPower;
-            document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-            document.getElementById('profilePassiveIncome').textContent = formatNumber(passiveIncomeRate);
-            document.getElementById('profileReferrals').textContent = referralCount;
-            document.getElementById('userName').textContent = displayName;
+            const profileNameSpan = document.getElementById('profileName');
+            const profileIdSpan = document.getElementById('profileId');
+            const profileCoinsSpan = document.getElementById('profileCoins');
+            const profileClickPowerSpan = document.getElementById('profileClickPower');
+            const profileMaxEnergySpan = document.getElementById('profileMaxEnergy');
+            const profilePassiveIncomeSpan = document.getElementById('profilePassiveIncome');
+            const profileReferralsSpan = document.getElementById('profileReferrals');
+            
+            if (profileNameSpan) profileNameSpan.textContent = displayName;
+            if (profileIdSpan) profileIdSpan.textContent = userId;
+            if (profileCoinsSpan) profileCoinsSpan.textContent = formatNumber(coins);
+            if (profileClickPowerSpan) profileClickPowerSpan.textContent = clickPower;
+            if (profileMaxEnergySpan) profileMaxEnergySpan.textContent = maxEnergy;
+            if (profilePassiveIncomeSpan) profilePassiveIncomeSpan.textContent = formatNumber(passiveIncomeRate);
+            if (profileReferralsSpan) profileReferralsSpan.textContent = referralCount;
 
             // Реферальная ссылка
             const linkInput = document.getElementById('referralLink');
@@ -785,26 +814,19 @@
             updateUI();
         }
 
-        function handleClick(e) {
-            e.preventDefault();
+        function addCoins(amount) {
+            coins += amount;
+            updateUI();
+            saveGame();
+        }
+
+        function handleClickFromPlanet() {
             if (energy < clickPower) { showMessage('❌ Нет энергии!', true); return; }
             energy -= clickPower;
             coins += clickPower;
             updateUI();
             saveGame();
-            const popup = document.createElement('div');
-            popup.className = 'floating-number';
-            popup.textContent = `+${clickPower}`;
-            popup.style.position = 'fixed';
-            popup.style.left = (e.clientX || window.innerWidth/2) + 'px';
-            popup.style.top = (e.clientY || window.innerHeight/2 - 100) + 'px';
-            popup.style.color = '#ffd700';
-            popup.style.fontSize = '20px';
-            popup.style.fontWeight = 'bold';
-            popup.style.pointerEvents = 'none';
-            popup.style.animation = 'popup 0.5s ease-out forwards';
-            document.body.appendChild(popup);
-            setTimeout(() => popup.remove(), 500);
+            showMessage(`✨ +${clickPower} монет`);
         }
 
         function upgradeClick() {
@@ -887,8 +909,15 @@
         }
 
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
-        const planetDiv = document.getElementById('planet');
-        if (planetDiv) planetDiv.addEventListener('click', handleClick);
+        // Обработчик клика по 3D-планете уже есть выше в коде 3D
+        // Дублируем на случай, если не сработал
+        const canvasContainer = document.getElementById('canvas-container');
+        if (canvasContainer) {
+            canvasContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleClickFromPlanet();
+            });
+        }
 
         document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
         document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
