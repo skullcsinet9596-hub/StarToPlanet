@@ -51,7 +51,6 @@ function createFallbackStar() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
     
-    // Очищаем контейнер
     container.innerHTML = '';
     container.style.display = 'flex';
     container.style.alignItems = 'center';
@@ -60,7 +59,7 @@ function createFallbackStar() {
     container.style.borderRadius = '50%';
     container.style.boxShadow = '0 0 30px rgba(255,215,0,0.5)';
     container.style.cursor = 'pointer';
-    container.style.transition = 'transform 0.1s';
+    container.style.touchAction = 'manipulation';
     
     const star = document.createElement('div');
     star.textContent = '⭐';
@@ -69,14 +68,10 @@ function createFallbackStar() {
     star.style.pointerEvents = 'none';
     container.appendChild(star);
     
-    // Сохраняем элемент для клика
     planetElement = container;
     
-    // Добавляем анимацию
-    container.addEventListener('click', handleClick);
     container.style.animation = 'float 3s ease-in-out infinite';
     
-    // Добавляем стиль анимации, если его нет
     if (!document.querySelector('#star-animation-style')) {
         const style = document.createElement('style');
         style.id = 'star-animation-style';
@@ -88,9 +83,87 @@ function createFallbackStar() {
         `;
         document.head.appendChild(style);
     }
+    
+    setupTouchHandlers(container);
+}
+
+// ==================== МУЛЬТИТАЧ ОБРАБОТЧИК ====================
+function setupTouchHandlers(element) {
+    if (!element) return;
+    
+    // Удаляем старые обработчики, если есть
+    element.removeEventListener('touchstart', touchHandler);
+    element.removeEventListener('mousedown', mouseHandler);
+    
+    // Добавляем новые
+    element.addEventListener('touchstart', touchHandler, { passive: false });
+    element.addEventListener('mousedown', mouseHandler);
+}
+
+function touchHandler(e) {
+    e.preventDefault();
+    // Обрабатываем каждое касание
+    for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        processClick({
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+    }
+}
+
+function mouseHandler(e) {
+    e.preventDefault();
+    processClick({
+        clientX: e.clientX,
+        clientY: e.clientY
+    });
+}
+
+// ==================== ОСНОВНАЯ ЛОГИКА КЛИКА ====================
+function processClick(eventData) {
+    if (energy < clickPower) {
+        showMessage('❌ Нет энергии!', true);
+        return;
+    }
+    
+    energy -= clickPower;
+    coins += clickPower;
+    dailyClickCount++;
+    weeklyClickCount++;
+    dailyCoinsEarned += clickPower;
+    weeklyCoinsEarned += clickPower;
+    updateUI();
+    saveGame();
+    
+    // Анимация нажатия
+    if (planetElement) {
+        planetElement.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            if (planetElement) planetElement.style.transform = 'scale(1)';
+        }, 100);
+    }
+    
+    // Всплывающая цифра
+    const popup = document.createElement('div');
+    popup.textContent = `+${clickPower}`;
+    popup.style.position = 'fixed';
+    popup.style.left = (eventData.clientX || window.innerWidth/2) + 'px';
+    popup.style.top = (eventData.clientY || window.innerHeight/2 - 100) + 'px';
+    popup.style.color = '#ffd700';
+    popup.style.fontSize = '24px';
+    popup.style.fontWeight = 'bold';
+    popup.style.pointerEvents = 'none';
+    popup.style.zIndex = '1000';
+    popup.style.textShadow = '0 0 5px #000';
+    popup.style.animation = 'popup 0.5s ease-out forwards';
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 500);
 }
 
 // ==================== 3D ПЛАНЕТА ====================
+let scene, camera, renderer, planet3d;
+
 function init3D() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
@@ -98,7 +171,6 @@ function init3D() {
     const width = 240, height = 240;
     
     import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
-        // Очищаем контейнер
         container.innerHTML = '';
         
         scene = new THREE.Scene();
@@ -129,17 +201,16 @@ function init3D() {
         }
         animate();
         
-        // Сохраняем элемент для клика
         planetElement = container;
         container.style.cursor = 'pointer';
-        container.addEventListener('click', handleClick);
+        container.style.touchAction = 'manipulation';
+        setupTouchHandlers(container);
         
     }).catch(err => {
         console.error('Three.js error:', err);
         createFallbackStar();
     });
     
-    // Таймаут на случай долгой загрузки
     setTimeout(() => {
         const container = document.getElementById('canvas-container');
         if (container && container.children.length === 0) {
@@ -178,7 +249,6 @@ function updateUI() {
     else if (coins >= 100) level = 2;
     document.getElementById('userLevel').textContent = `Уровень ${level}`;
     
-    // Профиль
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
@@ -187,7 +257,6 @@ function updateUI() {
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
     document.getElementById('profileName').textContent = displayName;
     
-    // Задания
     document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
     document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
@@ -280,45 +349,6 @@ async function claimTask(taskId, reward, type) {
     updateUI();
     saveGame();
     updateTaskButtons();
-}
-
-function handleClick() {
-    if (energy < clickPower) {
-        showMessage('❌ Нет энергии!', true);
-        return;
-    }
-    energy -= clickPower;
-    coins += clickPower;
-    dailyClickCount++;
-    weeklyClickCount++;
-    dailyCoinsEarned += clickPower;
-    weeklyCoinsEarned += clickPower;
-    updateUI();
-    saveGame();
-    
-    // Анимация
-    if (planetElement) {
-        planetElement.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-            if (planetElement) planetElement.style.transform = 'scale(1)';
-        }, 100);
-    }
-    
-    // Всплывающая цифра
-    const popup = document.createElement('div');
-    popup.textContent = `+${clickPower}`;
-    popup.style.position = 'fixed';
-    popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
-    popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
-    popup.style.color = '#ffd700';
-    popup.style.fontSize = '24px';
-    popup.style.fontWeight = 'bold';
-    popup.style.pointerEvents = 'none';
-    popup.style.animation = 'popup 0.5s ease-out forwards';
-    document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 500);
-    
-    showMessage(`✨ +${clickPower} монет`);
 }
 
 function upgradeClick() {
@@ -514,7 +544,6 @@ function init() {
     setInterval(applyPassiveIncome, 60000);
     setInterval(rechargeEnergy, 1000);
     
-    // Лучи для Airdrop
     const raysContainer = document.getElementById('raysContainer');
     if (raysContainer) {
         for (let i = 0; i < 12; i++) {
@@ -525,9 +554,8 @@ function init() {
     }
     
     document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена!');
+    console.log('✅ Игра загружена! Мультитач активен');
     
-    // Добавляем стиль для анимации всплывающих цифр
     if (!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
         style.id = 'popup-animation';
