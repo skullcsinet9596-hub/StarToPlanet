@@ -116,6 +116,7 @@ function init3D() {
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
     import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
+        window.THREE = THREE;
         scene = new THREE.Scene();
         scene.background = null;
         camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -297,40 +298,34 @@ function updatePremiumUI() {
     const earthBtn = document.getElementById('buyEarth');
     const sunBtn = document.getElementById('buySun');
     if (hasJupiter && !hasMoon) {
-        moonCard.classList.remove('premium-locked');
-        moonBtn.disabled = false;
-        moonBtn.classList.remove('disabled');
-        moonBtn.textContent = 'Купить за 50 ₽';
-        document.getElementById('moonCondition').innerHTML = '🎉 Доступно для покупки!';
+        if (moonCard) moonCard.classList.remove('premium-locked');
+        if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
+        const cond = document.getElementById('moonCondition');
+        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
     } else if (hasMoon) {
-        moonBtn.disabled = true;
-        moonBtn.classList.add('disabled');
-        moonBtn.textContent = '✅ КУПЛЕНО';
-        document.getElementById('moonCondition').innerHTML = '✅ Луна куплена';
+        if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
+        const cond = document.getElementById('moonCondition');
+        if (cond) cond.innerHTML = '✅ Луна куплена';
     }
     if (hasMoon && !hasEarth) {
-        earthCard.classList.remove('premium-locked');
-        earthBtn.disabled = false;
-        earthBtn.classList.remove('disabled');
-        earthBtn.textContent = 'Купить за 100 ₽';
-        document.getElementById('earthCondition').innerHTML = '🎉 Доступно для покупки!';
+        if (earthCard) earthCard.classList.remove('premium-locked');
+        if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
+        const cond = document.getElementById('earthCondition');
+        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
     } else if (hasEarth) {
-        earthBtn.disabled = true;
-        earthBtn.classList.add('disabled');
-        earthBtn.textContent = '✅ КУПЛЕНО';
-        document.getElementById('earthCondition').innerHTML = '✅ Земля куплена';
+        if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
+        const cond = document.getElementById('earthCondition');
+        if (cond) cond.innerHTML = '✅ Земля куплена';
     }
     if (hasEarth && !hasSun) {
-        sunCard.classList.remove('premium-locked');
-        sunBtn.disabled = false;
-        sunBtn.classList.remove('disabled');
-        sunBtn.textContent = 'Купить за 200 ₽';
-        document.getElementById('sunCondition').innerHTML = '🎉 Доступно для покупки!';
+        if (sunCard) sunCard.classList.remove('premium-locked');
+        if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
+        const cond = document.getElementById('sunCondition');
+        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
     } else if (hasSun) {
-        sunBtn.disabled = true;
-        sunBtn.classList.add('disabled');
-        sunBtn.textContent = '✅ КУПЛЕНО';
-        document.getElementById('sunCondition').innerHTML = '✅ Солнце куплено';
+        if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
+        const cond = document.getElementById('sunCondition');
+        if (cond) cond.innerHTML = '✅ Солнце куплено';
     }
 }
 
@@ -446,21 +441,17 @@ function applyPassiveIncome() { if (passiveIncomeRate > 0) { coins += passiveInc
 function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy + 3, maxEnergy); updateUI(); } }
 function showMessage(text, isError = false) { const msg = document.getElementById('message'); msg.textContent = text; msg.style.color = isError ? '#ff6b6b' : '#ffd700'; msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
 
-// ==================== РЕЙТИНГ И ДРУЗЬЯ (с реальными именами) ====================
-let realPlayers = [];
-let realFriends = [];
-
+// ==================== РЕЙТИНГ И ДРУЗЬЯ ====================
 async function loadLeaderboardFromAPI() {
     try {
         const response = await fetch(`https://startoplanet.onrender.com/api/leaderboard?limit=20`);
         if (response.ok) {
             const players = await response.json();
             if (players.length > 0) {
-                realPlayers = players;
                 const allPlayers = [...players];
                 const currentExists = allPlayers.some(p => p.telegram_id == userId);
                 if (!currentExists && coins > 0) {
-                    allPlayers.push({ telegram_id: userId, first_name: displayName, coins: coins, level: Math.floor(Math.log10(coins+1)/3)+1 });
+                    allPlayers.push({ telegram_id: userId, first_name: displayName, coins: coins, level: getLevel() });
                 }
                 const sorted = allPlayers.sort((a, b) => b.coins - a.coins);
                 const container = document.getElementById('leaderboardList');
@@ -476,7 +467,6 @@ async function loadLeaderboardFromAPI() {
             }
         }
     } catch(e) { console.log('API недоступен'); }
-    // Демо с реальными именами
     const container = document.getElementById('leaderboardList');
     if (container) {
         const demoPlayers = [
@@ -500,7 +490,6 @@ async function loadFriendsFromAPI() {
         if (response.ok) {
             const friends = await response.json();
             if (friends.length > 0) {
-                realFriends = friends;
                 const container = document.getElementById('level1List');
                 if (container) {
                     container.innerHTML = friends.slice(0, 5).map(f => `<div class="level-item"><span>${f.first_name || f.username}</span><span>${(f.coins || 0).toLocaleString()} 🪙</span><span style="font-size:10px;">${new Date(f.created_at).toLocaleDateString()}</span></div>`).join('');

@@ -295,6 +295,8 @@ canvas {
     font-size: 13px;
 }
 .tasks-tab.active { background: #FFD60A; color: #1C1C1E; }
+.tasks-content { display: none; }
+.tasks-content.active { display: block; }
 .task-card {
     background: rgba(44,44,48,0.6);
     border-radius: 24px;
