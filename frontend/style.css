@@ -98,70 +98,115 @@ body {
 }
 
 /* ========== 3D ЗВЕЗДА (CSS) ========== */
+/* ========== НАСТОЯЩАЯ БЕЛАЯ ЗВЕЗДА ========== */
 #star-container {
     position: relative;
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
     margin: 10px auto;
     cursor: pointer;
     transition: transform 0.1s ease;
 }
 
+/* Основной шар звезды */
 .star-core {
     position: absolute;
     top: 50%;
     left: 50%;
     width: 100px;
     height: 100px;
-    background: radial-gradient(circle at 30% 30%, #ffffff, #e0e8ff);
+    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e8ff, #b0c4ff);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 50px rgba(255, 255, 255, 0.8), inset 0 0 30px rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 50px rgba(255, 255, 255, 0.9), inset 0 0 30px rgba(255, 255, 255, 0.8);
     animation: starPulse 2s ease-in-out infinite;
+    z-index: 2;
 }
 
+/* 12 лучей звезды */
 .star-rays {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
     transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1;
 }
 
-.star-rays::before,
-.star-rays::after {
-    content: '';
+.ray {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 200px;
-    height: 4px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    transform: translate(-50%, -50%);
-    animation: rayRotate 8s linear infinite;
+    width: 8px;
+    height: 80px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+    transform-origin: center;
+    border-radius: 4px;
+    animation: rayGlow 1.5s ease-in-out infinite alternate;
 }
 
-.star-rays::after {
-    transform: translate(-50%, -50%) rotate(45deg);
+.ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-80px); }
+.ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-80px); }
+.ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-80px); }
+.ray:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(-80px); }
+.ray:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(-80px); }
+.ray:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(-80px); }
+.ray:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(-80px); }
+.ray:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(-80px); }
+.ray:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(-80px); }
+.ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-80px); }
+.ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-80px); }
+.ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-80px); }
+
+/* Дополнительные короткие лучи между основными */
+.ray-short {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 50px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+    transform-origin: center;
+    border-radius: 3px;
+    animation: rayGlowShort 1.8s ease-in-out infinite alternate;
 }
+
+.ray-short:nth-child(1) { transform: translate(-50%, -50%) rotate(15deg) translateY(-65px); }
+.ray-short:nth-child(2) { transform: translate(-50%, -50%) rotate(45deg) translateY(-65px); }
+.ray-short:nth-child(3) { transform: translate(-50%, -50%) rotate(75deg) translateY(-65px); }
+.ray-short:nth-child(4) { transform: translate(-50%, -50%) rotate(105deg) translateY(-65px); }
+.ray-short:nth-child(5) { transform: translate(-50%, -50%) rotate(135deg) translateY(-65px); }
+.ray-short:nth-child(6) { transform: translate(-50%, -50%) rotate(165deg) translateY(-65px); }
+.ray-short:nth-child(7) { transform: translate(-50%, -50%) rotate(195deg) translateY(-65px); }
+.ray-short:nth-child(8) { transform: translate(-50%, -50%) rotate(225deg) translateY(-65px); }
+.ray-short:nth-child(9) { transform: translate(-50%, -50%) rotate(255deg) translateY(-65px); }
+.ray-short:nth-child(10) { transform: translate(-50%, -50%) rotate(285deg) translateY(-65px); }
+.ray-short:nth-child(11) { transform: translate(-50%, -50%) rotate(315deg) translateY(-65px); }
+.ray-short:nth-child(12) { transform: translate(-50%, -50%) rotate(345deg) translateY(-65px); }
 
 @keyframes starPulse {
     0%, 100% {
         transform: translate(-50%, -50%) scale(1);
         opacity: 0.9;
-        box-shadow: 0 0 50px rgba(255, 255, 255, 0.7);
+        box-shadow: 0 0 40px rgba(255, 255, 255, 0.7);
     }
     50% {
-        transform: translate(-50%, -50%) scale(1.08);
+        transform: translate(-50%, -50%) scale(1.1);
         opacity: 1;
         box-shadow: 0 0 80px rgba(255, 255, 255, 1);
     }
 }
 
-@keyframes rayRotate {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to { transform: translate(-50%, -50%) rotate(360deg); }
+@keyframes rayGlow {
+    0% { opacity: 0.4; height: 70px; }
+    100% { opacity: 1; height: 90px; }
+}
+
+@keyframes rayGlowShort {
+    0% { opacity: 0.3; height: 45px; }
+    100% { opacity: 0.8; height: 55px; }
 }
 
 #star-container:active {

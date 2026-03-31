@@ -107,13 +107,19 @@ function updateStarOrPlanet() {
     container.classList.remove('planet-mercury', 'planet-mars', 'planet-venus', 'planet-neptune', 'planet-uranus', 'planet-saturn', 'planet-jupiter');
     
     if (level === 0) {
-        // Звезда
+        // Звезда с лучами
         container.innerHTML = `
             <div class="star-core"></div>
-            <div class="star-rays"></div>
+            <div class="star-rays">
+                ${Array(12).fill('<div class="ray"></div>').join('')}
+            </div>
+            <div class="star-rays-short">
+                ${Array(12).fill('<div class="ray-short"></div>').join('')}
+            </div>
         `;
         container.style.background = 'transparent';
         container.style.boxShadow = 'none';
+        container.style.borderRadius = '0';
     } else {
         // Планета
         const planetNames = ['', 'mercury', 'mars', 'venus', 'neptune', 'uranus', 'saturn', 'jupiter'];
@@ -123,14 +129,12 @@ function updateStarOrPlanet() {
         container.style.borderRadius = '50%';
         container.style.boxShadow = '0 0 30px rgba(0,0,0,0.3)';
         
-        // Добавляем эмодзи планеты
         const emoji = document.createElement('div');
         emoji.style.fontSize = '80px';
         emoji.style.textAlign = 'center';
         emoji.style.lineHeight = '200px';
         const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
         emoji.textContent = planetEmojis[level];
-        container.innerHTML = '';
         container.appendChild(emoji);
     }
 }
