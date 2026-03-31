@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Star to Planet</title>
+    <title>Star to Planet — 3D Tap Game</title>
     <style>
         * {
             margin: 0;
@@ -29,9 +29,9 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        /* iOS 26 стеклянные панели */
         .glass-panel {
             background: rgba(20, 20, 24, 0.75);
             backdrop-filter: blur(28px);
@@ -103,43 +103,19 @@
             position: relative;
         }
 
-        /* ========== НАСТОЯЩАЯ ЗВЕЗДА ========== */
-        .star-container {
+        #canvas-container {
+            width: 280px;
+            height: 280px;
+            margin: 10px auto;
+            cursor: pointer;
             position: relative;
-            width: 200px;
-            height: 200px;
-            margin: 20px auto;
-            cursor: pointer;
-            transition: transform 0.1s ease;
         }
 
-        .star-svg {
-            width: 100%;
-            height: 100%;
-            animation: starPulse 2s ease-in-out infinite;
-            filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
-        }
-
-        .planet-emoji {
-            font-size: 120px;
-            text-align: center;
-            line-height: 200px;
-            width: 200px;
-            height: 200px;
-            margin: 20px auto;
-            cursor: pointer;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), rgba(0,0,0,0.2));
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
             border-radius: 50%;
-            transition: transform 0.1s;
-        }
-
-        .planet-emoji:active, .star-container:active {
-            transform: scale(0.96);
-        }
-
-        @keyframes starPulse {
-            0%, 100% { transform: scale(1); opacity: 0.9; filter: drop-shadow(0 0 15px rgba(255,255,255,0.8)); }
-            50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); }
         }
 
         .boost-btn {
@@ -505,18 +481,6 @@
             opacity: 0.6;
             animation: rayShine 1.2s ease-in-out infinite alternate;
         }
-        .ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-85px); }
-        .ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-85px); }
-        .ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-85px); }
-        .ray:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(-85px); }
-        .ray:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(-85px); }
-        .ray:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(-85px); }
-        .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(-85px); }
-        .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(-85px); }
-        .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(-85px); }
-        .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-85px); }
-        .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-85px); }
-        .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-85px); }
         .coin-star-white { font-size: 60px; color: white; text-shadow: 0 0 10px rgba(255,255,240,0.8); }
         @keyframes coinFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes rayShine { 0% { opacity: 0.3; height: 45px; } 100% { opacity: 0.8; height: 60px; } }
@@ -550,27 +514,23 @@
         @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
         @media (max-width: 480px) {
-            .golden-coin { width: 130px; height: 130px; }
-            .coin-star-white { font-size: 48px; }
-            .ray { height: 40px; }
-            .ray:nth-child(1), .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(0deg) translateY(-68px); }
-            .ray:nth-child(2), .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(30deg) translateY(-68px); }
-            .ray:nth-child(3), .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(60deg) translateY(-68px); }
-            .ray:nth-child(4), .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(90deg) translateY(-68px); }
-            .ray:nth-child(5), .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(120deg) translateY(-68px); }
-            .ray:nth-child(6), .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(150deg) translateY(-68px); }
+            #canvas-container { width: 220px; height: 220px; }
             .task-card { flex-direction: column; text-align: center; }
             .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
-            .star-container { width: 160px; height: 160px; }
-            .planet-emoji { width: 160px; height: 160px; font-size: 90px; line-height: 160px; }
             .avatar-img { width: 38px; height: 38px; }
             .profile-avatar-img { width: 45px; height: 45px; }
             .link-box { flex-direction: column; }
             .link-box button { padding: 10px; }
-            .nav-bar { margin: 0 12px 12px 12px; }
         }
     </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="app-container">
@@ -586,20 +546,7 @@
         </div>
 
         <div class="game-area" id="gameArea">
-            <!-- ЗВЕЗДА SVG -->
-            <div id="starContainer" class="star-container">
-                <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
-                    <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
-                    <defs>
-                        <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
-                            <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
-                        </radialGradient>
-                    </defs>
-                </svg>
-            </div>
-
+            <div id="canvas-container"></div>
             <button class="boost-btn" id="boostBtn">
                 <span class="boost-icon">⚡</span>
                 <span class="boost-text">BOOST</span>
@@ -746,7 +693,9 @@
     </div>
     <div class="message" id="message"></div>
 
-    <script>
+    <script type="module">
+        import * as THREE from 'three';
+        
         // ==================== TELEGRAM ====================
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -793,8 +742,25 @@
         let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
         let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
 
-        const starContainer = document.getElementById('starContainer');
+        // Размеры планет в зависимости от уровня
+        const planetSizes = {
+            0: 0.65,  // Звезда
+            1: 0.72,  // Меркурий
+            2: 0.78,  // Марс
+            3: 0.84,  // Венера
+            4: 0.90,  // Нептун
+            5: 0.96,  // Уран
+            6: 1.02,  // Сатурн
+            7: 1.08,  // Юпитер
+            8: 0.85,  // Луна (премиум)
+            9: 0.95,  // Земля (премиум)
+            10: 0.92   // Солнце (премиум)
+        };
 
+        // ==================== 3D СЦЕНА ====================
+        let scene, camera, renderer, currentPlanet, currentRings = [], currentRays = [], currentProts = [], currentGlow;
+        let container = document.getElementById('canvas-container');
+        
         function getLevel() {
             if (coins >= 10000000000) return 7;
             if (coins >= 1000000000) return 6;
@@ -805,35 +771,462 @@
             if (coins >= 10000) return 1;
             return 0;
         }
-
-        function updateStarOrPlanet() {
-            const level = getLevel();
-            const container = document.getElementById('starContainer');
+        
+        function getFullLevel() {
+            let level = getLevel();
+            if (hasSun) return 10;
+            if (hasEarth) return 9;
+            if (hasMoon) return 8;
+            return level;
+        }
+        
+        function getPlanetSize() {
+            return planetSizes[getFullLevel()] || 0.85;
+        }
+        
+        function createStarTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c8e0ff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 350; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = 12 + Math.random() * 45;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = Math.random() > 0.6 ? '#90b0e0' : '#ffffff';
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1.5, 1.5);
+            return texture;
+        }
+        
+        function createSunTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ff8833';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 350; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = 15 + Math.random() * 55;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = Math.random() > 0.5 ? '#cc5511' : '#ffaa66';
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1.5, 1.5);
+            return texture;
+        }
+        
+        function createCraterTexture(baseColor, darkColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 8000; i++) {
+                ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.3})`;
+                ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
+            }
+            for (let i = 0; i < 400; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = 5 + Math.random() * 35;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = darkColor;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2);
+                ctx.fillStyle = baseColor;
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+        
+        function createMarsTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c46d5e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 300; i++) {
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 20 + Math.random() * 80, 15 + Math.random() * 60, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 50, 40, ${0.3 + Math.random() * 0.5})`;
+                ctx.fill();
+            }
+            ctx.fillStyle = '#e8e8e8';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.5, canvas.height * 0.12, canvas.width * 0.2, canvas.height * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.5, canvas.height * 0.88, canvas.width * 0.2, canvas.height * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1.5, 1.5);
+            return texture;
+        }
+        
+        function createJupiterTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#d8a27a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const bands = [{ y: 0.18, color: '#b87a4a' }, { y: 0.3, color: '#c28a5a' }, { y: 0.42, color: '#a56a3a' }, { y: 0.55, color: '#c28a5a' }, { y: 0.68, color: '#b87a4a' }, { y: 0.8, color: '#a56a3a' }];
+            bands.forEach(band => { ctx.fillStyle = band.color; ctx.fillRect(0, (band.y - 0.05) * canvas.height, canvas.width, 0.1 * canvas.height); });
+            ctx.fillStyle = '#aa5533';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.68, canvas.height * 0.52, canvas.width * 0.14, canvas.height * 0.09, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#cc6644';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.67, canvas.height * 0.51, canvas.width * 0.1, canvas.height * 0.06, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1.2, 1);
+            return texture;
+        }
+        
+        function createVenusTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#e6b856';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 150; i++) {
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 30 + Math.random() * 100, 10 + Math.random() * 40, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(200, 150, 80, ${0.2 + Math.random() * 0.4})`;
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        function createNeptuneTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 80; i++) {
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 20 + Math.random() * 60, 8 + Math.random() * 25, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.random() * 0.5})`;
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        function createUranusTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#b0e0e6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 60; i++) {
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 15 + Math.random() * 50, 8 + Math.random() * 25, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(140, 200, 210, ${0.2 + Math.random() * 0.4})`;
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        function createSaturnTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#e8cfaa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 100; i++) {
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 10 + Math.random() * 40, 6 + Math.random() * 20, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(180, 140, 100, ${0.2 + Math.random() * 0.3})`;
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        function init3D() {
             if (!container) return;
             
+            scene = new THREE.Scene();
+            scene.background = null;
+            
+            camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+            camera.position.set(0, 0, 3.5);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0x333366);
+            scene.add(ambientLight);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(3, 2, 4);
+            scene.add(mainLight);
+            const backLight = new THREE.PointLight(0x88aaff, 0.5);
+            backLight.position.set(-2, 1, -2);
+            scene.add(backLight);
+            
+            // Звёздный фон
+            const starCount = 1500;
+            const starGeo = new THREE.BufferGeometry();
+            const starPos = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                starPos[i*3] = (Math.random() - 0.5) * 120;
+                starPos[i*3+1] = (Math.random() - 0.5) * 90;
+                starPos[i*3+2] = (Math.random() - 0.5) * 80 - 40;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.7 });
+            const stars = new THREE.Points(starGeo, starMat);
+            scene.add(stars);
+            
+            updatePlanetModel();
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                if (currentPlanet) currentPlanet.rotation.y += 0.005;
+                if (currentRings) currentRings.forEach(ring => { if (ring) ring.rotation.y += 0.002; });
+                if (currentRays) currentRays.forEach(ray => { ray.rotation.z += 0.002; });
+                stars.rotation.y += 0.0003;
+                
+                if (container.clientWidth > 0) {
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    if (renderer.domElement.width !== w) {
+                        renderer.setSize(w, h);
+                        camera.aspect = w / h;
+                        camera.updateProjectionMatrix();
+                    }
+                }
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            window.addEventListener('resize', () => {
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                renderer.setSize(w, h);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            });
+            
+            // Клик по планете
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            renderer.domElement.addEventListener('click', (event) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.set(x, y);
+                raycaster.setFromCamera(mouse, camera);
+                if (currentPlanet) {
+                    const intersects = raycaster.intersectObject(currentPlanet);
+                    if (intersects.length > 0) handleClick();
+                }
+            });
+        }
+        
+        function updatePlanetModel() {
+            // Удаляем старые объекты
+            if (currentPlanet) scene.remove(currentPlanet);
+            if (currentGlow) scene.remove(currentGlow);
+            currentRings.forEach(ring => { if (ring) scene.remove(ring); });
+            currentRays.forEach(ray => { if (ray) scene.remove(ray); });
+            currentProts.forEach(prot => { if (prot) scene.remove(prot); });
+            
+            const level = getFullLevel();
+            const size = planetSizes[level] || 0.85;
+            let material, geometry;
+            
+            // Создаём планету в зависимости от уровня
             if (level === 0) {
-                container.innerHTML = `
-                    <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
-                        <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
-                        <defs>
-                            <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
-                                <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
-                            </radialGradient>
-                        </defs>
-                    </svg>
-                `;
-                container.classList.remove('planet-emoji');
-                container.classList.add('star-container');
-            } else {
-                const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
-                container.innerHTML = planetEmojis[level];
-                container.classList.remove('star-container');
-                container.classList.add('planet-emoji');
+                // ЗВЕЗДА с лучами
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ color: 0xfff5e8, emissive: 0xffaa77, emissiveIntensity: 1.0, roughness: 0.2 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+                
+                // Лучи
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const rayGeo = new THREE.ConeGeometry(0.16, 1.1, 12);
+                    const rayMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffaa77, emissiveIntensity: 0.6 });
+                    const ray = new THREE.Mesh(rayGeo, rayMat);
+                    ray.position.set(Math.cos(angle) * (size + 0.55), Math.sin(angle) * (size + 0.55), 0);
+                    ray.rotation.z = angle;
+                    scene.add(ray);
+                    currentRays.push(ray);
+                }
+                for (let i = 0; i < 16; i++) {
+                    const angle = (i / 16) * Math.PI * 2;
+                    const rayGeo = new THREE.ConeGeometry(0.09, 0.75, 8);
+                    const rayMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffaa77, emissiveIntensity: 0.4 });
+                    const ray = new THREE.Mesh(rayGeo, rayMat);
+                    ray.position.set(Math.cos(angle) * (size + 0.45), Math.sin(angle) * (size + 0.45), 0);
+                    ray.rotation.z = angle;
+                    scene.add(ray);
+                    currentRays.push(ray);
+                }
+                
+                const glowGeo = new THREE.SphereGeometry(size + 0.12, 32, 32);
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xffccaa, transparent: true, opacity: 0.3, side: THREE.BackSide, blending: THREE.AdditiveBlending });
+                currentGlow = new THREE.Mesh(glowGeo, glowMat);
+                scene.add(currentGlow);
+            }
+            else if (level === 10) {
+                // СОЛНЦЕ с короной и протуберанцами
+                const texture = createSunTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, color: 0xffaa55, emissive: 0xff6622, emissiveIntensity: 0.7, roughness: 0.3 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+                
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2;
+                    const protGeo = new THREE.CylinderGeometry(0.07, 0.12, 0.5, 6);
+                    const protMat = new THREE.MeshStandardMaterial({ color: 0xff7744, emissive: 0xff4422, emissiveIntensity: 0.5 });
+                    const prot = new THREE.Mesh(protGeo, protMat);
+                    prot.position.set(Math.cos(angle) * (size + 0.45), Math.sin(angle) * (size + 0.45), 0);
+                    prot.rotation.z = angle;
+                    scene.add(prot);
+                    currentProts.push(prot);
+                }
+                
+                const coronaGeo = new THREE.SphereGeometry(size + 0.18, 48, 48);
+                const coronaMat = new THREE.MeshBasicMaterial({ color: 0xff8844, transparent: true, opacity: 0.35, side: THREE.BackSide, blending: THREE.AdditiveBlending });
+                currentGlow = new THREE.Mesh(coronaGeo, coronaMat);
+                scene.add(currentGlow);
+            }
+            else if (level === 8) {
+                // ЛУНА
+                const texture = createCraterTexture('#c0c0c0', '#8a8a8a');
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.85, metalness: 0.05 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 9) {
+                // ЗЕМЛЯ
+                const textureLoader = new THREE.TextureLoader();
+                const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: earthMap, roughness: 0.5, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 6) {
+                // САТУРН с кольцами
+                const texture = createSaturnTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.15 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+                
+                const ringGeo = new THREE.TorusGeometry(size * 1.35, 0.1, 64, 200);
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0xc9b37c, roughness: 0.4 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2.2;
+                scene.add(ring);
+                currentRings.push(ring);
+            }
+            else if (level === 5) {
+                // УРАН с кольцами
+                const texture = createUranusTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.45, metalness: 0.08 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+                
+                const ringGeo = new THREE.TorusGeometry(size * 1.15, 0.04, 64, 200);
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0xaaccdd, transparent: true, opacity: 0.5 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                scene.add(ring);
+                currentRings.push(ring);
+            }
+            else if (level === 7) {
+                // ЮПИТЕР
+                const texture = createJupiterTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 2) {
+                // МАРС
+                const texture = createMarsTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 1) {
+                // МЕРКУРИЙ
+                const texture = createCraterTexture('#a8a8a8', '#6a6a6a');
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 3) {
+                // ВЕНЕРА
+                const texture = createVenusTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else if (level === 4) {
+                // НЕПТУН
+                const texture = createNeptuneTexture();
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4, metalness: 0.1 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
+            }
+            else {
+                // Обычная планета
+                geometry = new THREE.SphereGeometry(size, 128, 128);
+                material = new THREE.MeshStandardMaterial({ color: 0x88aaff, roughness: 0.5 });
+                currentPlanet = new THREE.Mesh(geometry, material);
+                scene.add(currentPlanet);
             }
         }
-
+        
         function handleClick() {
             if (energy < clickPower) {
                 showMessage('❌ Нет энергии!', true);
@@ -843,12 +1236,14 @@
             coins += clickPower;
             dailyClickCount++; weeklyClickCount++;
             dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
-            updateUI(); saveGame(); syncToServer();
             
-            const target = document.querySelector('.star-container, .planet-emoji');
-            if (target) {
-                target.style.transform = 'scale(0.95)';
-                setTimeout(() => { if (target) target.style.transform = 'scale(1)'; }, 100);
+            updateUI();
+            saveGame();
+            syncToServer();
+            
+            if (currentPlanet) {
+                currentPlanet.scale.set(0.96, 0.96, 0.96);
+                setTimeout(() => { if (currentPlanet) currentPlanet.scale.set(1, 1, 1); }, 100);
             }
             
             const popup = document.createElement('div');
@@ -861,22 +1256,22 @@
             popup.style.fontWeight = 'bold';
             popup.style.pointerEvents = 'none';
             popup.style.zIndex = '1000';
+            popup.style.textShadow = '0 0 5px #000';
             popup.style.animation = 'popup 0.5s ease-out forwards';
             document.body.appendChild(popup);
             setTimeout(() => popup.remove(), 500);
         }
-
-        if (starContainer) starContainer.addEventListener('click', handleClick);
-
+        
         async function syncToServer() {
             if (!userId || userId.toString().startsWith('guest')) return;
             try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
         }
-
+        
         function updateUI() {
             const level = getLevel();
-            const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер'];
-            document.getElementById('userLevel').textContent = `Уровень ${level} · ${levelNames[level]}`;
+            const fullLevel = getFullLevel();
+            const levelNames = ['⭐ Белая звезда', '🌑 Меркурий', '🔴 Марс', '🟡 Венера', '🔵 Нептун', '💚 Уран', '🪐 Сатурн', '🟤 Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
+            document.getElementById('userLevel').textContent = `Уровень ${fullLevel} · ${levelNames[fullLevel]}`;
             document.getElementById('coins').textContent = Math.floor(coins);
             document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
             document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
@@ -896,8 +1291,6 @@
             passiveIncomeRate = rate;
             document.getElementById('passiveIncomeRate').textContent = rate;
             
-            updateStarOrPlanet();
-            
             document.getElementById('profileCoins').textContent = Math.floor(coins);
             document.getElementById('profileClickPower').textContent = clickPower;
             document.getElementById('profileMaxEnergy').textContent = maxEnergy;
@@ -910,8 +1303,9 @@
             document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
             updateTaskButtons();
             updatePremiumUI();
+            updatePlanetModel();
         }
-
+        
         function updatePremiumUI() {
             const hasJupiter = coins >= 10000000000;
             const moonBtn = document.getElementById('buyMoon');
@@ -920,6 +1314,7 @@
             const moonCard = document.getElementById('premiumMoonCard');
             const earthCard = document.getElementById('premiumEarthCard');
             const sunCard = document.getElementById('premiumSunCard');
+            
             if (hasJupiter && !hasMoon) {
                 if (moonCard) moonCard.classList.remove('premium-locked');
                 if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
@@ -927,8 +1322,6 @@
                 if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
             } else if (hasMoon) {
                 if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
-                const cond = document.getElementById('moonCondition');
-                if (cond) cond.innerHTML = '✅ Луна куплена';
             }
             if (hasMoon && !hasEarth) {
                 if (earthCard) earthCard.classList.remove('premium-locked');
@@ -937,8 +1330,6 @@
                 if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
             } else if (hasEarth) {
                 if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
-                const cond = document.getElementById('earthCondition');
-                if (cond) cond.innerHTML = '✅ Земля куплена';
             }
             if (hasEarth && !hasSun) {
                 if (sunCard) sunCard.classList.remove('premium-locked');
@@ -947,11 +1338,9 @@
                 if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
             } else if (hasSun) {
                 if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
-                const cond = document.getElementById('sunCondition');
-                if (cond) cond.innerHTML = '✅ Солнце куплено';
             }
         }
-
+        
         function buyPremium(type) {
             if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
                 hasMoon = true;
@@ -969,7 +1358,7 @@
                 showMessage('❌ Условия не выполнены', true);
             }
         }
-
+        
         function saveGame() {
             localStorage.setItem('starToPlanet', JSON.stringify({
                 coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
@@ -979,6 +1368,7 @@
                 hasMoon, hasEarth, hasSun, displayName
             }));
         }
+        
         function loadGame() {
             const saved = localStorage.getItem('starToPlanet');
             if (saved) {
@@ -1014,7 +1404,7 @@
             }
             updateUI();
         }
-
+        
         function updateTaskButtons() {
             const dailyClickBtn = document.getElementById('dailyClickClaim');
             const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
@@ -1025,7 +1415,8 @@
             if (weeklyClickBtn) { if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled'); else weeklyClickBtn.classList.add('disabled'); }
             if (weeklyCoinsBtn) { if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled'); else weeklyCoinsBtn.classList.add('disabled'); }
         }
-        async function claimTask(taskId, reward, type) {
+        
+        function claimTask(taskId, reward, type) {
             if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { dailyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
             else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { dailyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
             else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { weeklyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
@@ -1033,6 +1424,7 @@
             else { showMessage('❌ Условия не выполнены', true); return; }
             updateUI(); saveGame(); syncToServer(); updateTaskButtons();
         }
+        
         function upgradeClick() {
             if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
                 coins -= clickUpgradeCost; clickPower++; clickUpgradeLevel++;
@@ -1042,6 +1434,7 @@
             } else if (clickUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
             else showMessage('❌ Не хватает монет!', true);
         }
+        
         function upgradeEnergy() {
             if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
                 coins -= energyUpgradeCost; maxEnergy += 50; energy += 50; energyUpgradeLevel++;
@@ -1051,6 +1444,7 @@
             } else if (energyUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
             else showMessage('❌ Не хватает монет!', true);
         }
+        
         function upgradePassive() {
             if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
                 coins -= passiveIncomeUpgradeCost; passiveIncomeLevel++;
@@ -1060,15 +1454,16 @@
             } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
             else showMessage('❌ Не хватает монет!', true);
         }
+        
         function applyPassiveIncome() { if (passiveIncomeRate > 0) { coins += passiveIncomeRate; updateUI(); saveGame(); syncToServer(); } }
         function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy + 3, maxEnergy); updateUI(); } }
         function showMessage(text, isError = false) { const msg = document.getElementById('message'); msg.textContent = text; msg.style.color = isError ? '#ff6b6b' : '#ffd700'; msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
-
+        
         function loadLeaderboardFromAPI() {
             const container = document.getElementById('leaderboardList');
             if (!container) return;
             const demoPlayers = [
-                { name: displayName, coins: coins, level: getLevel(), isCurrent: true },
+                { name: displayName, coins: coins, level: getFullLevel(), isCurrent: true },
                 { name: "⭐ Александр", coins: 1250000, level: 5 },
                 { name: "🌙 Екатерина", coins: 850000, level: 4 },
                 { name: "🚀 Дмитрий", coins: 420000, level: 3 },
@@ -1077,20 +1472,18 @@
             const sorted = demoPlayers.sort((a,b) => b.coins - a.coins);
             container.innerHTML = sorted.map((p, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-                const isCurrent = p.isCurrent;
-                return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
+                return `<div class="leaderboard-item" style="${p.isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${p.isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div></div>`;
             }).join('');
         }
-
+        
         function loadFriendsFromAPI() {
             const container = document.getElementById('level1List');
-            if (!container) return;
-            container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+            if (container) container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span></div>`;
             document.getElementById('referralCount').textContent = '0';
             document.getElementById('referralBonus').textContent = '0';
             document.getElementById('profileReferrals').textContent = '0';
         }
-
+        
         function setupTabs() {
             const panels = { game: document.getElementById('gameArea'), tasks: document.getElementById('tasksPanel'), friends: document.getElementById('friendsPanel'), profile: document.getElementById('profilePanel'), leaderboard: document.getElementById('leaderboardPanel'), airdrop: document.getElementById('airdropPanel') };
             document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1106,7 +1499,7 @@
                 });
             });
         }
-
+        
         function setupTasksTabs() {
             const tabs = document.querySelectorAll('.tasks-tab');
             const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
@@ -1120,15 +1513,17 @@
                 });
             });
         }
-
+        
         function updateReferralLink() { 
             const linkInput = document.getElementById('referralLink'); 
             if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
         }
+        
         function copyReferralLink() { 
             const input = document.getElementById('referralLink'); 
             if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
         }
+        
         function shareReferralLink() {
             const input = document.getElementById('referralLink');
             if(input && tg.openTelegramLink) {
@@ -1137,7 +1532,7 @@
                 window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
             }
         }
-
+        
         function init() {
             loadGame();
             setupTabs();
@@ -1164,10 +1559,18 @@
             const raysContainer = document.getElementById('raysContainer');
             if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
             document.getElementById('gameArea').style.display = 'flex';
-            console.log('✅ Игра загружена! Белая звезда с лучами активна');
-            if(!document.querySelector('#popup-animation')) { const style = document.createElement('style'); style.id = 'popup-animation'; style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`; document.head.appendChild(style); }
+            
+            if(!document.querySelector('#popup-animation')) {
+                const style = document.createElement('style');
+                style.id = 'popup-animation';
+                style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}`;
+                document.head.appendChild(style);
+            }
+            
+            init3D();
             setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
         }
+        
         init();
     </script>
 </body>
