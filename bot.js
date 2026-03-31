@@ -148,9 +148,10 @@ bot.start(async (ctx) => {
         const text = ctx.message?.text;
         let referrerId = null;
 
-        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ОСНОВНОЕ ИСПРАВЛЕНИЕ
+        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ГЛАВНОЕ ИСПРАВЛЕНИЕ
         if (text && typeof text === 'string') {
             const parts = text.split(' ');
+            // ВАЖНО: проверяем, существует ли parts[1] и является ли он строкой
             if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
                 const refNum = parseInt(parts[1].replace('ref_', ''));
                 if (!isNaN(refNum) && refNum !== user.id) {
