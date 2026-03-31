@@ -47,39 +47,55 @@ let weeklyTasksClaimed = { click: false, coins: false };
 let scene, camera, renderer, planet3d;
 let planetElement = null;
 
-// ==================== СОЗДАНИЕ БЕЛОЙ ЗВЕЗДЫ ====================
+// ==================== СОЗДАНИЕ БЕЛОЙ ЗВЕЗДЫ С ЛУЧАМИ ====================
 function createStarTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d');
     
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, 512, 512);
+    ctx.fillRect(0, 0, 1024, 1024);
     
-    const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    const gradient = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.3, 'rgba(255, 255, 200, 0.9)');
-    gradient.addColorStop(0.6, 'rgba(200, 220, 255, 0.7)');
-    gradient.addColorStop(1, 'rgba(150, 180, 255, 0.4)');
+    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.95)');
+    gradient.addColorStop(0.4, 'rgba(255, 255, 240, 0.85)');
+    gradient.addColorStop(0.6, 'rgba(230, 240, 255, 0.7)');
+    gradient.addColorStop(0.8, 'rgba(200, 220, 255, 0.5)');
+    gradient.addColorStop(1, 'rgba(150, 180, 255, 0.2)');
     
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(256, 256, 250, 0, Math.PI * 2);
+    ctx.arc(512, 512, 480, 0, Math.PI * 2);
     ctx.fill();
     
     for (let i = 0; i < 12; i++) {
         const angle = (i * 30) * Math.PI / 180;
-        const x1 = 256 + Math.cos(angle) * 200;
-        const y1 = 256 + Math.sin(angle) * 200;
-        const x2 = 256 + Math.cos(angle) * 280;
-        const y2 = 256 + Math.sin(angle) * 280;
+        const length = 380 + Math.sin(i) * 50;
+        
+        const x1 = 512 + Math.cos(angle) * 320;
+        const y1 = 512 + Math.sin(angle) * 320;
+        const x2 = 512 + Math.cos(angle) * length;
+        const y2 = 512 + Math.sin(angle) * length;
         
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
-        ctx.lineWidth = 20;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(angle) * 0.2})`;
+        ctx.lineWidth = 28;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(angle) * 0.2})`;
+        ctx.stroke();
+        
+        const x3 = 512 + Math.cos(angle + 0.2) * 340;
+        const y3 = 512 + Math.sin(angle + 0.2) * 340;
+        const x4 = 512 + Math.cos(angle + 0.2) * 400;
+        const y4 = 512 + Math.sin(angle + 0.2) * 400;
+        
+        ctx.beginPath();
+        ctx.moveTo(x3, y3);
+        ctx.lineTo(x4, y4);
+        ctx.lineWidth = 16;
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.3)`;
         ctx.stroke();
     }
     
@@ -93,7 +109,7 @@ function init3D() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
     
-    const width = 260, height = 260;
+    const width = 280, height = 280;
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
     
@@ -102,7 +118,7 @@ function init3D() {
         scene.background = null;
         
         camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 0, 3.5);
+        camera.position.set(0, 0, 3.2);
         
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
@@ -110,34 +126,41 @@ function init3D() {
         container.appendChild(renderer.domElement);
         
         const starTexture = createStarTexture();
-        const geometry = new THREE.SphereGeometry(1, 64, 64);
+        const geometry = new THREE.SphereGeometry(1, 128, 128);
         const material = new THREE.MeshPhongMaterial({ 
             map: starTexture,
-            emissive: 0x4466aa,
-            emissiveIntensity: 0.3,
-            shininess: 60
+            emissive: 0x88aaff,
+            emissiveIntensity: 0.4,
+            shininess: 80
         });
         planet3d = new THREE.Mesh(geometry, material);
         scene.add(planet3d);
         
+        const starLight = new THREE.PointLight(0xaaccff, 0.8);
+        starLight.position.set(0, 0, 0);
+        scene.add(starLight);
+        
         const ambientLight = new THREE.AmbientLight(0x404060);
         scene.add(ambientLight);
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
         mainLight.position.set(2, 2, 2);
         scene.add(mainLight);
-        const backLight = new THREE.PointLight(0x88aaff, 0.5);
+        const backLight = new THREE.PointLight(0x88aaff, 0.4);
         backLight.position.set(-1, -0.5, -1.5);
         scene.add(backLight);
         
         let time = 0;
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.01;
+            time += 0.02;
             if (planet3d) {
-                planet3d.rotation.y += 0.005;
+                planet3d.rotation.y += 0.002;
                 if (coins < 100) {
-                    const scale = 1 + Math.sin(time * 5) * 0.02;
+                    const scale = 1 + Math.sin(time * 4) * 0.03;
                     planet3d.scale.set(scale, scale, scale);
+                    starLight.intensity = 0.7 + Math.sin(time * 5) * 0.3;
+                } else {
+                    starLight.intensity = 0.5;
                 }
             }
             renderer.render(scene, camera);
@@ -149,7 +172,7 @@ function init3D() {
         container.style.touchAction = 'manipulation';
         setupTouchHandlers(container);
         
-        console.log('✅ 3D загружена');
+        console.log('✅ 3D загружена, белая звезда с лучами создана');
         
     }).catch(err => {
         console.error('Three.js error:', err);
@@ -166,15 +189,18 @@ function createFallbackStar() {
     container.style.justifyContent = 'center';
     container.style.background = 'radial-gradient(circle at 30% 30%, #ffffff, #aaccff)';
     container.style.borderRadius = '50%';
-    container.style.boxShadow = '0 0 40px rgba(100,150,255,0.6)';
+    container.style.boxShadow = '0 0 50px rgba(100,150,255,0.8)';
     container.style.cursor = 'pointer';
+    container.style.animation = 'starPulse 2s ease-in-out infinite';
+    
     const star = document.createElement('div');
     star.textContent = '⭐';
-    star.style.fontSize = '80px';
+    star.style.fontSize = '100px';
     star.style.color = 'white';
-    star.style.textShadow = '0 0 20px rgba(100,150,255,0.8)';
+    star.style.textShadow = '0 0 30px rgba(100,150,255,0.9)';
     star.style.pointerEvents = 'none';
     container.appendChild(star);
+    
     planetElement = container;
     setupTouchHandlers(container);
 }
@@ -193,10 +219,7 @@ async function syncToServer() {
                 maxEnergy: maxEnergy
             })
         });
-        console.log('✅ Данные отправлены на сервер');
-    } catch (e) {
-        console.log('⚠️ Сервер недоступен, данные сохранены локально');
-    }
+    } catch (e) {}
 }
 
 // ==================== МУЛЬТИТАЧ ====================
@@ -235,7 +258,7 @@ function processClick(eventData) {
     weeklyCoinsEarned += clickPower;
     updateUI();
     saveGame();
-    syncToServer(); // ← ОТПРАВЛЯЕМ НА СЕРВЕР
+    syncToServer();
     
     if (planetElement) {
         planetElement.style.transform = 'scale(0.95)';
@@ -331,14 +354,14 @@ function updatePlanetByLevel() {
         planet3d.material.emissiveIntensity = 0.2;
     } else if (level >= 5) {
         planet3d.material.color.setHex(0x88aaff);
-        planet3d.material.emissiveIntensity = 0.1;
+        planet3d.material.emissiveIntensity = 0.15;
     } else if (level >= 3) {
         planet3d.material.color.setHex(0xffaa88);
     } else if (level >= 2) {
         planet3d.material.color.setHex(0xccaa77);
     } else {
         planet3d.material.color.setHex(0xffffff);
-        planet3d.material.emissiveIntensity = 0.3;
+        planet3d.material.emissiveIntensity = 0.4;
     }
 }
 
@@ -378,7 +401,6 @@ function loadGame() {
         } catch(e) { console.error(e); }
     }
     
-    // Обработка реферального бонуса (только при первом запуске)
     if (referrerId && referrerId !== userId && !localStorage.getItem(`ref_bonus_${referrerId}_${userId}`)) {
         localStorage.setItem(`ref_bonus_${referrerId}_${userId}`, 'claimed');
         coins += 500;
@@ -690,7 +712,7 @@ function init() {
     }
     
     document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена! Прогресс синхронизируется с сервером');
+    console.log('✅ Игра загружена! Белая 3D-звезда с лучами активна');
     
     if (!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');

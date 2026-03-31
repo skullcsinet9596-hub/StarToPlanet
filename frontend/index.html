@@ -16,6 +16,7 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- Верхняя панель -->
         <div class="top-bar">
             <div class="user-info">
                 <div class="avatar">⭐</div>
@@ -27,19 +28,34 @@
             <div class="balance">🪙 <span id="coins">0</span></div>
         </div>
 
+        <!-- Игровая область -->
         <div class="game-area" id="gameArea">
+            <!-- 3D планета / звезда -->
             <div id="canvas-container"></div>
+            
+            <!-- BOOST кнопка между звездой и энергией -->
+            <button class="boost-btn" id="boostBtn">
+                <span class="boost-icon">⚡</span>
+                <span class="boost-text">BOOST</span>
+            </button>
+            
             <div class="stats-container">
                 <div class="energy-bar">
-                    <div class="energy-label"><span>⚡ Энергия</span><span id="energyValue">100/100</span></div>
-                    <div class="energy-progress"><div class="energy-fill" id="energyFill" style="width:100%"></div></div>
+                    <div class="energy-label">
+                        <span>⚡ Энергия</span>
+                        <span id="energyValue">100/100</span>
+                    </div>
+                    <div class="energy-progress">
+                        <div class="energy-fill" id="energyFill" style="width:100%"></div>
+                    </div>
                 </div>
-                <button class="boost-btn" id="boostBtn"><span class="boost-icon">⚡</span><span class="boost-text">BOOST</span></button>
             </div>
+            
             <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
             <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
+        <!-- Навигация -->
         <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
