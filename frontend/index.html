@@ -16,8 +16,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Верхняя панель: Telegram аватар вместо звезды -->
-        <div class="top-bar">
+        <div class="top-bar glass-panel">
             <div class="user-info">
                 <img id="userAvatar" class="avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
                 <div class="user-details">
@@ -28,7 +27,6 @@
             <div class="balance">🪙 <span id="coins">0</span></div>
         </div>
 
-        <!-- Игровая зона: 3D планета / звезда -->
         <div class="game-area" id="gameArea">
             <div id="canvas-container"></div>
             <button class="boost-btn" id="boostBtn">
@@ -36,7 +34,7 @@
                 <span class="boost-text">BOOST</span>
             </button>
             <div class="stats-container">
-                <div class="energy-bar">
+                <div class="energy-bar glass-panel">
                     <div class="energy-label">
                         <span>⚡ Энергия</span>
                         <span id="energyValue">100/100</span>
@@ -50,8 +48,7 @@
             <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
-        <!-- Нижняя навигация -->
-        <div class="nav-bar">
+        <div class="nav-bar glass-panel">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
             <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
@@ -60,9 +57,8 @@
             <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
-        <!-- Модалка BOOST (улучшения) -->
         <div class="modal-overlay" id="boostModal">
-            <div class="modal-content">
+            <div class="modal-content glass-panel">
                 <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
                 <div class="boost-list">
                     <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div><div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div></div><button class="boost-buy-btn" id="buyClickUpgrade">Купить</button></div>
@@ -72,7 +68,6 @@
             </div>
         </div>
 
-        <!-- Вкладка Задания -->
         <div class="tab-panel" id="tasksPanel">
             <div class="tasks-header">
                 <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
@@ -80,16 +75,15 @@
                 <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
             </div>
             <div class="tasks-content active" id="dailyTasks">
-                <div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
-                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
+                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
+                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
             </div>
             <div class="tasks-content" id="weeklyTasks">
-                <div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
-                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
+                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
+                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
             </div>
             <div class="tasks-content" id="premiumTasks">
-                <!-- Луна доступна только после Юпитера (10 млрд) -->
-                <div class="task-card premium-locked" id="premiumMoonCard">
+                <div class="task-card premium-locked glass-panel" id="premiumMoonCard">
                     <div class="task-info">
                         <div class="task-name">🌕 ЛУНА</div>
                         <div class="task-progress">+20 000 монет/мин</div>
@@ -98,8 +92,7 @@
                     </div>
                     <button class="task-claim-btn disabled" id="buyMoon" disabled>🔒 ЗАБЛОКИРОВАНО</button>
                 </div>
-                <!-- Земля доступна только после Луны -->
-                <div class="task-card premium-locked" id="premiumEarthCard">
+                <div class="task-card premium-locked glass-panel" id="premiumEarthCard">
                     <div class="task-info">
                         <div class="task-name">🌍 ЗЕМЛЯ</div>
                         <div class="task-progress">+50 000 монет/мин</div>
@@ -108,8 +101,7 @@
                     </div>
                     <button class="task-claim-btn disabled" id="buyEarth" disabled>🔒 ЗАБЛОКИРОВАНО</button>
                 </div>
-                <!-- Солнце доступно только после Земли -->
-                <div class="task-card premium-locked" id="premiumSunCard">
+                <div class="task-card premium-locked glass-panel" id="premiumSunCard">
                     <div class="task-info">
                         <div class="task-name">☀️ СОЛНЦЕ</div>
                         <div class="task-progress">+100 000 монет/мин</div>
@@ -121,24 +113,22 @@
             </div>
         </div>
 
-        <!-- Вкладка Друзья -->
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
             <div class="referral-stats">
-                <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
-                <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
-                <div class="stat-card"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
             </div>
-            <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
-            <div class="level-card"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
-            <div class="level-card"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
-            <div class="referral-link-container"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="Загрузка..."><button id="copyLinkBtn">📋</button></div></div>
+            <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
+            <div class="level-card glass-panel"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
+            <div class="level-card glass-panel"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
+            <div class="referral-link-container glass-panel"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="Загрузка..."><button id="copyLinkBtn">📋</button></div></div>
         </div>
 
-        <!-- Вкладка Профиль -->
         <div class="tab-panel" id="profilePanel">
             <h2>👤 Профиль</h2>
-            <div class="profile-card">
+            <div class="profile-card glass-panel">
                 <div class="profile-header">
                     <img id="profileAvatar" class="profile-avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
                     <div>
@@ -154,22 +144,23 @@
                 <div class="info-row"><span>👥 Приглашено</span><span id="profileReferrals">0</span></div>
                 <div class="info-row"><span>🏆 Рейтинг</span><span id="profileRank">#—</span></div>
             </div>
-            <div class="auth-section">
+            <div class="auth-section glass-panel">
                 <div class="auth-title">🔐 Авторизация</div>
                 <div class="auth-buttons"><button class="boost-buy-btn" id="authTelegramBtn">Telegram ✅</button><button class="boost-buy-btn" id="authVkBtn">VK</button></div>
             </div>
         </div>
 
-        <!-- Вкладка Рейтинг -->
         <div class="tab-panel" id="leaderboardPanel">
             <h2>🏆 Топ игроков</h2>
-            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка...</div></div>
+            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item glass-panel">🏆 Загрузка...</div></div>
         </div>
 
-        <!-- Вкладка Airdrop -->
         <div class="tab-panel" id="airdropPanel">
             <div class="airdrop-content">
-                <div class="golden-coin"><div class="rays" id="raysContainer"></div><div class="coin-star">⭐</div></div>
+                <div class="golden-coin">
+                    <div class="rays" id="raysContainer"></div>
+                    <div class="coin-star-white">⭐</div>
+                </div>
                 <div class="airdrop-soon">СКОРО</div>
                 <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
             </div>
