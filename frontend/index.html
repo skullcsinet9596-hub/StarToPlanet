@@ -699,7 +699,9 @@
         // ==================== TELEGRAM ====================
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.enableClosingConfirmation();
+        if (tg.version && parseFloat(tg.version) >= 6.0) {
+            tg.enableClosingConfirmation();
+        }
 
         const tgUser = tg.initDataUnsafe?.user;
         let userId = tgUser?.id || 'guest_' + Math.floor(Math.random() * 1000000000);
@@ -1014,16 +1016,19 @@
             const stars = new THREE.Points(starGeo, starMat);
             scene.add(stars);
             
+            // Сохраняем звёзды для анимации
+            window.starsField = stars;
+            
             updatePlanetModel();
             
             function animate() {
                 requestAnimationFrame(animate);
                 if (currentPlanet) currentPlanet.rotation.y += 0.005;
                 if (currentRings) currentRings.forEach(ring => { if (ring) ring.rotation.y += 0.002; });
-                if (currentRays) currentRays.forEach(ray => { ray.rotation.z += 0.002; });
-                stars.rotation.y += 0.0003;
+                if (currentRays) currentRays.forEach(ray => { if (ray) ray.rotation.z += 0.002; });
+                if (window.starsField) window.starsField.rotation.y += 0.0003;
                 
-                if (container.clientWidth > 0) {
+                if (container && container.clientWidth > 0) {
                     const w = container.clientWidth;
                     const h = container.clientHeight;
                     if (renderer.domElement.width !== w) {
@@ -1037,6 +1042,7 @@
             animate();
             
             window.addEventListener('resize', () => {
+                if (!container) return;
                 const w = container.clientWidth;
                 const h = container.clientHeight;
                 renderer.setSize(w, h);
@@ -1055,22 +1061,35 @@
                 raycaster.setFromCamera(mouse, camera);
                 if (currentPlanet) {
                     const intersects = raycaster.intersectObject(currentPlanet);
-                    if (intersects.length > 0) handleClick();
+                    if (intersects.length > 0) handleClick(event);
                 }
             });
         }
         
         function updatePlanetModel() {
             // Удаляем старые объекты
-            if (currentPlanet) scene.remove(currentPlanet);
-            if (currentGlow) scene.remove(currentGlow);
-            currentRings.forEach(ring => { if (ring) scene.remove(ring); });
-            currentRays.forEach(ray => { if (ray) scene.remove(ray); });
-            currentProts.forEach(prot => { if (prot) scene.remove(prot); });
+            if (currentPlanet && scene) scene.remove(currentPlanet);
+            if (currentGlow && scene) scene.remove(currentGlow);
+            if (currentRings && currentRings.length) {
+                currentRings.forEach(ring => { if (ring && scene) scene.remove(ring); });
+            }
+            if (currentRays && currentRays.length) {
+                currentRays.forEach(ray => { if (ray && scene) scene.remove(ray); });
+            }
+            if (currentProts && currentProts.length) {
+                currentProts.forEach(prot => { if (prot && scene) scene.remove(prot); });
+            }
+            
+            currentRings = [];
+            currentRays = [];
+            currentProts = [];
             
             const level = getFullLevel();
             const size = planetSizes[level] || 0.85;
             let material, geometry;
+            
+            // Если сцена ещё не создана, выходим
+            if (!scene) return;
             
             // Создаём планету в зависимости от уровня
             if (level === 0) {
@@ -1227,7 +1246,7 @@
             }
         }
         
-        function handleClick() {
+        function handleClick(event) {
             if (energy < clickPower) {
                 showMessage('❌ Нет энергии!', true);
                 return;
@@ -1249,8 +1268,8 @@
             const popup = document.createElement('div');
             popup.textContent = `+${clickPower}`;
             popup.style.position = 'fixed';
-            popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
-            popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
+            popup.style.left = (event?.clientX || window.innerWidth/2) + 'px';
+            popup.style.top = (event?.clientY || window.innerHeight/2 - 100) + 'px';
             popup.style.color = '#ffd700';
             popup.style.fontSize = '24px';
             popup.style.fontWeight = 'bold';
@@ -1534,6 +1553,7 @@
         }
         
         function init() {
+            init3D();
             loadGame();
             setupTabs();
             setupTasksTabs();
@@ -1567,7 +1587,6 @@
                 document.head.appendChild(style);
             }
             
-            init3D();
             setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
         }
         
