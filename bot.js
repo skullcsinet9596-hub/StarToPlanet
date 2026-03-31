@@ -28,12 +28,14 @@ app.get('/api/health', (req, res) => {
 bot.start(async (ctx) => {
     try {
         const user = ctx.from;
+        // ✅ БЕЗОПАСНОЕ ПОЛУЧЕНИЕ ТЕКСТА
         const text = ctx.message?.text || '';
-        
         let referrerId = null;
-        if (text && text.includes('ref_')) {
+
+        // ✅ ПРОВЕРКА ПЕРЕД ИСПОЛЬЗОВАНИЕМ
+        if (text && typeof text === 'string') {
             const parts = text.split(' ');
-            if (parts.length > 1 && parts[1] && parts[1].startsWith('ref_')) {
+            if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
                 const refNum = parseInt(parts[1].replace('ref_', ''));
                 if (!isNaN(refNum) && refNum !== user.id) {
                     referrerId = refNum;
@@ -94,13 +96,11 @@ async function start() {
         const me = await bot.telegram.getMe();
         console.log(`🤖 Username: @${me.username}`);
         
-        // Запускаем API сервер и выводим в лог, что порт слушается
+        // Запускаем API сервер
         const server = app.listen(PORT, '0.0.0.0', () => {
             console.log(`🌐 API сервер запущен на порту ${PORT}`);
-            console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
         });
         
-        // Обработка ошибок сервера
         server.on('error', (err) => {
             console.error('❌ Ошибка сервера:', err.message);
             process.exit(1);
