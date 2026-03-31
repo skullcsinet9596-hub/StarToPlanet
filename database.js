@@ -110,13 +110,22 @@ async function createUser(telegramId, username, firstName, referrerId = null) {
         VALUES (?, ?, ?, ?, 1000, 1000, 1, 100, 1, 200, 0, 500, 1)
     `, telegramId, username, firstName, referrerId);
 
+    // ✅ УБРАЛ localStorage — теперь проверка по базе данных
     if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
         const referrer = await getUser(referrerId);
         if (referrer) {
-            await db.run(`INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)`, referrerId, telegramId);
-            await db.run(`UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = ?`, referrerId);
-            await addCoins(referrerId, 1000);
-            await addCoins(telegramId, 500);
+            // Проверяем, не был ли уже начислен бонус за этого реферала
+            const existingReferral = await db.get(
+                'SELECT * FROM referrals WHERE referrer_id = ? AND referred_id = ?',
+                referrerId, telegramId
+            );
+            
+            if (!existingReferral) {
+                await db.run(`INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)`, referrerId, telegramId);
+                await db.run(`UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = ?`, referrerId);
+                await addCoins(referrerId, 1000);
+                await addCoins(telegramId, 500);
+            }
         }
     }
 
