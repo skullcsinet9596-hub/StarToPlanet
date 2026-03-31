@@ -94,10 +94,18 @@ async function start() {
         const me = await bot.telegram.getMe();
         console.log(`🤖 Username: @${me.username}`);
         
-        // Запускаем API сервер
-        app.listen(PORT, () => {
-            console.log(`🌐 API: http://localhost:${PORT}/api/health`);
+        // Запускаем API сервер и выводим в лог, что порт слушается
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🌐 API сервер запущен на порту ${PORT}`);
+            console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
         });
+        
+        // Обработка ошибок сервера
+        server.on('error', (err) => {
+            console.error('❌ Ошибка сервера:', err.message);
+            process.exit(1);
+        });
+        
     } catch (err) {
         console.error('❌ Ошибка при запуске:', err.message);
         process.exit(1);
