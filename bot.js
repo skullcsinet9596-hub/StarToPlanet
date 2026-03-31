@@ -33,10 +33,14 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/user/:telegramId', async (req, res) => {
     try {
-        const user = await db.getUser(parseInt(req.params.telegramId));
-        const stats = await db.getStats(parseInt(req.params.telegramId));
-        const dailyTasks = await db.getDailyTasks(parseInt(req.params.telegramId));
-        const weeklyTasks = await db.getWeeklyTasks(parseInt(req.params.telegramId));
+        const telegramId = parseInt(req.params.telegramId);
+        if (isNaN(telegramId)) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        const user = await db.getUser(telegramId);
+        const stats = await db.getStats(telegramId);
+        const dailyTasks = await db.getDailyTasks(telegramId);
+        const weeklyTasks = await db.getWeeklyTasks(telegramId);
         res.json({ user, stats, dailyTasks, weeklyTasks });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -45,7 +49,11 @@ app.get('/api/user/:telegramId', async (req, res) => {
 
 app.get('/api/friends/:telegramId', async (req, res) => {
     try {
-        const friends = await db.getReferrals(parseInt(req.params.telegramId));
+        const telegramId = parseInt(req.params.telegramId);
+        if (isNaN(telegramId)) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        const friends = await db.getReferrals(telegramId);
         res.json(friends);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -54,7 +62,11 @@ app.get('/api/friends/:telegramId', async (req, res) => {
 
 app.get('/api/referral-structure/:telegramId', async (req, res) => {
     try {
-        const structure = await db.getReferralsByLevel(parseInt(req.params.telegramId));
+        const telegramId = parseInt(req.params.telegramId);
+        if (isNaN(telegramId)) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        const structure = await db.getReferralsByLevel(telegramId);
         res.json(structure);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -64,16 +76,19 @@ app.get('/api/referral-structure/:telegramId', async (req, res) => {
 app.post('/api/update', async (req, res) => {
     try {
         const { telegramId, gameData } = req.body;
-        await db.updateUserGameData(telegramId, gameData);
+        if (!telegramId || isNaN(parseInt(telegramId))) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        await db.updateUserGameData(parseInt(telegramId), gameData);
         
         // Обновляем прогресс заданий
-        const user = await db.getUser(telegramId);
+        const user = await db.getUser(parseInt(telegramId));
         const previousCoins = user?.coins || 0;
         const coinsEarned = Math.max(0, gameData.coins - previousCoins);
         
         if (gameData.dailyClickCount) {
-            await db.updateDailyProgress(telegramId, gameData.dailyClickCount, coinsEarned);
-            await db.updateWeeklyProgress(telegramId, gameData.weeklyClickCount, coinsEarned);
+            await db.updateDailyProgress(parseInt(telegramId), gameData.dailyClickCount || 0, coinsEarned);
+            await db.updateWeeklyProgress(parseInt(telegramId), gameData.weeklyClickCount || 0, coinsEarned);
         }
         
         res.json({ success: true });
@@ -85,7 +100,10 @@ app.post('/api/update', async (req, res) => {
 app.post('/api/daily-bonus', async (req, res) => {
     try {
         const { telegramId } = req.body;
-        const result = await db.claimDailyBonus(telegramId);
+        if (!telegramId || isNaN(parseInt(telegramId))) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        const result = await db.claimDailyBonus(parseInt(telegramId));
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -95,14 +113,15 @@ app.post('/api/daily-bonus', async (req, res) => {
 app.post('/api/claim-task', async (req, res) => {
     try {
         const { telegramId, taskType, taskPeriod } = req.body;
-        let result;
-        
-        if (taskPeriod === 'daily') {
-            result = await db.claimDailyTask(telegramId, taskType);
-        } else {
-            result = await db.claimWeeklyTask(telegramId, taskType);
+        if (!telegramId || isNaN(parseInt(telegramId))) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
         }
-        
+        let result;
+        if (taskPeriod === 'daily') {
+            result = await db.claimDailyTask(parseInt(telegramId), taskType);
+        } else {
+            result = await db.claimWeeklyTask(parseInt(telegramId), taskType);
+        }
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -112,7 +131,10 @@ app.post('/api/claim-task', async (req, res) => {
 app.post('/api/toggle-sound', async (req, res) => {
     try {
         const { telegramId } = req.body;
-        const soundEnabled = await db.toggleSound(telegramId);
+        if (!telegramId || isNaN(parseInt(telegramId))) {
+            return res.status(400).json({ error: 'Invalid telegramId' });
+        }
+        const soundEnabled = await db.toggleSound(parseInt(telegramId));
         res.json({ soundEnabled });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -122,88 +144,120 @@ app.post('/api/toggle-sound', async (req, res) => {
 // ========== КОМАНДЫ БОТА ==========
 
 bot.start(async (ctx) => {
-    const user = ctx.from;
-    const text = ctx.message.text;
-    
-    let referrerId = null;
-    const parts = text.split(' ');
-    if (parts.length > 1 && parts[1].startsWith('ref_')) {
-        referrerId = parseInt(parts[1].replace('ref_', ''));
-        if (referrerId === user.id) referrerId = null;
-    }
-
-    await db.createUser(user.id, user.username || user.first_name, user.first_name, referrerId);
-
-    const webAppUrl = `${APP_URL}?startapp=ref_${user.id}`;
-    const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref_${user.id}`;
-
-    let message = `⭐ <b>Star to Planet</b> ⭐\n\n`;
-    message += `Привет, ${user.first_name}!\n\n`;
-    message += `Добро пожаловать в игру!\n\n`;
-    
-    if (referrerId) {
-        message += `🎉 Вас пригласили! +500 монет бонусом!\n\n`;
-    }
-    
-    message += `<b>💰 Реферальная программа:</b>\n`;
-    message += `• 1 уровень: 50% от дохода друга\n`;
-    message += `• 2 уровень: 20%\n`;
-    message += `• 3 уровень: 10%\n\n`;
-    
-    message += `<b>🎁 Ежедневный бонус:</b>\n`;
-    message += `• Заходи каждый день и получай до 2000 монет!\n\n`;
-    
-    message += `<b>Ваша ссылка:</b>\n`;
-    message += `<code>${referralLink}</code>\n\n`;
-    message += `<i>Нажми кнопку, чтобы начать!</i>`;
-
-    ctx.replyWithHTML(message, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🚀 Открыть игру', web_app: { url: webAppUrl } }],
-                [{ text: '🎁 Ежедневный бонус', callback_data: 'daily_bonus' }],
-                [{ text: '👥 Пригласить друга', url: referralLink }]
-            ]
+    try {
+        const user = ctx.from;
+        const text = ctx.message.text;
+        
+        let referrerId = null;
+        const parts = text.split(' ');
+        if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
+            const refNum = parseInt(parts[1].replace('ref_', ''));
+            if (!isNaN(refNum) && refNum !== user.id) {
+                referrerId = refNum;
+            }
         }
-    });
+
+        await db.createUser(user.id, user.username || user.first_name, user.first_name, referrerId);
+
+        const webAppUrl = `${APP_URL}?startapp=ref_${user.id}`;
+        const referralLink = `https://t.me/${ctx.botInfo.username}?start=ref_${user.id}`;
+
+        let message = `⭐ <b>Star to Planet</b> ⭐\n\n`;
+        message += `Привет, ${user.first_name}!\n\n`;
+        message += `Добро пожаловать в игру!\n\n`;
+        
+        if (referrerId) {
+            message += `🎉 Вас пригласили! +500 монет бонусом!\n\n`;
+        }
+        
+        message += `<b>💰 Реферальная программа:</b>\n`;
+        message += `• 1 уровень: 50% от дохода друга\n`;
+        message += `• 2 уровень: 20%\n`;
+        message += `• 3 уровень: 10%\n\n`;
+        
+        message += `<b>🎁 Ежедневный бонус:</b>\n`;
+        message += `• Заходи каждый день и получай до 2000 монет!\n\n`;
+        
+        message += `<b>Ваша ссылка:</b>\n`;
+        message += `<code>${referralLink}</code>\n\n`;
+        message += `<i>Нажми кнопку, чтобы начать!</i>`;
+
+        await ctx.replyWithHTML(message, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🚀 Открыть игру', web_app: { url: webAppUrl } }],
+                    [{ text: '🎁 Ежедневный бонус', callback_data: 'daily_bonus' }],
+                    [{ text: '👥 Пригласить друга', url: referralLink }]
+                ]
+            }
+        });
+    } catch (err) {
+        console.error('Ошибка в start:', err.message);
+        await ctx.reply('❌ Произошла ошибка. Попробуйте позже.');
+    }
 });
 
 bot.action('daily_bonus', async (ctx) => {
-    const result = await db.claimDailyBonus(ctx.from.id);
-    if (result.success) {
-        await ctx.answerCbQuery(`🎉 +${result.bonus} монет! Стрик: ${result.streak} дней`);
-        await ctx.replyWithHTML(`🎉 <b>Ежедневный бонус!</b>\n+${result.bonus} 🪙\n🔥 Стрик: ${result.streak} дней`);
-    } else {
-        await ctx.answerCbQuery(result.message);
+    try {
+        const result = await db.claimDailyBonus(ctx.from.id);
+        if (result.success) {
+            await ctx.answerCbQuery(`🎉 +${result.bonus} монет! Стрик: ${result.streak} дней`);
+            await ctx.replyWithHTML(`🎉 <b>Ежедневный бонус!</b>\n+${result.bonus} 🪙\n🔥 Стрик: ${result.streak} дней`);
+        } else {
+            await ctx.answerCbQuery(result.message || 'Бонус уже получен сегодня!');
+        }
+    } catch (err) {
+        console.error('Ошибка в daily_bonus:', err.message);
+        await ctx.answerCbQuery('❌ Ошибка');
     }
 });
 
 bot.command('referral', async (ctx) => {
-    const link = `https://t.me/${ctx.botInfo.username}?start=ref_${ctx.from.id}`;
-    const stats = await db.getStats(ctx.from.id);
-    ctx.replyWithHTML(`👥 <b>Ваша ссылка</b>\n<code>${link}</code>\n\n📊 Друзей: ${stats.referralsCount}\n🎁 Бонусов: ${stats.totalReferralBonus} 🪙`);
+    try {
+        const link = `https://t.me/${ctx.botInfo.username}?start=ref_${ctx.from.id}`;
+        const stats = await db.getStats(ctx.from.id);
+        await ctx.replyWithHTML(`👥 <b>Ваша ссылка</b>\n<code>${link}</code>\n\n📊 Друзей: ${stats.referralsCount}\n🎁 Бонусов: ${stats.totalReferralBonus} 🪙`);
+    } catch (err) {
+        console.error('Ошибка в referral:', err.message);
+        await ctx.reply('❌ Ошибка');
+    }
 });
 
 bot.command('structure', async (ctx) => {
-    const structure = await db.getReferralsByLevel(ctx.from.id);
-    ctx.reply(`🌳 Ваша структура:\n⭐ 1 уровень: ${structure.level1.length}\n✨ 2 уровень: ${structure.level2.length}\n💫 3 уровень: ${structure.level3.length}`);
+    try {
+        const structure = await db.getReferralsByLevel(ctx.from.id);
+        await ctx.reply(`🌳 Ваша структура:\n⭐ 1 уровень: ${structure.level1.length}\n✨ 2 уровень: ${structure.level2.length}\n💫 3 уровень: ${structure.level3.length}`);
+    } catch (err) {
+        console.error('Ошибка в structure:', err.message);
+        await ctx.reply('❌ Ошибка');
+    }
 });
 
 bot.command('top', async (ctx) => {
-    const top = await db.getLeaderboard(10);
-    let msg = `🏆 Топ-10:\n`;
-    top.forEach((p, i) => {
-        msg += `${i+1}. ${p.first_name || p.username} — ${p.coins.toLocaleString()} 🪙\n`;
-    });
-    ctx.reply(msg);
+    try {
+        const top = await db.getLeaderboard(10);
+        let msg = `🏆 Топ-10:\n`;
+        top.forEach((p, i) => {
+            msg += `${i+1}. ${p.first_name || p.username || 'Игрок'} — ${p.coins.toLocaleString()} 🪙\n`;
+        });
+        await ctx.reply(msg);
+    } catch (err) {
+        console.error('Ошибка в top:', err.message);
+        await ctx.reply('❌ Ошибка');
+    }
 });
 
 bot.command('daily', async (ctx) => {
-    const result = await db.claimDailyBonus(ctx.from.id);
-    if (result.success) {
-        ctx.reply(`🎉 Ежедневный бонус: +${result.bonus} монет! Стрик: ${result.streak} дней`);
-    } else {
-        ctx.reply(`❌ ${result.message}`);
+    try {
+        const result = await db.claimDailyBonus(ctx.from.id);
+        if (result.success) {
+            await ctx.reply(`🎉 Ежедневный бонус: +${result.bonus} монет! Стрик: ${result.streak} дней`);
+        } else {
+            await ctx.reply(`❌ ${result.message || 'Бонус уже получен сегодня!'}`);
+        }
+    } catch (err) {
+        console.error('Ошибка в daily:', err.message);
+        await ctx.reply('❌ Ошибка');
     }
 });
 
