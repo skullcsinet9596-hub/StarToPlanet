@@ -20,7 +20,6 @@ app.use(cors());
 app.use(express.json());
 
 // ========== API ENDPOINTS ==========
-
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
@@ -34,9 +33,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/user/:telegramId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.telegramId);
-        if (isNaN(telegramId)) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (isNaN(telegramId)) return res.status(400).json({ error: 'Invalid telegramId' });
         const user = await db.getUser(telegramId);
         const stats = await db.getStats(telegramId);
         const dailyTasks = await db.getDailyTasks(telegramId);
@@ -50,9 +47,7 @@ app.get('/api/user/:telegramId', async (req, res) => {
 app.get('/api/friends/:telegramId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.telegramId);
-        if (isNaN(telegramId)) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (isNaN(telegramId)) return res.status(400).json({ error: 'Invalid telegramId' });
         const friends = await db.getReferrals(telegramId);
         res.json(friends);
     } catch (err) {
@@ -63,9 +58,7 @@ app.get('/api/friends/:telegramId', async (req, res) => {
 app.get('/api/referral-structure/:telegramId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.telegramId);
-        if (isNaN(telegramId)) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (isNaN(telegramId)) return res.status(400).json({ error: 'Invalid telegramId' });
         const structure = await db.getReferralsByLevel(telegramId);
         res.json(structure);
     } catch (err) {
@@ -76,9 +69,7 @@ app.get('/api/referral-structure/:telegramId', async (req, res) => {
 app.post('/api/update', async (req, res) => {
     try {
         const { telegramId, gameData } = req.body;
-        if (!telegramId || isNaN(parseInt(telegramId))) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (!telegramId || isNaN(parseInt(telegramId))) return res.status(400).json({ error: 'Invalid telegramId' });
         await db.updateUserGameData(parseInt(telegramId), gameData);
         
         const user = await db.getUser(parseInt(telegramId));
@@ -99,9 +90,7 @@ app.post('/api/update', async (req, res) => {
 app.post('/api/daily-bonus', async (req, res) => {
     try {
         const { telegramId } = req.body;
-        if (!telegramId || isNaN(parseInt(telegramId))) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (!telegramId || isNaN(parseInt(telegramId))) return res.status(400).json({ error: 'Invalid telegramId' });
         const result = await db.claimDailyBonus(parseInt(telegramId));
         res.json(result);
     } catch (err) {
@@ -112,15 +101,10 @@ app.post('/api/daily-bonus', async (req, res) => {
 app.post('/api/claim-task', async (req, res) => {
     try {
         const { telegramId, taskType, taskPeriod } = req.body;
-        if (!telegramId || isNaN(parseInt(telegramId))) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (!telegramId || isNaN(parseInt(telegramId))) return res.status(400).json({ error: 'Invalid telegramId' });
         let result;
-        if (taskPeriod === 'daily') {
-            result = await db.claimDailyTask(parseInt(telegramId), taskType);
-        } else {
-            result = await db.claimWeeklyTask(parseInt(telegramId), taskType);
-        }
+        if (taskPeriod === 'daily') result = await db.claimDailyTask(parseInt(telegramId), taskType);
+        else result = await db.claimWeeklyTask(parseInt(telegramId), taskType);
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -130,9 +114,7 @@ app.post('/api/claim-task', async (req, res) => {
 app.post('/api/toggle-sound', async (req, res) => {
     try {
         const { telegramId } = req.body;
-        if (!telegramId || isNaN(parseInt(telegramId))) {
-            return res.status(400).json({ error: 'Invalid telegramId' });
-        }
+        if (!telegramId || isNaN(parseInt(telegramId))) return res.status(400).json({ error: 'Invalid telegramId' });
         const soundEnabled = await db.toggleSound(parseInt(telegramId));
         res.json({ soundEnabled });
     } catch (err) {
@@ -145,14 +127,12 @@ app.post('/api/toggle-sound', async (req, res) => {
 bot.start(async (ctx) => {
     try {
         const user = ctx.from;
-        // ✅ БЕЗОПАСНО: проверяем, существует ли текст сообщения
-        const text = ctx.message && ctx.message.text ? ctx.message.text : '';
+        // ✅ ГЛАВНОЕ ИСПРАВЛЕНИЕ: проверяем, существует ли текст сообщения
+        const text = ctx.message?.text || '';
         let referrerId = null;
 
-        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ТЕПЕРЬ ТОЧНО БЕЗ ОШИБОК
         if (text && typeof text === 'string') {
             const parts = text.split(' ');
-            // Проверяем, что parts[1] существует и является строкой
             if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
                 const refNum = parseInt(parts[1].replace('ref_', ''));
                 if (!isNaN(refNum) && refNum !== user.id) {
@@ -169,19 +149,13 @@ bot.start(async (ctx) => {
         let message = `⭐ <b>Star to Planet</b> ⭐\n\n`;
         message += `Привет, ${user.first_name}!\n\n`;
         message += `Добро пожаловать в игру!\n\n`;
-        
-        if (referrerId) {
-            message += `🎉 Вас пригласили! +500 монет бонусом!\n\n`;
-        }
-        
+        if (referrerId) message += `🎉 Вас пригласили! +500 монет бонусом!\n\n`;
         message += `<b>💰 Реферальная программа:</b>\n`;
         message += `• 1 уровень: 50% от дохода друга\n`;
         message += `• 2 уровень: 20%\n`;
         message += `• 3 уровень: 10%\n\n`;
-        
         message += `<b>🎁 Ежедневный бонус:</b>\n`;
         message += `• Заходи каждый день и получай до 2000 монет!\n\n`;
-        
         message += `<b>Ваша ссылка:</b>\n`;
         message += `<code>${referralLink}</code>\n\n`;
         message += `<i>Нажми кнопку, чтобы начать!</i>`;
