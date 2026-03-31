@@ -85,6 +85,7 @@ bot.help((ctx) => {
 // ========== ЗАПУСК ==========
 async function start() {
     try {
+        // Удаляем вебхук и запускаем в режиме long polling
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
         await bot.launch({ webhook: false });
         
@@ -93,11 +94,12 @@ async function start() {
         const me = await bot.telegram.getMe();
         console.log(`🤖 Username: @${me.username}`);
         
+        // Запускаем API сервер
         app.listen(PORT, () => {
             console.log(`🌐 API: http://localhost:${PORT}/api/health`);
         });
     } catch (err) {
-        console.error('❌ Ошибка:', err.message);
+        console.error('❌ Ошибка при запуске:', err.message);
         process.exit(1);
     }
 }
