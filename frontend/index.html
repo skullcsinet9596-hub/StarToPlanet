@@ -16,7 +16,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Верхняя панель -->
         <div class="top-bar">
             <div class="user-info">
                 <div class="avatar">⭐</div>
@@ -28,17 +27,12 @@
             <div class="balance">🪙 <span id="coins">0</span></div>
         </div>
 
-        <!-- Игровая область -->
         <div class="game-area" id="gameArea">
-            <!-- 3D планета / звезда -->
             <div id="canvas-container"></div>
-            
-            <!-- BOOST кнопка между звездой и энергией -->
             <button class="boost-btn" id="boostBtn">
                 <span class="boost-icon">⚡</span>
                 <span class="boost-text">BOOST</span>
             </button>
-            
             <div class="stats-container">
                 <div class="energy-bar">
                     <div class="energy-label">
@@ -50,12 +44,10 @@
                     </div>
                 </div>
             </div>
-            
             <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
             <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
-        <!-- Навигация -->
         <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
@@ -65,7 +57,6 @@
             <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
         </div>
 
-        <!-- BOOST модалка -->
         <div class="modal-overlay" id="boostModal">
             <div class="modal-content">
                 <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
@@ -77,7 +68,6 @@
             </div>
         </div>
 
-        <!-- ЗАДАНИЯ -->
         <div class="tab-panel" id="tasksPanel">
             <div class="tasks-header">
                 <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
@@ -99,7 +89,6 @@
             </div>
         </div>
 
-        <!-- ДРУЗЬЯ -->
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
             <div class="referral-stats">
@@ -113,7 +102,6 @@
             <div class="referral-link-container"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="Загрузка..."><button id="copyLinkBtn">📋</button></div></div>
         </div>
 
-        <!-- ПРОФИЛЬ -->
         <div class="tab-panel" id="profilePanel">
             <h2>👤 Профиль</h2>
             <div class="profile-card"><div class="profile-header"><div class="profile-avatar">⭐</div><div><div><strong id="profileName">Игрок</strong></div><div>ID: <span id="profileId">-</span></div><div>Регистрация: <span id="profileDate">-</span></div></div></div>
@@ -126,13 +114,11 @@
             <div class="auth-section"><div class="auth-title">🔐 Авторизация</div><div class="auth-buttons" style="display:flex; gap:12px; justify-content:center;"><button class="boost-buy-btn" id="authTelegramBtn">Telegram ✅</button><button class="boost-buy-btn" id="authVkBtn">VK</button></div></div>
         </div>
 
-        <!-- РЕЙТИНГ -->
         <div class="tab-panel" id="leaderboardPanel">
             <h2>🏆 Топ игроков</h2>
             <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка...</div></div>
         </div>
 
-        <!-- AIRDROP -->
         <div class="tab-panel" id="airdropPanel">
             <div class="airdrop-content">
                 <div class="golden-coin">

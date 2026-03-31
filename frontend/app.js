@@ -205,7 +205,6 @@ function createFallbackStar() {
     setupTouchHandlers(container);
 }
 
-// ==================== СИНХРОНИЗАЦИЯ С СЕРВЕРОМ ====================
 async function syncToServer() {
     if (!userId || userId.toString().startsWith('guest')) return;
     try {
@@ -222,7 +221,6 @@ async function syncToServer() {
     } catch (e) {}
 }
 
-// ==================== МУЛЬТИТАЧ ====================
 function setupTouchHandlers(element) {
     if (!element) return;
     element.removeEventListener('touchstart', touchHandler);
@@ -282,7 +280,6 @@ function processClick(eventData) {
     setTimeout(() => popup.remove(), 500);
 }
 
-// ==================== UI ФУНКЦИИ ====================
 function updateUI() {
     document.getElementById('coins').textContent = Math.floor(coins);
     document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
@@ -539,7 +536,6 @@ function showMessage(text, isError = false) {
     setTimeout(() => msg.classList.remove('show'), 2000);
 }
 
-// ==================== РЕЙТИНГ И ДРУЗЬЯ ====================
 const DEMO_PLAYERS = [
     { name: displayName, coins: 0, level: 1, isCurrent: true },
     { name: "⭐ Космический_воин", coins: 1250000, level: 8 },
@@ -620,7 +616,6 @@ async function loadFriendsFromAPI() {
     updateFriendsUI();
 }
 
-// ==================== ВКЛАДКИ ====================
 function setupTabs() {
     const panels = {
         game: document.getElementById('gameArea'),
@@ -674,7 +669,6 @@ function copyReferralLink() {
     if (input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); }
 }
 
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
 function init() {
     loadGame();
     init3D();
