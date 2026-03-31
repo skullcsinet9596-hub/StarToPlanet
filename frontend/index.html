@@ -15,7 +15,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #111215 0%, #1a1a2e 100%);
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
             color: #fff;
             min-height: 100vh;
             overflow-x: hidden;
@@ -29,9 +29,9 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            position: relative;
         }
 
+        /* iOS 26 стеклянные панели */
         .glass-panel {
             background: rgba(20, 20, 24, 0.75);
             backdrop-filter: blur(28px);
@@ -103,20 +103,43 @@
             position: relative;
         }
 
-        #canvas-container {
-            width: 260px;
-            height: 260px;
-            margin: 10px auto;
+        /* ========== НАСТОЯЩАЯ ЗВЕЗДА ========== */
+        .star-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
             cursor: pointer;
-            border-radius: 50%;
-            overflow: visible;
+            transition: transform 0.1s ease;
         }
 
-        canvas {
-            width: 100% !important;
-            height: 100% !important;
+        .star-svg {
+            width: 100%;
+            height: 100%;
+            animation: starPulse 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
+        }
+
+        .planet-emoji {
+            font-size: 120px;
+            text-align: center;
+            line-height: 200px;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            cursor: pointer;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), rgba(0,0,0,0.2));
             border-radius: 50%;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+
+        .planet-emoji:active, .star-container:active {
+            transform: scale(0.96);
+        }
+
+        @keyframes starPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; filter: drop-shadow(0 0 15px rgba(255,255,255,0.8)); }
+            50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); }
         }
 
         .boost-btn {
@@ -538,7 +561,8 @@
             .ray:nth-child(6), .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(150deg) translateY(-68px); }
             .task-card { flex-direction: column; text-align: center; }
             .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
-            #canvas-container { width: 220px; height: 220px; }
+            .star-container { width: 160px; height: 160px; }
+            .planet-emoji { width: 160px; height: 160px; font-size: 90px; line-height: 160px; }
             .avatar-img { width: 38px; height: 38px; }
             .profile-avatar-img { width: 45px; height: 45px; }
             .link-box { flex-direction: column; }
@@ -546,13 +570,6 @@
             .nav-bar { margin: 0 12px 12px 12px; }
         }
     </style>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
-        }
-    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -569,7 +586,20 @@
         </div>
 
         <div class="game-area" id="gameArea">
-            <div id="canvas-container"></div>
+            <!-- ЗВЕЗДА SVG -->
+            <div id="starContainer" class="star-container">
+                <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+                    <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
+                    <defs>
+                        <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
+                            <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
+                        </radialGradient>
+                    </defs>
+                </svg>
+            </div>
+
             <button class="boost-btn" id="boostBtn">
                 <span class="boost-icon">⚡</span>
                 <span class="boost-text">BOOST</span>
@@ -716,9 +746,7 @@
     </div>
     <div class="message" id="message"></div>
 
-    <script type="module">
-        import * as THREE from 'three';
-
+    <script>
         // ==================== TELEGRAM ====================
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -765,11 +793,7 @@
         let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
         let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
 
-        // ==================== 3D ПЕРЕМЕННЫЕ ====================
-        let scene = null, camera = null, renderer = null, currentObject = null;
-        let starLight = null, time = 0;
-        let is3DReady = false;
-        let pendingUpdate = false;
+        const starContainer = document.getElementById('starContainer');
 
         function getLevel() {
             if (coins >= 10000000000) return 7;
@@ -782,146 +806,32 @@
             return 0;
         }
 
-        function createStar() {
-            const geometry = new THREE.SphereGeometry(1, 64, 64);
-            const material = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                emissive: 0x88aaff,
-                emissiveIntensity: 0.5,
-                shininess: 80
-            });
-            const star = new THREE.Mesh(geometry, material);
-            
-            const rayCount = 24;
-            const rayGeometry = new THREE.BufferGeometry();
-            const rayPositions = [];
-            for (let i = 0; i < rayCount; i++) {
-                const angle = (i / rayCount) * Math.PI * 2;
-                const dx = Math.cos(angle);
-                const dy = Math.sin(angle);
-                rayPositions.push(dx * 1.4, dy * 1.4, 0);
-                rayPositions.push(dx * 2.2, dy * 2.2, 0);
-            }
-            rayGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rayPositions), 3));
-            const rayMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-            const rays = new THREE.LineSegments(rayGeometry, rayMaterial);
-            star.add(rays);
-            
-            return star;
-        }
-
-        function createPlanet(level) {
-            const textures = {
-                1: 'https://threejs.org/examples/textures/planets/mercury.jpg',
-                2: 'https://threejs.org/examples/textures/planets/mars.jpg',
-                3: 'https://threejs.org/examples/textures/planets/venus_surface.jpg',
-                4: 'https://threejs.org/examples/textures/planets/neptune.jpg',
-                5: 'https://threejs.org/examples/textures/planets/uranus.jpg',
-                6: 'https://threejs.org/examples/textures/planets/saturn.jpg',
-                7: 'https://threejs.org/examples/textures/planets/jupiter.jpg'
-            };
-            const size = 1 + level * 0.08;
-            const geometry = new THREE.SphereGeometry(size, 128, 128);
-            const textureLoader = new THREE.TextureLoader();
-            const texture = textureLoader.load(textures[level]);
-            const material = new THREE.MeshPhongMaterial({ map: texture, shininess: 25 });
-            const planet = new THREE.Mesh(geometry, material);
-            
-            if (level === 6) {
-                const ringGeometry = new THREE.TorusGeometry(size * 1.2, 0.15, 64, 200);
-                const ringMaterial = new THREE.MeshPhongMaterial({ color: 0xc2b280, emissive: 0x332200 });
-                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-                ring.rotation.x = Math.PI / 2;
-                ring.rotation.z = 0.3;
-                planet.add(ring);
-            }
-            
-            return planet;
-        }
-
-        function update3DObject() {
-            if (!is3DReady || !scene) {
-                pendingUpdate = true;
-                return;
-            }
-            pendingUpdate = false;
-            
+        function updateStarOrPlanet() {
             const level = getLevel();
-            if (currentObject) scene.remove(currentObject);
-            
-            if (level === 0) {
-                currentObject = createStar();
-            } else {
-                currentObject = createPlanet(level);
-            }
-            scene.add(currentObject);
-        }
-
-        function init3D() {
-            const container = document.getElementById('canvas-container');
+            const container = document.getElementById('starContainer');
             if (!container) return;
             
-            const width = container.clientWidth;
-            const height = width;
-            container.style.height = `${height}px`;
-            
-            scene = new THREE.Scene();
-            scene.background = null;
-            
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-            camera.position.set(0, 0, 3.5);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            container.appendChild(renderer.domElement);
-            
-            const ambientLight = new THREE.AmbientLight(0x404060);
-            scene.add(ambientLight);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(2, 2, 2);
-            scene.add(mainLight);
-            const fillLight = new THREE.PointLight(0x88aaff, 0.5);
-            fillLight.position.set(-1, -0.5, 2);
-            scene.add(fillLight);
-            starLight = new THREE.PointLight(0xaaccff, 0.8);
-            starLight.position.set(0, 0, 0);
-            scene.add(starLight);
-            
-            is3DReady = true;
-            
-            if (pendingUpdate) update3DObject();
-            
-            function animate() {
-                requestAnimationFrame(animate);
-                time += 0.02;
-                if (currentObject) {
-                    currentObject.rotation.y += 0.005;
-                    if (getLevel() === 0) {
-                        const scale = 1 + Math.sin(time * 4) * 0.03;
-                        currentObject.scale.set(scale, scale, scale);
-                        if (starLight) starLight.intensity = 0.6 + Math.sin(time * 5) * 0.3;
-                    } else {
-                        if (starLight) starLight.intensity = 0.2;
-                    }
-                }
-                if (renderer && scene && camera) renderer.render(scene, camera);
+            if (level === 0) {
+                container.innerHTML = `
+                    <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+                        <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
+                        <defs>
+                            <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
+                                <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
+                            </radialGradient>
+                        </defs>
+                    </svg>
+                `;
+                container.classList.remove('planet-emoji');
+                container.classList.add('star-container');
+            } else {
+                const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
+                container.innerHTML = planetEmojis[level];
+                container.classList.remove('star-container');
+                container.classList.add('planet-emoji');
             }
-            animate();
-            
-            window.addEventListener('resize', () => {
-                if (!container) return;
-                const newWidth = container.clientWidth;
-                const newHeight = newWidth;
-                container.style.height = `${newHeight}px`;
-                if (camera) {
-                    camera.aspect = newWidth / newHeight;
-                    camera.updateProjectionMatrix();
-                }
-                if (renderer) renderer.setSize(newWidth, newHeight);
-            });
-            
-            container.addEventListener('click', handleClick);
         }
 
         function handleClick() {
@@ -934,6 +844,12 @@
             dailyClickCount++; weeklyClickCount++;
             dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
             updateUI(); saveGame(); syncToServer();
+            
+            const target = document.querySelector('.star-container, .planet-emoji');
+            if (target) {
+                target.style.transform = 'scale(0.95)';
+                setTimeout(() => { if (target) target.style.transform = 'scale(1)'; }, 100);
+            }
             
             const popup = document.createElement('div');
             popup.textContent = `+${clickPower}`;
@@ -949,6 +865,8 @@
             document.body.appendChild(popup);
             setTimeout(() => popup.remove(), 500);
         }
+
+        if (starContainer) starContainer.addEventListener('click', handleClick);
 
         async function syncToServer() {
             if (!userId || userId.toString().startsWith('guest')) return;
@@ -978,7 +896,7 @@
             passiveIncomeRate = rate;
             document.getElementById('passiveIncomeRate').textContent = rate;
             
-            update3DObject();
+            updateStarOrPlanet();
             
             document.getElementById('profileCoins').textContent = Math.floor(coins);
             document.getElementById('profileClickPower').textContent = clickPower;
@@ -1222,7 +1140,6 @@
 
         function init() {
             loadGame();
-            init3D();
             setupTabs();
             setupTasksTabs();
             updateReferralLink();
@@ -1247,7 +1164,7 @@
             const raysContainer = document.getElementById('raysContainer');
             if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
             document.getElementById('gameArea').style.display = 'flex';
-            console.log('✅ Игра загружена! 3D звезда и планеты активны');
+            console.log('✅ Игра загружена! Белая звезда с лучами активна');
             if(!document.querySelector('#popup-animation')) { const style = document.createElement('style'); style.id = 'popup-animation'; style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`; document.head.appendChild(style); }
             setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
         }
