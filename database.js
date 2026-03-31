@@ -110,11 +110,10 @@ async function createUser(telegramId, username, firstName, referrerId = null) {
         VALUES (?, ?, ?, ?, 1000, 1000, 1, 100, 1, 200, 0, 500, 1)
     `, telegramId, username, firstName, referrerId);
 
-    // ✅ УБРАЛ localStorage — проверка через базу данных
+    // Проверка реферала через базу данных
     if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
         const referrer = await getUser(referrerId);
         if (referrer) {
-            // Проверяем, не был ли уже начислен бонус за этого реферала
             const existingReferral = await db.get(
                 'SELECT * FROM referrals WHERE referrer_id = ? AND referred_id = ?',
                 referrerId, telegramId
