@@ -127,8 +127,8 @@ app.post('/api/toggle-sound', async (req, res) => {
 bot.start(async (ctx) => {
     try {
         const user = ctx.from;
-        // ✅ ГЛАВНОЕ ИСПРАВЛЕНИЕ: проверяем, существует ли текст сообщения
-        const text = ctx.message?.text || '';
+        // ✅ ГЛАВНОЕ ИСПРАВЛЕНИЕ: безопасное получение текста
+        const text = ctx.message && ctx.message.text ? ctx.message.text : '';
         let referrerId = null;
 
         if (text && typeof text === 'string') {
