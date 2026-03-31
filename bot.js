@@ -148,7 +148,7 @@ bot.start(async (ctx) => {
         const text = ctx.message?.text;
         let referrerId = null;
 
-        // БЕЗОПАСНАЯ ПРОВЕРКА — ОСНОВНОЕ ИСПРАВЛЕНИЕ
+        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ОСНОВНОЕ ИСПРАВЛЕНИЕ
         if (text && typeof text === 'string') {
             const parts = text.split(' ');
             if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
