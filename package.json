@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "start": "node bot.js"
   },
   "dependencies": {
     "telegraf": "^4.15.3",
@@ -13,8 +12,5 @@
     "cors": "^2.8.5",
     "sqlite3": "^5.1.6",
     "sqlite": "^5.1.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
   }
 }
