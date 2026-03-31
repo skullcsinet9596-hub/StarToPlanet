@@ -128,7 +128,7 @@ bot.start(async (ctx) => {
     try {
         const user = ctx.from;
         // ✅ ГЛАВНОЕ ИСПРАВЛЕНИЕ: безопасное получение текста
-        const text = ctx.message && ctx.message.text ? ctx.message.text : '';
+        const text = ctx.message?.text || '';
         let referrerId = null;
 
         if (text && typeof text === 'string') {
