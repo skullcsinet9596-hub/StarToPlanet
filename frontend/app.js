@@ -44,193 +44,47 @@ let hasSun = false;
 let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
 
-// ==================== 3D ПЕРЕМЕННЫЕ ====================
-let scene, camera, renderer, planet3d;
-let planetElement = null;
-let threeLoaded = false;
+// ==================== ЗВЕЗДА (клик по контейнеру) ====================
+const starContainer = document.getElementById('star-container');
+if (starContainer) {
+    starContainer.addEventListener('click', handleClick);
+}
 
-// ==================== БЕЛАЯ ЗВЕЗДА (как на фото) ====================
-function createStarTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, 1024, 1024);
-    const gradient = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.95)');
-    gradient.addColorStop(0.4, 'rgba(255, 255, 240, 0.85)');
-    gradient.addColorStop(0.6, 'rgba(230, 240, 255, 0.7)');
-    gradient.addColorStop(0.8, 'rgba(200, 220, 255, 0.5)');
-    gradient.addColorStop(1, 'rgba(150, 180, 255, 0.2)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(512, 512, 480, 0, Math.PI * 2);
-    ctx.fill();
-    for (let i = 0; i < 12; i++) {
-        const angle = (i * 30) * Math.PI / 180;
-        const length = 380 + Math.sin(i) * 50;
-        const x1 = 512 + Math.cos(angle) * 320;
-        const y1 = 512 + Math.sin(angle) * 320;
-        const x2 = 512 + Math.cos(angle) * length;
-        const y2 = 512 + Math.sin(angle) * length;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineWidth = 28;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(angle) * 0.2})`;
-        ctx.stroke();
-        const x3 = 512 + Math.cos(angle + 0.2) * 340;
-        const y3 = 512 + Math.sin(angle + 0.2) * 340;
-        const x4 = 512 + Math.cos(angle + 0.2) * 400;
-        const y4 = 512 + Math.sin(angle + 0.2) * 400;
-        ctx.beginPath();
-        ctx.moveTo(x3, y3);
-        ctx.lineTo(x4, y4);
-        ctx.lineWidth = 16;
-        ctx.strokeStyle = `rgba(255, 255, 255, 0.3)`;
-        ctx.stroke();
+function handleClick(event) {
+    if (energy < clickPower) {
+        showMessage('❌ Нет энергии!', true);
+        return;
     }
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-}
-
-function getPlanetTexture(level) {
-    const textures = {
-        1: 'https://threejs.org/examples/textures/planets/mercury.jpg',
-        2: 'https://threejs.org/examples/textures/planets/mars.jpg',
-        3: 'https://threejs.org/examples/textures/planets/venus_surface.jpg',
-        4: 'https://threejs.org/examples/textures/planets/neptune.jpg',
-        5: 'https://threejs.org/examples/textures/planets/uranus.jpg',
-        6: 'https://threejs.org/examples/textures/planets/saturn.jpg',
-        7: 'https://threejs.org/examples/textures/planets/jupiter.jpg'
-    };
-    return textures[level] || 'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg';
-}
-
-function init3D() {
-    const container = document.getElementById('canvas-container');
-    if (!container) return;
-    const width = 280, height = 280;
-    container.style.width = `${width}px`;
-    container.style.height = `${height}px`;
-    
-    import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
-        window.THREE = THREE;
-        scene = new THREE.Scene();
-        scene.background = null;
-        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 0, 3.2);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(width, height);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
-        
-        const starTexture = createStarTexture();
-        const geometry = new THREE.SphereGeometry(1, 128, 128);
-        const material = new THREE.MeshPhongMaterial({ map: starTexture, emissive: 0x88aaff, emissiveIntensity: 0.4, shininess: 80 });
-        planet3d = new THREE.Mesh(geometry, material);
-        scene.add(planet3d);
-        
-        const starLight = new THREE.PointLight(0xaaccff, 0.8);
-        starLight.position.set(0, 0, 0);
-        scene.add(starLight);
-        const ambientLight = new THREE.AmbientLight(0x404060);
-        scene.add(ambientLight);
-        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        mainLight.position.set(2, 2, 2);
-        scene.add(mainLight);
-        
-        let time = 0;
-        function animate() {
-            requestAnimationFrame(animate);
-            time += 0.02;
-            if (planet3d) {
-                planet3d.rotation.y += 0.002;
-                if (getLevel() === 0) {
-                    const scale = 1 + Math.sin(time * 4) * 0.03;
-                    planet3d.scale.set(scale, scale, scale);
-                    starLight.intensity = 0.7 + Math.sin(time * 5) * 0.3;
-                } else {
-                    starLight.intensity = 0.3;
-                }
-            }
-            renderer.render(scene, camera);
-        }
-        animate();
-        
-        planetElement = container;
-        container.style.cursor = 'pointer';
-        container.style.touchAction = 'manipulation';
-        setupTouchHandlers(container);
-        threeLoaded = true;
-        console.log('✅ 3D загружена, белая звезда с лучами создана');
-    }).catch(err => { 
-        console.error('Three.js error:', err); 
-        createFallbackStar();
-    });
-}
-
-function createFallbackStar() {
-    const container = document.getElementById('canvas-container');
-    if (!container) return;
-    container.innerHTML = '';
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = 'center';
-    container.style.background = 'radial-gradient(circle at 30% 30%, #ffffff, #aaccff)';
-    container.style.borderRadius = '50%';
-    container.style.boxShadow = '0 0 50px rgba(100,150,255,0.8)';
-    container.style.cursor = 'pointer';
-    container.style.animation = 'starPulse 2s ease-in-out infinite';
-    const star = document.createElement('div');
-    star.textContent = '⭐';
-    star.style.fontSize = '100px';
-    star.style.color = 'white';
-    star.style.textShadow = '0 0 30px rgba(100,150,255,0.9)';
-    star.style.pointerEvents = 'none';
-    container.appendChild(star);
-    planetElement = container;
-    setupTouchHandlers(container);
-}
-
-async function syncToServer() {
-    if (!userId || userId.toString().startsWith('guest')) return;
-    try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
-}
-
-function setupTouchHandlers(element) {
-    if (!element) return;
-    element.removeEventListener('touchstart', touchHandler);
-    element.removeEventListener('mousedown', mouseHandler);
-    element.addEventListener('touchstart', touchHandler, { passive: false });
-    element.addEventListener('mousedown', mouseHandler);
-}
-function touchHandler(e) { e.preventDefault(); for (let i = 0; i < e.touches.length; i++) processClick({ clientX: e.touches[i].clientX, clientY: e.touches[i].clientY }); }
-function mouseHandler(e) { e.preventDefault(); processClick({ clientX: e.clientX, clientY: e.clientY }); }
-function processClick(eventData) {
-    if (energy < clickPower) { showMessage('❌ Нет энергии!', true); return; }
     energy -= clickPower;
     coins += clickPower;
     dailyClickCount++; weeklyClickCount++;
     dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
     updateUI(); saveGame(); syncToServer();
-    if (planetElement) { planetElement.style.transform = 'scale(0.95)'; setTimeout(() => { if (planetElement) planetElement.style.transform = 'scale(1)'; }, 100); }
+    
+    // Анимация нажатия
+    starContainer.style.transform = 'scale(0.95)';
+    setTimeout(() => { if (starContainer) starContainer.style.transform = 'scale(1)'; }, 100);
+    
+    // Всплывающая цифра
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
     popup.style.position = 'fixed';
-    popup.style.left = (eventData.clientX || window.innerWidth/2) + 'px';
-    popup.style.top = (eventData.clientY || window.innerHeight/2 - 100) + 'px';
+    popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
+    popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
     popup.style.color = '#ffd700';
     popup.style.fontSize = '24px';
     popup.style.fontWeight = 'bold';
     popup.style.pointerEvents = 'none';
     popup.style.zIndex = '1000';
+    popup.style.textShadow = '0 0 5px #000';
     popup.style.animation = 'popup 0.5s ease-out forwards';
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 500);
+}
+
+async function syncToServer() {
+    if (!userId || userId.toString().startsWith('guest')) return;
+    try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
 }
 
 function getLevel() {
@@ -244,24 +98,41 @@ function getLevel() {
     return 0;
 }
 
-function updatePlanetVisuals() {
-    if (!planet3d) return;
+function updateStarOrPlanet() {
     const level = getLevel();
+    const container = document.getElementById('star-container');
+    if (!container) return;
+    
+    // Убираем старые классы планет
+    container.classList.remove('planet-mercury', 'planet-mars', 'planet-venus', 'planet-neptune', 'planet-uranus', 'planet-saturn', 'planet-jupiter');
+    
     if (level === 0) {
-        const starTexture = createStarTexture();
-        planet3d.material.map = starTexture;
-        planet3d.material.emissiveIntensity = 0.4;
-        planet3d.material.needsUpdate = true;
+        // Звезда
+        container.innerHTML = `
+            <div class="star-core"></div>
+            <div class="star-rays"></div>
+        `;
+        container.style.background = 'transparent';
+        container.style.boxShadow = 'none';
     } else {
-        const textureUrl = getPlanetTexture(level);
-        new THREE.TextureLoader().load(textureUrl, (texture) => {
-            planet3d.material.map = texture;
-            planet3d.material.emissiveIntensity = 0.1;
-            planet3d.material.needsUpdate = true;
-        });
+        // Планета
+        const planetNames = ['', 'mercury', 'mars', 'venus', 'neptune', 'uranus', 'saturn', 'jupiter'];
+        container.classList.add(`planet-${planetNames[level]}`);
+        container.innerHTML = '';
+        container.style.background = 'radial-gradient(circle at 30% 30%, var(--color1), var(--color2))';
+        container.style.borderRadius = '50%';
+        container.style.boxShadow = '0 0 30px rgba(0,0,0,0.3)';
+        
+        // Добавляем эмодзи планеты
+        const emoji = document.createElement('div');
+        emoji.style.fontSize = '80px';
+        emoji.style.textAlign = 'center';
+        emoji.style.lineHeight = '200px';
+        const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
+        emoji.textContent = planetEmojis[level];
+        container.innerHTML = '';
+        container.appendChild(emoji);
     }
-    const scale = 1 + level * 0.07;
-    planet3d.scale.set(scale, scale, scale);
 }
 
 function updateUI() {
@@ -279,13 +150,16 @@ function updateUI() {
     document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
     document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
     document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
+    
     let rate = passiveIncomeLevel * 5;
     if (hasSun) rate += 100000;
     else if (hasEarth) rate += 50000;
     else if (hasMoon) rate += 20000;
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
-    updatePlanetVisuals();
+    
+    updateStarOrPlanet();
+    
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
@@ -529,7 +403,6 @@ function shareReferralLink() {
 
 function init() {
     loadGame();
-    init3D();
     setupTabs();
     setupTasksTabs();
     updateReferralLink();
@@ -554,7 +427,7 @@ function init() {
     const raysContainer = document.getElementById('raysContainer');
     if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
     document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена! Белая звезда, iOS 26 стиль, премиум-замки активны');
+    console.log('✅ Игра загружена! Белая звезда активна');
     if(!document.querySelector('#popup-animation')) { const style = document.createElement('style'); style.id = 'popup-animation'; style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`; document.head.appendChild(style); }
     setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
 }

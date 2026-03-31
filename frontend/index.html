@@ -6,13 +6,6 @@
     <title>Star to Planet</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
-        }
-    </script>
 </head>
 <body>
     <div class="app-container">
@@ -28,7 +21,10 @@
         </div>
 
         <div class="game-area" id="gameArea">
-            <div id="canvas-container"></div>
+            <div id="star-container" class="star-3d">
+                <div class="star-core"></div>
+                <div class="star-rays"></div>
+            </div>
             <button class="boost-btn" id="boostBtn">
                 <span class="boost-icon">⚡</span>
                 <span class="boost-text">BOOST</span>
