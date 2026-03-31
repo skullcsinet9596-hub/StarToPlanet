@@ -26,7 +26,6 @@ body {
     position: relative;
 }
 
-/* iOS 26 стеклянные панели */
 .glass-panel {
     background: rgba(20, 20, 24, 0.75);
     backdrop-filter: blur(28px);
@@ -347,10 +346,22 @@ canvas {
     display: flex;
     justify-content: space-between;
 }
+
+.referral-link-container {
+    background: rgba(44,44,48,0.5);
+    border-radius: 24px;
+    padding: 16px;
+    margin-top: 16px;
+}
+.referral-link-container p {
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: #98989E;
+}
 .link-box {
     display: flex;
     gap: 10px;
-    margin-top: 8px;
+    margin-bottom: 12px;
 }
 .link-box input {
     flex: 1;
@@ -360,6 +371,7 @@ canvas {
     padding: 12px;
     color: white;
     font-size: 11px;
+    font-family: monospace;
 }
 .link-box button {
     background: #FFD60A;
@@ -369,6 +381,19 @@ canvas {
     font-weight: 590;
     cursor: pointer;
 }
+.share-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #FFD60A, #FF9F0A);
+    border: none;
+    border-radius: 40px;
+    padding: 12px;
+    font-weight: 590;
+    font-size: 16px;
+    color: #1C1C1E;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.share-btn:active { transform: scale(0.96); }
 
 .profile-card, .auth-section {
     background: rgba(44,44,48,0.6);
@@ -504,4 +529,6 @@ canvas {
     #canvas-container { width: 220px; height: 220px; }
     .avatar-img { width: 38px; height: 38px; }
     .profile-avatar-img { width: 45px; height: 45px; }
+    .link-box { flex-direction: column; }
+    .link-box button { padding: 10px; }
 }

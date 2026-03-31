@@ -47,6 +47,7 @@ let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: f
 // ==================== 3D ПЕРЕМЕННЫЕ ====================
 let scene, camera, renderer, planet3d;
 let planetElement = null;
+let threeLoaded = false;
 
 // ==================== БЕЛАЯ ЗВЕЗДА (как на фото) ====================
 function createStarTexture() {
@@ -115,6 +116,7 @@ function init3D() {
     const width = 280, height = 280;
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
+    
     import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
         window.THREE = THREE;
         scene = new THREE.Scene();
@@ -123,12 +125,15 @@ function init3D() {
         camera.position.set(0, 0, 3.2);
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
+        
         const starTexture = createStarTexture();
         const geometry = new THREE.SphereGeometry(1, 128, 128);
         const material = new THREE.MeshPhongMaterial({ map: starTexture, emissive: 0x88aaff, emissiveIntensity: 0.4, shininess: 80 });
         planet3d = new THREE.Mesh(geometry, material);
         scene.add(planet3d);
+        
         const starLight = new THREE.PointLight(0xaaccff, 0.8);
         starLight.position.set(0, 0, 0);
         scene.add(starLight);
@@ -137,6 +142,7 @@ function init3D() {
         const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
         mainLight.position.set(2, 2, 2);
         scene.add(mainLight);
+        
         let time = 0;
         function animate() {
             requestAnimationFrame(animate);
@@ -154,12 +160,17 @@ function init3D() {
             renderer.render(scene, camera);
         }
         animate();
+        
         planetElement = container;
         container.style.cursor = 'pointer';
         container.style.touchAction = 'manipulation';
         setupTouchHandlers(container);
+        threeLoaded = true;
         console.log('✅ 3D загружена, белая звезда с лучами создана');
-    }).catch(err => { console.error('Three.js error:', err); createFallbackStar(); });
+    }).catch(err => { 
+        console.error('Three.js error:', err); 
+        createFallbackStar();
+    });
 }
 
 function createFallbackStar() {
@@ -442,72 +453,31 @@ function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy +
 function showMessage(text, isError = false) { const msg = document.getElementById('message'); msg.textContent = text; msg.style.color = isError ? '#ff6b6b' : '#ffd700'; msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
 
 // ==================== РЕЙТИНГ И ДРУЗЬЯ ====================
-async function loadLeaderboardFromAPI() {
-    try {
-        const response = await fetch(`https://startoplanet.onrender.com/api/leaderboard?limit=20`);
-        if (response.ok) {
-            const players = await response.json();
-            if (players.length > 0) {
-                const allPlayers = [...players];
-                const currentExists = allPlayers.some(p => p.telegram_id == userId);
-                if (!currentExists && coins > 0) {
-                    allPlayers.push({ telegram_id: userId, first_name: displayName, coins: coins, level: getLevel() });
-                }
-                const sorted = allPlayers.sort((a, b) => b.coins - a.coins);
-                const container = document.getElementById('leaderboardList');
-                if (container) {
-                    container.innerHTML = sorted.slice(0, 10).map((p, i) => {
-                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-                        const name = p.first_name || p.username || `Игрок ${p.telegram_id}`;
-                        const isCurrent = p.telegram_id == userId;
-                        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${(p.coins || 0).toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level || 1}</div></div>`;
-                    }).join('');
-                    return;
-                }
-            }
-        }
-    } catch(e) { console.log('API недоступен'); }
+function loadLeaderboardFromAPI() {
     const container = document.getElementById('leaderboardList');
-    if (container) {
-        const demoPlayers = [
-            { name: displayName, coins: coins, level: getLevel(), isCurrent: true },
-            { name: "⭐ Александр", coins: 1250000, level: 5 },
-            { name: "🌙 Екатерина", coins: 850000, level: 4 },
-            { name: "🚀 Дмитрий", coins: 420000, level: 3 }
-        ];
-        const sorted = demoPlayers.sort((a,b) => b.coins - a.coins);
-        container.innerHTML = sorted.map((p, i) => {
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-            const isCurrent = p.isCurrent;
-            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
-        }).join('');
-    }
+    if (!container) return;
+    const demoPlayers = [
+        { name: displayName, coins: coins, level: getLevel(), isCurrent: true },
+        { name: "⭐ Александр", coins: 1250000, level: 5 },
+        { name: "🌙 Екатерина", coins: 850000, level: 4 },
+        { name: "🚀 Дмитрий", coins: 420000, level: 3 },
+        { name: "🪐 Сергей", coins: 210000, level: 2 }
+    ];
+    const sorted = demoPlayers.sort((a,b) => b.coins - a.coins);
+    container.innerHTML = sorted.map((p, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+        const isCurrent = p.isCurrent;
+        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
+    }).join('');
 }
 
-async function loadFriendsFromAPI() {
-    try {
-        const response = await fetch(`https://startoplanet.onrender.com/api/friends/${userId}`);
-        if (response.ok) {
-            const friends = await response.json();
-            if (friends.length > 0) {
-                const container = document.getElementById('level1List');
-                if (container) {
-                    container.innerHTML = friends.slice(0, 5).map(f => `<div class="level-item"><span>${f.first_name || f.username}</span><span>${(f.coins || 0).toLocaleString()} 🪙</span><span style="font-size:10px;">${new Date(f.created_at).toLocaleDateString()}</span></div>`).join('');
-                    document.getElementById('referralCount').textContent = friends.length;
-                    document.getElementById('referralBonus').textContent = (friends.length * 1000).toLocaleString();
-                    document.getElementById('profileReferrals').textContent = friends.length;
-                    return;
-                }
-            }
-        }
-    } catch(e) { console.log('API друзей недоступен'); }
+function loadFriendsFromAPI() {
     const container = document.getElementById('level1List');
-    if (container) {
-        container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
-        document.getElementById('referralCount').textContent = '0';
-        document.getElementById('referralBonus').textContent = '0';
-        document.getElementById('profileReferrals').textContent = '0';
-    }
+    if (!container) return;
+    container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+    document.getElementById('referralCount').textContent = '0';
+    document.getElementById('referralBonus').textContent = '0';
+    document.getElementById('profileReferrals').textContent = '0';
 }
 
 function setupTabs() {
@@ -540,8 +510,22 @@ function setupTasksTabs() {
     });
 }
 
-function updateReferralLink() { const linkInput = document.getElementById('referralLink'); if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; }
-function copyReferralLink() { const input = document.getElementById('referralLink'); if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } }
+function updateReferralLink() { 
+    const linkInput = document.getElementById('referralLink'); 
+    if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
+}
+function copyReferralLink() { 
+    const input = document.getElementById('referralLink'); 
+    if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
+}
+function shareReferralLink() {
+    const input = document.getElementById('referralLink');
+    if(input && tg.openTelegramLink) {
+        tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
+    } else if(input) {
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
+    }
+}
 
 function init() {
     loadGame();
@@ -553,6 +537,7 @@ function init() {
     document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
     document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
     document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
+    document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
     document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
     document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
     document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));

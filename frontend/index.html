@@ -68,7 +68,6 @@
             </div>
         </div>
 
-        <!-- Вкладка Задания -->
         <div class="tab-panel" id="tasksPanel">
             <div class="tasks-header">
                 <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
@@ -124,7 +123,14 @@
             <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
             <div class="level-card glass-panel"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
             <div class="level-card glass-panel"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
-            <div class="referral-link-container glass-panel"><p>Ваша ссылка:</p><div class="link-box"><input type="text" id="referralLink" readonly value="Загрузка..."><button id="copyLinkBtn">📋</button></div></div>
+            <div class="referral-link-container glass-panel">
+                <p>Ваша реферальная ссылка:</p>
+                <div class="link-box">
+                    <input type="text" id="referralLink" readonly value="Загрузка...">
+                    <button id="copyLinkBtn">📋 Копировать</button>
+                </div>
+                <button id="shareLinkBtn" class="share-btn">👥 Пригласить друга</button>
+            </div>
         </div>
 
         <div class="tab-panel" id="profilePanel">
