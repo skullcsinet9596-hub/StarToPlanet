@@ -184,19 +184,42 @@
 
         .passive-income span { color: #FFD60A; }
 
+        /* НИЖНЯЯ ПАНЕЛЬ - СТИЛЬ iOS 26 */
         .nav-bar {
             position: sticky;
             bottom: 0;
             display: flex;
-            justify-content: space-around;
-            padding: 8px 0 12px;
-            margin: 0 16px 12px 16px;
-            background: rgba(20, 20, 24, 0.94);
-            backdrop-filter: blur(28px);
-            border-radius: 32px;
-            border: 0.5px solid rgba(255, 255, 255, 0.15);
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 8px 16px 16px 16px;
+            background: rgba(20, 20, 24, 0.92);
+            backdrop-filter: blur(32px);
+            border-radius: 44px;
+            border: 0.5px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         }
 
+        /* Группировка секций */
+        .nav-section {
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px;
+            border-radius: 48px;
+        }
+
+        .nav-section:first-child {
+            background: transparent;
+            padding-left: 0;
+        }
+
+        .nav-section:last-child {
+            background: transparent;
+            padding-right: 0;
+        }
+
+        /* Кнопки навигации */
         .nav-btn {
             background: transparent;
             border: none;
@@ -204,17 +227,94 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 32px;
+            justify-content: center;
+            gap: 2px;
+            padding: 8px 12px;
+            border-radius: 40px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
             font-weight: 500;
+            min-width: 52px;
+            position: relative;
         }
 
-        .nav-btn.active { color: #FFD60A; background: rgba(255, 214, 10, 0.12); }
-        .nav-icon { font-size: 22px; }
-        .nav-btn span:last-child { font-size: 10px; }
+        .nav-btn.active {
+            color: #FFD60A;
+            background: rgba(255, 214, 10, 0.15);
+        }
+
+        /* Активный индикатор (точка под иконкой) */
+        .nav-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #FFD60A;
+            border-radius: 2px;
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-btn:active .nav-icon {
+            transform: scale(0.92);
+        }
+
+        .nav-btn span:last-child {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+        }
+
+        /* Скрываем подписи на маленьких экранах, оставляем только иконки */
+        @media (max-width: 480px) {
+            .nav-bar {
+                padding: 6px 10px;
+                border-radius: 36px;
+            }
+            
+            .nav-btn {
+                padding: 6px 8px;
+                min-width: 44px;
+            }
+            
+            .nav-icon {
+                font-size: 20px;
+            }
+            
+            .nav-btn span:last-child {
+                display: none;
+            }
+            
+            .nav-btn.active::after {
+                bottom: 2px;
+                width: 3px;
+                height: 3px;
+            }
+        }
+
+        /* Планшеты и выше */
+        @media (min-width: 768px) {
+            .nav-bar {
+                padding: 10px 20px;
+                max-width: 500px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            
+            .nav-btn {
+                padding: 8px 16px;
+            }
+            
+            .nav-icon {
+                font-size: 24px;
+            }
+        }
 
         .tab-panel {
             display: none;
@@ -566,13 +666,39 @@
             <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
+        <!-- НИЖНЯЯ ПАНЕЛЬ - ОБНОВЛЁННАЯ СЕКЦИОННАЯ -->
         <div class="nav-bar glass-panel">
-            <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
-            <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
-            <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
-            <button class="nav-btn" data-tab="profile"><span class="nav-icon">👤</span><span>Профиль</span></button>
-            <button class="nav-btn" data-tab="leaderboard"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
-            <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
+            <!-- ЛЕВАЯ СЕКЦИЯ: Игровые кнопки -->
+            <div class="nav-section">
+                <button class="nav-btn active" data-tab="game">
+                    <span class="nav-icon">🚀</span>
+                    <span>Игра</span>
+                </button>
+                <button class="nav-btn" data-tab="tasks">
+                    <span class="nav-icon">📋</span>
+                    <span>Задания</span>
+                </button>
+                <button class="nav-btn" data-tab="friends">
+                    <span class="nav-icon">👥</span>
+                    <span>Друзья</span>
+                </button>
+            </div>
+
+            <!-- ПРАВАЯ СЕКЦИЯ: Социальные и профиль -->
+            <div class="nav-section">
+                <button class="nav-btn" data-tab="profile">
+                    <span class="nav-icon">👤</span>
+                    <span>Профиль</span>
+                </button>
+                <button class="nav-btn" data-tab="leaderboard">
+                    <span class="nav-icon">🏆</span>
+                    <span>Рейтинг</span>
+                </button>
+                <button class="nav-btn" data-tab="airdrop">
+                    <span class="nav-icon">📊</span>
+                    <span>Airdrop</span>
+                </button>
+            </div>
         </div>
 
         <div class="modal-overlay" id="boostModal">
@@ -736,6 +862,7 @@
         let passiveIncomeLevel = 0;
         let passiveIncomeUpgradeCost = 500;
         let passiveIncomeRate = 0;
+        let soundEnabled = true;
 
         let hasMoon = false;
         let hasEarth = false;
@@ -786,6 +913,138 @@
             return planetSizes[getFullLevel()] || 0.85;
         }
         
+        // ========== ЗВУКИ ==========
+        let audioContext = null;
+        
+        function initAudio() {
+            if (!soundEnabled) return;
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playClickSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 800;
+                gainNode.gain.value = 0.15;
+                oscillator.type = 'sine';
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch(e) { console.log('Audio error:', e); }
+        }
+        
+        function playLevelUpSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 523.25;
+                gainNode.gain.value = 0.2;
+                oscillator.type = 'sine';
+                oscillator.start();
+                setTimeout(() => { oscillator.frequency.value = 659.25; }, 100);
+                setTimeout(() => { oscillator.frequency.value = 783.99; }, 200);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch(e) { console.log('Audio error:', e); }
+        }
+        
+        // ========== АНИМАЦИЯ ПЕРЕХОДА УРОВНЯ ==========
+        let levelUpAnimationActive = false;
+        
+        function showLevelUpAnimation(newLevel, oldLevel) {
+            if (levelUpAnimationActive) return;
+            levelUpAnimationActive = true;
+            playLevelUpSound();
+            
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            overlay.style.backdropFilter = 'blur(8px)';
+            overlay.style.zIndex = '2000';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.animation = 'fadeIn 0.3s ease';
+            
+            const levelNames = ['⭐ Белая звезда', '🌑 Меркурий', '🔴 Марс', '🟡 Венера', '🔵 Нептун', '💚 Уран', '🪐 Сатурн', '🟤 Юпитер'];
+            
+            const text = document.createElement('div');
+            text.textContent = `✨ НОВЫЙ УРОВЕНЬ! ✨\n${levelNames[newLevel]}`;
+            text.style.fontSize = '24px';
+            text.style.fontWeight = 'bold';
+            text.style.color = '#FFD60A';
+            text.style.textAlign = 'center';
+            text.style.textShadow = '0 0 20px rgba(255,214,10,0.8)';
+            text.style.marginBottom = '20px';
+            text.style.animation = 'bounce 0.5s ease';
+            
+            // Частицы
+            const particleContainer = document.createElement('div');
+            particleContainer.style.position = 'absolute';
+            particleContainer.style.width = '100%';
+            particleContainer.style.height = '100%';
+            particleContainer.style.pointerEvents = 'none';
+            
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.textContent = ['⭐', '✨', '🌟', '💫', '⚡'][Math.floor(Math.random() * 5)];
+                particle.style.position = 'absolute';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.fontSize = (20 + Math.random() * 30) + 'px';
+                particle.style.animation = `particleFly ${0.5 + Math.random() * 0.5}s ease-out forwards`;
+                particle.style.opacity = '1';
+                particleContainer.appendChild(particle);
+            }
+            
+            overlay.appendChild(particleContainer);
+            overlay.appendChild(text);
+            document.body.appendChild(overlay);
+            
+            setTimeout(() => {
+                overlay.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => overlay.remove(), 300);
+                levelUpAnimationActive = false;
+            }, 1500);
+        }
+        
+        // Добавляем стили анимаций
+        const styleAnim = document.createElement('style');
+        styleAnim.textContent = `
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+            @keyframes bounce { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes particleFly { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-100px) rotate(180deg); opacity: 0; } }
+        `;
+        document.head.appendChild(styleAnim);
+        
+        let lastLevel = 0;
+        
+        function checkLevelUp() {
+            const currentLevel = getFullLevel();
+            if (currentLevel > lastLevel) {
+                showLevelUpAnimation(currentLevel, lastLevel);
+                lastLevel = currentLevel;
+            }
+        }
+        
+        // ========== ТЕКСТУРЫ ==========
         function createStarTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024;
@@ -992,7 +1251,6 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
             
-            // Освещение
             const ambientLight = new THREE.AmbientLight(0x333366);
             scene.add(ambientLight);
             const mainLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -1002,7 +1260,6 @@
             backLight.position.set(-2, 1, -2);
             scene.add(backLight);
             
-            // Звёздный фон
             const starCount = 1500;
             const starGeo = new THREE.BufferGeometry();
             const starPos = new Float32Array(starCount * 3);
@@ -1015,8 +1272,6 @@
             const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.7 });
             const stars = new THREE.Points(starGeo, starMat);
             scene.add(stars);
-            
-            // Сохраняем звёзды для анимации
             window.starsField = stars;
             
             updatePlanetModel();
@@ -1050,7 +1305,6 @@
                 camera.updateProjectionMatrix();
             });
             
-            // Клик по планете
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
             renderer.domElement.addEventListener('click', (event) => {
@@ -1067,7 +1321,6 @@
         }
         
         function updatePlanetModel() {
-            // Удаляем старые объекты
             if (currentPlanet && scene) scene.remove(currentPlanet);
             if (currentGlow && scene) scene.remove(currentGlow);
             if (currentRings && currentRings.length) {
@@ -1088,18 +1341,14 @@
             const size = planetSizes[level] || 0.85;
             let material, geometry;
             
-            // Если сцена ещё не создана, выходим
             if (!scene) return;
             
-            // Создаём планету в зависимости от уровня
             if (level === 0) {
-                // ЗВЕЗДА с лучами
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ color: 0xfff5e8, emissive: 0xffaa77, emissiveIntensity: 1.0, roughness: 0.2 });
                 currentPlanet = new THREE.Mesh(geometry, material);
                 scene.add(currentPlanet);
                 
-                // Лучи
                 for (let i = 0; i < 8; i++) {
                     const angle = (i / 8) * Math.PI * 2;
                     const rayGeo = new THREE.ConeGeometry(0.16, 1.1, 12);
@@ -1127,7 +1376,6 @@
                 scene.add(currentGlow);
             }
             else if (level === 10) {
-                // СОЛНЦЕ с короной и протуберанцами
                 const texture = createSunTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, color: 0xffaa55, emissive: 0xff6622, emissiveIntensity: 0.7, roughness: 0.3 });
@@ -1151,7 +1399,6 @@
                 scene.add(currentGlow);
             }
             else if (level === 8) {
-                // ЛУНА
                 const texture = createCraterTexture('#c0c0c0', '#8a8a8a');
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.85, metalness: 0.05 });
@@ -1159,7 +1406,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 9) {
-                // ЗЕМЛЯ
                 const textureLoader = new THREE.TextureLoader();
                 const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
                 geometry = new THREE.SphereGeometry(size, 128, 128);
@@ -1168,7 +1414,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 6) {
-                // САТУРН с кольцами
                 const texture = createSaturnTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.15 });
@@ -1183,7 +1428,6 @@
                 currentRings.push(ring);
             }
             else if (level === 5) {
-                // УРАН с кольцами
                 const texture = createUranusTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.45, metalness: 0.08 });
@@ -1198,7 +1442,6 @@
                 currentRings.push(ring);
             }
             else if (level === 7) {
-                // ЮПИТЕР
                 const texture = createJupiterTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.1 });
@@ -1206,7 +1449,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 2) {
-                // МАРС
                 const texture = createMarsTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.7, metalness: 0.1 });
@@ -1214,7 +1456,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 1) {
-                // МЕРКУРИЙ
                 const texture = createCraterTexture('#a8a8a8', '#6a6a6a');
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.1 });
@@ -1222,7 +1463,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 3) {
-                // ВЕНЕРА
                 const texture = createVenusTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.1 });
@@ -1230,7 +1470,6 @@
                 scene.add(currentPlanet);
             }
             else if (level === 4) {
-                // НЕПТУН
                 const texture = createNeptuneTexture();
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4, metalness: 0.1 });
@@ -1238,7 +1477,6 @@
                 scene.add(currentPlanet);
             }
             else {
-                // Обычная планета
                 geometry = new THREE.SphereGeometry(size, 128, 128);
                 material = new THREE.MeshStandardMaterial({ color: 0x88aaff, roughness: 0.5 });
                 currentPlanet = new THREE.Mesh(geometry, material);
@@ -1256,9 +1494,13 @@
             dailyClickCount++; weeklyClickCount++;
             dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
             
+            playClickSound();
+            
+            const oldLevel = getFullLevel();
             updateUI();
             saveGame();
             syncToServer();
+            checkLevelUp();
             
             if (currentPlanet) {
                 currentPlanet.scale.set(0.96, 0.96, 0.96);
@@ -1283,7 +1525,31 @@
         
         async function syncToServer() {
             if (!userId || userId.toString().startsWith('guest')) return;
-            try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
+            try {
+                const gameData = {
+                    coins: Math.floor(coins),
+                    energy: Math.floor(energy),
+                    maxEnergy,
+                    clickPower,
+                    clickUpgradeLevel,
+                    clickUpgradeCost,
+                    energyUpgradeLevel,
+                    energyUpgradeCost,
+                    passiveIncomeLevel,
+                    passiveIncomeUpgradeCost,
+                    hasMoon,
+                    hasEarth,
+                    hasSun,
+                    soundEnabled: soundEnabled ? 1 : 0,
+                    dailyClickCount,
+                    weeklyClickCount
+                };
+                await fetch(`/api/update`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ telegramId: userId, gameData }) 
+                });
+            } catch(e) { console.log('Sync error:', e); }
         }
         
         function updateUI() {
@@ -1384,7 +1650,7 @@
                 energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
                 dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
                 weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
-                hasMoon, hasEarth, hasSun, displayName
+                hasMoon, hasEarth, hasSun, displayName, soundEnabled
             }));
         }
         
@@ -1412,6 +1678,7 @@
                     hasMoon = data.hasMoon || false;
                     hasEarth = data.hasEarth || false;
                     hasSun = data.hasSun || false;
+                    soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                     if (data.displayName) displayName = data.displayName;
                 } catch(e) {}
             }
@@ -1421,6 +1688,7 @@
                 showMessage('🎉 +500 монет за приглашение!');
                 saveGame(); syncToServer();
             }
+            lastLevel = getFullLevel();
             updateUI();
         }
         

@@ -9,7 +9,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: linear-gradient(135deg, #111215 0%, #1a1a2e 100%);
+    background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
     color: #fff;
     min-height: 100vh;
     overflow-x: hidden;
@@ -97,143 +97,19 @@ body {
     position: relative;
 }
 
-/* ========== 3D ЗВЕЗДА (CSS) ========== */
-/* ========== НАСТОЯЩАЯ БЕЛАЯ ЗВЕЗДА ========== */
-#star-container {
-    position: relative;
-    width: 220px;
-    height: 220px;
+#canvas-container {
+    width: 280px;
+    height: 280px;
     margin: 10px auto;
     cursor: pointer;
-    transition: transform 0.1s ease;
+    position: relative;
 }
 
-/* Основной шар звезды */
-.star-core {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e8ff, #b0c4ff);
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
     border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 50px rgba(255, 255, 255, 0.9), inset 0 0 30px rgba(255, 255, 255, 0.8);
-    animation: starPulse 2s ease-in-out infinite;
-    z-index: 2;
-}
-
-/* 12 лучей звезды */
-.star-rays {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 220px;
-    height: 220px;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 1;
-}
-
-.ray {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 8px;
-    height: 80px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
-    transform-origin: center;
-    border-radius: 4px;
-    animation: rayGlow 1.5s ease-in-out infinite alternate;
-}
-
-.ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-80px); }
-.ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-80px); }
-.ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-80px); }
-.ray:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(-80px); }
-.ray:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(-80px); }
-.ray:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(-80px); }
-.ray:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(-80px); }
-.ray:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(-80px); }
-.ray:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(-80px); }
-.ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-80px); }
-.ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-80px); }
-.ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-80px); }
-
-/* Дополнительные короткие лучи между основными */
-.ray-short {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 50px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
-    transform-origin: center;
-    border-radius: 3px;
-    animation: rayGlowShort 1.8s ease-in-out infinite alternate;
-}
-
-.ray-short:nth-child(1) { transform: translate(-50%, -50%) rotate(15deg) translateY(-65px); }
-.ray-short:nth-child(2) { transform: translate(-50%, -50%) rotate(45deg) translateY(-65px); }
-.ray-short:nth-child(3) { transform: translate(-50%, -50%) rotate(75deg) translateY(-65px); }
-.ray-short:nth-child(4) { transform: translate(-50%, -50%) rotate(105deg) translateY(-65px); }
-.ray-short:nth-child(5) { transform: translate(-50%, -50%) rotate(135deg) translateY(-65px); }
-.ray-short:nth-child(6) { transform: translate(-50%, -50%) rotate(165deg) translateY(-65px); }
-.ray-short:nth-child(7) { transform: translate(-50%, -50%) rotate(195deg) translateY(-65px); }
-.ray-short:nth-child(8) { transform: translate(-50%, -50%) rotate(225deg) translateY(-65px); }
-.ray-short:nth-child(9) { transform: translate(-50%, -50%) rotate(255deg) translateY(-65px); }
-.ray-short:nth-child(10) { transform: translate(-50%, -50%) rotate(285deg) translateY(-65px); }
-.ray-short:nth-child(11) { transform: translate(-50%, -50%) rotate(315deg) translateY(-65px); }
-.ray-short:nth-child(12) { transform: translate(-50%, -50%) rotate(345deg) translateY(-65px); }
-
-@keyframes starPulse {
-    0%, 100% {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 0.9;
-        box-shadow: 0 0 40px rgba(255, 255, 255, 0.7);
-    }
-    50% {
-        transform: translate(-50%, -50%) scale(1.1);
-        opacity: 1;
-        box-shadow: 0 0 80px rgba(255, 255, 255, 1);
-    }
-}
-
-@keyframes rayGlow {
-    0% { opacity: 0.4; height: 70px; }
-    100% { opacity: 1; height: 90px; }
-}
-
-@keyframes rayGlowShort {
-    0% { opacity: 0.3; height: 45px; }
-    100% { opacity: 0.8; height: 55px; }
-}
-
-#star-container:active {
-    transform: scale(0.96);
-}
-
-/* Планеты для уровней 1-7 */
-.planet-mercury {
-    background: radial-gradient(circle at 30% 30%, #a9a9a9, #696969);
-}
-.planet-mars {
-    background: radial-gradient(circle at 30% 30%, #cd5c5c, #b22234);
-}
-.planet-venus {
-    background: radial-gradient(circle at 30% 30%, #f0e68c, #b8860b);
-}
-.planet-neptune {
-    background: radial-gradient(circle at 30% 30%, #1e3a8a, #3b82f6);
-}
-.planet-uranus {
-    background: radial-gradient(circle at 30% 30%, #40e0d0, #48d1cc);
-}
-.planet-saturn {
-    background: radial-gradient(circle at 30% 30%, #f4a460, #d2b48c);
-}
-.planet-jupiter {
-    background: radial-gradient(circle at 30% 30%, #d2b48c, #8b4513);
 }
 
 .boost-btn {
@@ -302,15 +178,42 @@ body {
 
 .passive-income span { color: #FFD60A; }
 
+/* НИЖНЯЯ ПАНЕЛЬ - СТИЛЬ iOS 26 */
 .nav-bar {
     position: sticky;
     bottom: 0;
     display: flex;
-    justify-content: space-around;
-    padding: 8px 0 12px;
-    margin: 0 16px 12px 16px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 8px 16px 16px 16px;
+    background: rgba(20, 20, 24, 0.92);
+    backdrop-filter: blur(32px);
+    border-radius: 44px;
+    border: 0.5px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
+/* Группировка секций */
+.nav-section {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 4px;
+    border-radius: 48px;
+}
+
+.nav-section:first-child {
+    background: transparent;
+    padding-left: 0;
+}
+
+.nav-section:last-child {
+    background: transparent;
+    padding-right: 0;
+}
+
+/* Кнопки навигации */
 .nav-btn {
     background: transparent;
     border: none;
@@ -318,17 +221,94 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 6px 12px;
-    border-radius: 32px;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: 40px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
     font-weight: 500;
+    min-width: 52px;
+    position: relative;
 }
 
-.nav-btn.active { color: #FFD60A; background: rgba(255, 214, 10, 0.12); }
-.nav-icon { font-size: 22px; }
-.nav-btn span:last-child { font-size: 10px; }
+.nav-btn.active {
+    color: #FFD60A;
+    background: rgba(255, 214, 10, 0.15);
+}
+
+/* Активный индикатор (точка под иконкой) */
+.nav-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    background: #FFD60A;
+    border-radius: 2px;
+}
+
+.nav-icon {
+    font-size: 22px;
+    transition: transform 0.2s ease;
+}
+
+.nav-btn:active .nav-icon {
+    transform: scale(0.92);
+}
+
+.nav-btn span:last-child {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+}
+
+/* Скрываем подписи на маленьких экранах, оставляем только иконки */
+@media (max-width: 480px) {
+    .nav-bar {
+        padding: 6px 10px;
+        border-radius: 36px;
+    }
+    
+    .nav-btn {
+        padding: 6px 8px;
+        min-width: 44px;
+    }
+    
+    .nav-icon {
+        font-size: 20px;
+    }
+    
+    .nav-btn span:last-child {
+        display: none;
+    }
+    
+    .nav-btn.active::after {
+        bottom: 2px;
+        width: 3px;
+        height: 3px;
+    }
+}
+
+/* Планшеты и выше */
+@media (min-width: 768px) {
+    .nav-bar {
+        padding: 10px 20px;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .nav-btn {
+        padding: 8px 16px;
+    }
+    
+    .nav-icon {
+        font-size: 24px;
+    }
+}
 
 .tab-panel {
     display: none;
@@ -355,6 +335,8 @@ body {
 }
 .modal-overlay.active { display: flex; }
 .modal-content {
+    background: #1C1C1E;
+    border-radius: 32px 32px 0 0;
     width: 100%;
     max-width: 500px;
     max-height: 75vh;
@@ -638,18 +620,7 @@ body {
 @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
 @media (max-width: 480px) {
-    #star-container { width: 160px; height: 160px; }
-    .star-core { width: 80px; height: 80px; }
-    .star-rays { width: 160px; height: 160px; }
-    .golden-coin { width: 130px; height: 130px; }
-    .coin-star-white { font-size: 48px; }
-    .ray { height: 40px; }
-    .ray:nth-child(1), .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(0deg) translateY(-68px); }
-    .ray:nth-child(2), .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(30deg) translateY(-68px); }
-    .ray:nth-child(3), .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(60deg) translateY(-68px); }
-    .ray:nth-child(4), .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(90deg) translateY(-68px); }
-    .ray:nth-child(5), .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(120deg) translateY(-68px); }
-    .ray:nth-child(6), .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(150deg) translateY(-68px); }
+    #canvas-container { width: 220px; height: 220px; }
     .task-card { flex-direction: column; text-align: center; }
     .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
     .avatar-img { width: 38px; height: 38px; }
