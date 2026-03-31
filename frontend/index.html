@@ -4,12 +4,592 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10,10,42,0.9);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 12px 16px;
+            margin: 12px 16px 0 16px;
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8E8E93, #636366);
+            object-fit: cover;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userName {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        #userLevel {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .balance {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            min-height: 450px;
+            position: relative;
+        }
+
+        /* ========== НАСТОЯЩАЯ ЗВЕЗДА С ОСТРЫМИ ЛУЧАМИ ========== */
+        .star-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .star-polygon {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(
+                50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+            );
+            background: radial-gradient(ellipse at 30% 30%, #ffffff, #e0e8ff, #b0c4ff);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+            animation: starPulse 2s ease-in-out infinite;
+        }
+
+        /* Дополнительные лучи для большей "звездности" */
+        .star-rays {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ray-long {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 110px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+            transform-origin: center;
+            border-radius: 3px;
+            animation: rayGlow 1.5s ease-in-out infinite alternate;
+        }
+
+        .ray-long:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-95px); }
+        .ray-long:nth-child(2) { transform: translate(-50%, -50%) rotate(36deg) translateY(-95px); }
+        .ray-long:nth-child(3) { transform: translate(-50%, -50%) rotate(72deg) translateY(-95px); }
+        .ray-long:nth-child(4) { transform: translate(-50%, -50%) rotate(108deg) translateY(-95px); }
+        .ray-long:nth-child(5) { transform: translate(-50%, -50%) rotate(144deg) translateY(-95px); }
+        .ray-long:nth-child(6) { transform: translate(-50%, -50%) rotate(180deg) translateY(-95px); }
+        .ray-long:nth-child(7) { transform: translate(-50%, -50%) rotate(216deg) translateY(-95px); }
+        .ray-long:nth-child(8) { transform: translate(-50%, -50%) rotate(252deg) translateY(-95px); }
+        .ray-long:nth-child(9) { transform: translate(-50%, -50%) rotate(288deg) translateY(-95px); }
+        .ray-long:nth-child(10) { transform: translate(-50%, -50%) rotate(324deg) translateY(-95px); }
+
+        .ray-short {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 70px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+            transform-origin: center;
+            border-radius: 2px;
+            animation: rayGlowShort 1.8s ease-in-out infinite alternate;
+        }
+
+        .ray-short:nth-child(1) { transform: translate(-50%, -50%) rotate(18deg) translateY(-75px); }
+        .ray-short:nth-child(2) { transform: translate(-50%, -50%) rotate(54deg) translateY(-75px); }
+        .ray-short:nth-child(3) { transform: translate(-50%, -50%) rotate(90deg) translateY(-75px); }
+        .ray-short:nth-child(4) { transform: translate(-50%, -50%) rotate(126deg) translateY(-75px); }
+        .ray-short:nth-child(5) { transform: translate(-50%, -50%) rotate(162deg) translateY(-75px); }
+        .ray-short:nth-child(6) { transform: translate(-50%, -50%) rotate(198deg) translateY(-75px); }
+        .ray-short:nth-child(7) { transform: translate(-50%, -50%) rotate(234deg) translateY(-75px); }
+        .ray-short:nth-child(8) { transform: translate(-50%, -50%) rotate(270deg) translateY(-75px); }
+        .ray-short:nth-child(9) { transform: translate(-50%, -50%) rotate(306deg) translateY(-75px); }
+        .ray-short:nth-child(10) { transform: translate(-50%, -50%) rotate(342deg) translateY(-75px); }
+
+        @keyframes starPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+            50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 40px rgba(255,255,255,1)); }
+        }
+
+        @keyframes rayGlow {
+            0% { opacity: 0.4; height: 95px; }
+            100% { opacity: 1; height: 115px; }
+        }
+
+        @keyframes rayGlowShort {
+            0% { opacity: 0.3; height: 60px; }
+            100% { opacity: 0.8; height: 75px; }
+        }
+
+        .star-container:active {
+            transform: scale(0.96);
+        }
+
+        /* Планеты */
+        .planet-mercury { background: radial-gradient(circle at 30% 30%, #a9a9a9, #696969); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; box-shadow: 0 0 30px rgba(0,0,0,0.3); }
+        .planet-mars { background: radial-gradient(circle at 30% 30%, #cd5c5c, #b22234); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+        .planet-venus { background: radial-gradient(circle at 30% 30%, #f0e68c, #b8860b); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+        .planet-neptune { background: radial-gradient(circle at 30% 30%, #1e3a8a, #3b82f6); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+        .planet-uranus { background: radial-gradient(circle at 30% 30%, #40e0d0, #48d1cc); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+        .planet-saturn { background: radial-gradient(circle at 30% 30%, #f4a460, #d2b48c); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+        .planet-jupiter { background: radial-gradient(circle at 30% 30%, #d2b48c, #8b4513); border-radius: 50%; width: 180px; height: 180px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 70px; }
+
+        .boost-btn {
+            background: rgba(44, 44, 48, 0.85);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 214, 10, 0.4);
+            border-radius: 44px;
+            padding: 10px 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            margin: 15px auto;
+        }
+
+        .stats-container {
+            width: 100%;
+            max-width: 280px;
+            margin-top: 5px;
+        }
+
+        .energy-bar {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+
+        .energy-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .energy-progress {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            background: linear-gradient(90deg, #ffd700, #ff8c00);
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .click-power, .passive-income {
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 8px;
+        }
+
+        .nav-bar {
+            position: sticky;
+            bottom: 0;
+            background: rgba(10,10,42,0.98);
+            backdrop-filter: blur(15px);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid rgba(255,215,0,0.2);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .nav-btn.active { color: #ffd700; background: rgba(255,215,0,0.15); }
+        .nav-icon { font-size: 22px; }
+
+        .tab-panel {
+            display: none;
+            padding: 16px;
+            padding-bottom: 80px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+        .tab-panel.active { display: block; }
+        .tab-panel h2 { font-size: 18px; margin-bottom: 16px; text-align: center; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a3a, #0a0a2a);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255,215,0,0.2);
+        }
+        .modal-header h3 { font-size: 18px; color: #ffd700; }
+        .modal-close { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .boost-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .boost-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .boost-info { flex: 1; }
+        .boost-name { font-weight: bold; font-size: 14px; }
+        .boost-desc { font-size: 11px; opacity: 0.7; }
+        .boost-level, .boost-cost { font-size: 11px; color: #ffd700; margin-top: 4px; }
+        .boost-buy-btn {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .tasks-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 40px;
+            padding: 4px;
+        }
+        .tasks-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px;
+            border-radius: 32px;
+            color: #888;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .tasks-tab.active {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a1a2e;
+        }
+        .tasks-content { display: none; }
+        .tasks-content.active { display: block; }
+        .task-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-claim-btn {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .task-claim-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .premium-locked { opacity: 0.8; background: rgba(50,50,60,0.5); }
+        .premium-condition { font-size: 10px; color: #ffaa66; margin-top: 5px; }
+
+        .referral-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 22px; font-weight: bold; color: #ffd700; }
+        .level-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .level-title { font-weight: bold; margin-bottom: 8px; color: #ffd700; }
+        .level-list { font-size: 12px; }
+        .level-item {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .referral-link-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 16px;
+        }
+        .link-box {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .link-box input {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 10px;
+            padding: 8px;
+            color: white;
+            font-size: 11px;
+        }
+        .link-box button {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            border-radius: 10px;
+            padding: 0 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .share-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            border-radius: 40px;
+            padding: 10px;
+            margin-top: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .profile-card, .auth-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .profile-avatar-img {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 13px;
+        }
+        .auth-buttons { display: flex; gap: 12px; justify-content: center; }
+
+        .leaderboard-list { padding: 8px; }
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        .leaderboard-rank { width: 45px; font-size: 18px; font-weight: bold; }
+        .leaderboard-rank.top-1 { color: #ffd700; }
+        .leaderboard-rank.top-2 { color: #c0c0c0; }
+        .leaderboard-rank.top-3 { color: #cd7f32; }
+        .leaderboard-name { flex: 1; font-size: 13px; }
+        .leaderboard-coins { font-weight: bold; color: #ffd700; font-size: 12px; }
+
+        .airdrop-content { text-align: center; padding: 30px 16px; }
+        .golden-coin {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 20px auto;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ffd700, #e5a800);
+            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.4), inset 10px 10px 20px rgba(255,255,200,0.5), 0 15px 25px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: coinFloat 2s ease-in-out infinite;
+        }
+        .golden-coin .rays {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        .ray {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 50px;
+            background: linear-gradient(180deg, #ffd966, transparent);
+            transform-origin: center;
+            opacity: 0.6;
+            animation: rayShine 1.2s ease-in-out infinite alternate;
+        }
+        .ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-85px); }
+        .ray:nth-child(2) { transform: translate(-50%, -50%) rotate(30deg) translateY(-85px); }
+        .ray:nth-child(3) { transform: translate(-50%, -50%) rotate(60deg) translateY(-85px); }
+        .ray:nth-child(4) { transform: translate(-50%, -50%) rotate(90deg) translateY(-85px); }
+        .ray:nth-child(5) { transform: translate(-50%, -50%) rotate(120deg) translateY(-85px); }
+        .ray:nth-child(6) { transform: translate(-50%, -50%) rotate(150deg) translateY(-85px); }
+        .ray:nth-child(7) { transform: translate(-50%, -50%) rotate(180deg) translateY(-85px); }
+        .ray:nth-child(8) { transform: translate(-50%, -50%) rotate(210deg) translateY(-85px); }
+        .ray:nth-child(9) { transform: translate(-50%, -50%) rotate(240deg) translateY(-85px); }
+        .ray:nth-child(10) { transform: translate(-50%, -50%) rotate(270deg) translateY(-85px); }
+        .ray:nth-child(11) { transform: translate(-50%, -50%) rotate(300deg) translateY(-85px); }
+        .ray:nth-child(12) { transform: translate(-50%, -50%) rotate(330deg) translateY(-85px); }
+        .coin-star-white { font-size: 60px; color: white; text-shadow: 0 0 10px rgba(255,255,240,0.8); }
+        @keyframes coinFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes rayShine { 0% { opacity: 0.3; height: 45px; } 100% { opacity: 0.8; height: 60px; } }
+        .airdrop-soon { font-size: 24px; font-weight: bold; color: #ffd700; margin: 20px 0 12px; }
+        .airdrop-subscribe {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .message {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #ffd700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        .message.show { display: block; animation: fadeOut 2s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+        @media (max-width: 480px) {
+            .star-container { width: 160px; height: 160px; }
+            .planet-mercury, .planet-mars, .planet-venus, .planet-neptune, .planet-uranus, .planet-saturn, .planet-jupiter { width: 150px; height: 150px; font-size: 55px; }
+            .golden-coin { width: 130px; height: 130px; }
+            .coin-star-white { font-size: 48px; }
+            .avatar-img { width: 38px; height: 38px; }
+            .task-card { flex-direction: column; text-align: center; }
+            .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
+            .link-box { flex-direction: column; }
+            .link-box button { padding: 8px; }
+        }
+    </style>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <div class="top-bar glass-panel">
+        <div class="top-bar">
             <div class="user-info">
                 <img id="userAvatar" class="avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
                 <div class="user-details">
@@ -21,18 +601,18 @@
         </div>
 
         <div class="game-area" id="gameArea">
-            <!-- ЗВЕЗДА С ЛУЧАМИ -->
-            <div id="star-container">
-                <div class="star-core"></div>
+            <!-- ЗВЕЗДА С ОСТРЫМИ ЛУЧАМИ -->
+            <div id="starContainer" class="star-container">
+                <div class="star-polygon"></div>
                 <div class="star-rays">
-                    <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
-                    <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
-                    <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
+                    <div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div>
+                    <div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div>
+                    <div class="ray-long"></div><div class="ray-long"></div>
                 </div>
-                <div class="star-rays-short">
+                <div class="star-rays-short" id="shortRays">
                     <div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div>
                     <div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div>
-                    <div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div>
+                    <div class="ray-short"></div><div class="ray-short"></div>
                 </div>
             </div>
 
@@ -41,7 +621,7 @@
                 <span class="boost-text">BOOST</span>
             </button>
             <div class="stats-container">
-                <div class="energy-bar glass-panel">
+                <div class="energy-bar">
                     <div class="energy-label">
                         <span>⚡ Энергия</span>
                         <span id="energyValue">100/100</span>
@@ -55,7 +635,7 @@
             <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
         </div>
 
-        <div class="nav-bar glass-panel">
+        <div class="nav-bar">
             <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
             <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
             <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
@@ -65,7 +645,7 @@
         </div>
 
         <div class="modal-overlay" id="boostModal">
-            <div class="modal-content glass-panel">
+            <div class="modal-content">
                 <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
                 <div class="boost-list">
                     <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div><div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div></div><button class="boost-buy-btn" id="buyClickUpgrade">Купить</button></div>
@@ -82,37 +662,37 @@
                 <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
             </div>
             <div class="tasks-content active" id="dailyTasks">
-                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
-                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
             </div>
             <div class="tasks-content" id="weeklyTasks">
-                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
-                <div class="task-card glass-panel"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
+                <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
             </div>
             <div class="tasks-content" id="premiumTasks">
-                <div class="task-card premium-locked glass-panel" id="premiumMoonCard">
+                <div class="task-card premium-locked" id="premiumMoonCard">
                     <div class="task-info">
                         <div class="task-name">🌕 ЛУНА</div>
                         <div class="task-progress">+20 000 монет/мин</div>
-                        <div class="task-progress">Цена: 50 ₽</div>
+                        <div class="task-progress">50 ₽</div>
                         <div class="premium-condition" id="moonCondition">🔒 Требуется: достичь Юпитера (10 млрд монет)</div>
                     </div>
                     <button class="task-claim-btn disabled" id="buyMoon" disabled>🔒 ЗАБЛОКИРОВАНО</button>
                 </div>
-                <div class="task-card premium-locked glass-panel" id="premiumEarthCard">
+                <div class="task-card premium-locked" id="premiumEarthCard">
                     <div class="task-info">
                         <div class="task-name">🌍 ЗЕМЛЯ</div>
                         <div class="task-progress">+50 000 монет/мин</div>
-                        <div class="task-progress">Цена: 100 ₽</div>
+                        <div class="task-progress">100 ₽</div>
                         <div class="premium-condition" id="earthCondition">🔒 Требуется: купить Луну</div>
                     </div>
                     <button class="task-claim-btn disabled" id="buyEarth" disabled>🔒 ЗАБЛОКИРОВАНО</button>
                 </div>
-                <div class="task-card premium-locked glass-panel" id="premiumSunCard">
+                <div class="task-card premium-locked" id="premiumSunCard">
                     <div class="task-info">
                         <div class="task-name">☀️ СОЛНЦЕ</div>
                         <div class="task-progress">+100 000 монет/мин</div>
-                        <div class="task-progress">Цена: 200 ₽</div>
+                        <div class="task-progress">200 ₽</div>
                         <div class="premium-condition" id="sunCondition">🔒 Требуется: купить Землю</div>
                     </div>
                     <button class="task-claim-btn disabled" id="buySun" disabled>🔒 ЗАБЛОКИРОВАНО</button>
@@ -123,18 +703,18 @@
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
             <div class="referral-stats">
-                <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
-                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
-                <div class="stat-card glass-panel"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
+                <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
+                <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
+                <div class="stat-card"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
             </div>
-            <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
-            <div class="level-card glass-panel"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
-            <div class="level-card glass-panel"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
-            <div class="referral-link-container glass-panel">
-                <p>Ваша реферальная ссылка:</p>
+            <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
+            <div class="level-card"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
+            <div class="level-card"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
+            <div class="referral-link-container">
+                <p>Ваша ссылка:</p>
                 <div class="link-box">
                     <input type="text" id="referralLink" readonly value="Загрузка...">
-                    <button id="copyLinkBtn">📋 Копировать</button>
+                    <button id="copyLinkBtn">📋</button>
                 </div>
                 <button id="shareLinkBtn" class="share-btn">👥 Пригласить друга</button>
             </div>
@@ -142,7 +722,7 @@
 
         <div class="tab-panel" id="profilePanel">
             <h2>👤 Профиль</h2>
-            <div class="profile-card glass-panel">
+            <div class="profile-card">
                 <div class="profile-header">
                     <img id="profileAvatar" class="profile-avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
                     <div>
@@ -158,7 +738,7 @@
                 <div class="info-row"><span>👥 Приглашено</span><span id="profileReferrals">0</span></div>
                 <div class="info-row"><span>🏆 Рейтинг</span><span id="profileRank">#—</span></div>
             </div>
-            <div class="auth-section glass-panel">
+            <div class="auth-section">
                 <div class="auth-title">🔐 Авторизация</div>
                 <div class="auth-buttons"><button class="boost-buy-btn" id="authTelegramBtn">Telegram ✅</button><button class="boost-buy-btn" id="authVkBtn">VK</button></div>
             </div>
@@ -166,7 +746,7 @@
 
         <div class="tab-panel" id="leaderboardPanel">
             <h2>🏆 Топ игроков</h2>
-            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item glass-panel">🏆 Загрузка...</div></div>
+            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка...</div></div>
         </div>
 
         <div class="tab-panel" id="airdropPanel">
@@ -182,6 +762,434 @@
     </div>
     <div class="message" id="message"></div>
 
-    <script type="module" src="app.js"></script>
+    <script>
+        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        const tgUser = tg.initDataUnsafe?.user;
+        let userId = tgUser?.id || 'guest_' + Math.floor(Math.random() * 1000000000);
+        let displayName = "Игрок";
+        let userAvatar = tgUser?.photo_url || 'https://telegram.org/img/tg_icon_light.png';
+        if (tgUser) {
+            if (tgUser.username) displayName = `@${tgUser.username}`;
+            else if (tgUser.first_name) displayName = tgUser.first_name;
+        }
+        document.getElementById('userName').textContent = displayName;
+        document.getElementById('profileName').textContent = displayName;
+        document.getElementById('userAvatar')?.setAttribute('src', userAvatar);
+        document.getElementById('profileAvatar')?.setAttribute('src', userAvatar);
+
+        function getReferrerId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const startapp = urlParams.get('startapp');
+            if (startapp && startapp.startsWith('ref_')) return startapp.replace('ref_', '');
+            return null;
+        }
+        const referrerId = getReferrerId();
+
+        // ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
+        let coins = 0;
+        let energy = 100;
+        let maxEnergy = 100;
+        let clickPower = 1;
+        let clickUpgradeCost = 100;
+        let clickUpgradeLevel = 1;
+        let energyUpgradeCost = 200;
+        let energyUpgradeLevel = 1;
+        let passiveIncomeLevel = 0;
+        let passiveIncomeUpgradeCost = 500;
+        let passiveIncomeRate = 0;
+
+        let hasMoon = false;
+        let hasEarth = false;
+        let hasSun = false;
+
+        let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
+        let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
+
+        const starContainer = document.getElementById('starContainer');
+
+        function handleClick() {
+            if (energy < clickPower) {
+                showMessage('❌ Нет энергии!', true);
+                return;
+            }
+            energy -= clickPower;
+            coins += clickPower;
+            dailyClickCount++; weeklyClickCount++;
+            dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
+            updateUI(); saveGame(); syncToServer();
+            
+            if (starContainer) {
+                starContainer.style.transform = 'scale(0.95)';
+                setTimeout(() => { if (starContainer) starContainer.style.transform = 'scale(1)'; }, 100);
+            }
+            
+            const popup = document.createElement('div');
+            popup.textContent = `+${clickPower}`;
+            popup.style.position = 'fixed';
+            popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
+            popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
+            popup.style.color = '#ffd700';
+            popup.style.fontSize = '24px';
+            popup.style.fontWeight = 'bold';
+            popup.style.pointerEvents = 'none';
+            popup.style.zIndex = '1000';
+            popup.style.animation = 'popup 0.5s ease-out forwards';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 500);
+        }
+
+        if (starContainer) starContainer.addEventListener('click', handleClick);
+
+        async function syncToServer() {
+            if (!userId || userId.toString().startsWith('guest')) return;
+            try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
+        }
+
+        function getLevel() {
+            if (coins >= 10000000000) return 7;
+            if (coins >= 1000000000) return 6;
+            if (coins >= 100000000) return 5;
+            if (coins >= 10000000) return 4;
+            if (coins >= 1000000) return 3;
+            if (coins >= 100000) return 2;
+            if (coins >= 10000) return 1;
+            return 0;
+        }
+
+        function updateStarOrPlanet() {
+            const level = getLevel();
+            const container = document.getElementById('starContainer');
+            if (!container) return;
+            
+            if (level === 0) {
+                container.innerHTML = `
+                    <div class="star-polygon"></div>
+                    <div class="star-rays">
+                        <div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div>
+                        <div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div><div class="ray-long"></div>
+                        <div class="ray-long"></div><div class="ray-long"></div>
+                    </div>
+                    <div class="star-rays-short">
+                        <div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div>
+                        <div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div><div class="ray-short"></div>
+                        <div class="ray-short"></div><div class="ray-short"></div>
+                    </div>
+                `;
+                container.style.background = 'transparent';
+                container.style.borderRadius = '0';
+                container.style.boxShadow = 'none';
+            } else {
+                const planetClasses = ['', 'planet-mercury', 'planet-mars', 'planet-venus', 'planet-neptune', 'planet-uranus', 'planet-saturn', 'planet-jupiter'];
+                const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
+                container.className = `star-container ${planetClasses[level]}`;
+                container.innerHTML = planetEmojis[level];
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.justifyContent = 'center';
+                container.style.fontSize = '70px';
+            }
+        }
+
+        function updateUI() {
+            const level = getLevel();
+            const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер'];
+            document.getElementById('userLevel').textContent = `Уровень ${level} · ${levelNames[level]}`;
+            document.getElementById('coins').textContent = Math.floor(coins);
+            document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
+            document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
+            document.getElementById('clickPower').textContent = clickPower;
+            document.getElementById('energyCost').textContent = clickPower;
+            document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
+            document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
+            document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
+            document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
+            document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
+            document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
+            
+            let rate = passiveIncomeLevel * 5;
+            if (hasSun) rate += 100000;
+            else if (hasEarth) rate += 50000;
+            else if (hasMoon) rate += 20000;
+            passiveIncomeRate = rate;
+            document.getElementById('passiveIncomeRate').textContent = rate;
+            
+            updateStarOrPlanet();
+            
+            document.getElementById('profileCoins').textContent = Math.floor(coins);
+            document.getElementById('profileClickPower').textContent = clickPower;
+            document.getElementById('profileMaxEnergy').textContent = maxEnergy;
+            document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
+            document.getElementById('profileId').textContent = userId;
+            document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
+            document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
+            document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
+            document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
+            document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
+            updateTaskButtons();
+            updatePremiumUI();
+        }
+
+        function updatePremiumUI() {
+            const hasJupiter = coins >= 10000000000;
+            const moonBtn = document.getElementById('buyMoon');
+            const earthBtn = document.getElementById('buyEarth');
+            const sunBtn = document.getElementById('buySun');
+            const moonCard = document.getElementById('premiumMoonCard');
+            const earthCard = document.getElementById('premiumEarthCard');
+            const sunCard = document.getElementById('premiumSunCard');
+            if (hasJupiter && !hasMoon) {
+                if (moonCard) moonCard.classList.remove('premium-locked');
+                if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
+                const cond = document.getElementById('moonCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasMoon) {
+                if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('moonCondition');
+                if (cond) cond.innerHTML = '✅ Луна куплена';
+            }
+            if (hasMoon && !hasEarth) {
+                if (earthCard) earthCard.classList.remove('premium-locked');
+                if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
+                const cond = document.getElementById('earthCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasEarth) {
+                if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('earthCondition');
+                if (cond) cond.innerHTML = '✅ Земля куплена';
+            }
+            if (hasEarth && !hasSun) {
+                if (sunCard) sunCard.classList.remove('premium-locked');
+                if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
+                const cond = document.getElementById('sunCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasSun) {
+                if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('sunCondition');
+                if (cond) cond.innerHTML = '✅ Солнце куплено';
+            }
+        }
+
+        function buyPremium(type) {
+            if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
+                hasMoon = true;
+                showMessage('🌕 Луна куплена! +20 000 монет/мин');
+                updateUI(); saveGame();
+            } else if (type === 'earth' && hasMoon && !hasEarth) {
+                hasEarth = true;
+                showMessage('🌍 Земля куплена! +50 000 монет/мин');
+                updateUI(); saveGame();
+            } else if (type === 'sun' && hasEarth && !hasSun) {
+                hasSun = true;
+                showMessage('☀️ Солнце куплено! +100 000 монет/мин');
+                updateUI(); saveGame();
+            } else {
+                showMessage('❌ Условия не выполнены', true);
+            }
+        }
+
+        function saveGame() {
+            localStorage.setItem('starToPlanet', JSON.stringify({
+                coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
+                energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
+                dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
+                weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
+                hasMoon, hasEarth, hasSun, displayName
+            }));
+        }
+        function loadGame() {
+            const saved = localStorage.getItem('starToPlanet');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    coins = data.coins || 0;
+                    energy = data.energy ?? 100;
+                    maxEnergy = data.maxEnergy ?? 100;
+                    clickPower = data.clickPower || 1;
+                    clickUpgradeCost = data.clickUpgradeCost || 100;
+                    clickUpgradeLevel = data.clickUpgradeLevel || 1;
+                    energyUpgradeCost = data.energyUpgradeCost || 200;
+                    energyUpgradeLevel = data.energyUpgradeLevel || 1;
+                    passiveIncomeLevel = data.passiveIncomeLevel || 0;
+                    passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+                    dailyClickCount = data.dailyClickCount || 0;
+                    dailyCoinsEarned = data.dailyCoinsEarned || 0;
+                    dailyTasksClaimed = data.dailyTasksClaimed || { click: false, coins: false };
+                    weeklyClickCount = data.weeklyClickCount || 0;
+                    weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
+                    weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false };
+                    hasMoon = data.hasMoon || false;
+                    hasEarth = data.hasEarth || false;
+                    hasSun = data.hasSun || false;
+                    if (data.displayName) displayName = data.displayName;
+                } catch(e) {}
+            }
+            if (referrerId && referrerId !== userId && !localStorage.getItem(`ref_bonus_${referrerId}_${userId}`)) {
+                localStorage.setItem(`ref_bonus_${referrerId}_${userId}`, 'claimed');
+                coins += 500;
+                showMessage('🎉 +500 монет за приглашение!');
+                saveGame(); syncToServer();
+            }
+            updateUI();
+        }
+
+        function updateTaskButtons() {
+            const dailyClickBtn = document.getElementById('dailyClickClaim');
+            const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
+            const weeklyClickBtn = document.getElementById('weeklyClickClaim');
+            const weeklyCoinsBtn = document.getElementById('weeklyCoinsClaim');
+            if (dailyClickBtn) { if (dailyClickCount >= 100 && !dailyTasksClaimed.click) dailyClickBtn.classList.remove('disabled'); else dailyClickBtn.classList.add('disabled'); }
+            if (dailyCoinsBtn) { if (dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins) dailyCoinsBtn.classList.remove('disabled'); else dailyCoinsBtn.classList.add('disabled'); }
+            if (weeklyClickBtn) { if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled'); else weeklyClickBtn.classList.add('disabled'); }
+            if (weeklyCoinsBtn) { if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled'); else weeklyCoinsBtn.classList.add('disabled'); }
+        }
+        async function claimTask(taskId, reward, type) {
+            if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { dailyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
+            else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { dailyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
+            else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { weeklyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
+            else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { weeklyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
+            else { showMessage('❌ Условия не выполнены', true); return; }
+            updateUI(); saveGame(); syncToServer(); updateTaskButtons();
+        }
+        function upgradeClick() {
+            if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
+                coins -= clickUpgradeCost; clickPower++; clickUpgradeLevel++;
+                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
+                updateUI(); saveGame(); syncToServer();
+                showMessage('✅ Сила клика +1');
+            } else if (clickUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
+            else showMessage('❌ Не хватает монет!', true);
+        }
+        function upgradeEnergy() {
+            if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
+                coins -= energyUpgradeCost; maxEnergy += 50; energy += 50; energyUpgradeLevel++;
+                energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
+                updateUI(); saveGame(); syncToServer();
+                showMessage('✅ Энергия +50');
+            } else if (energyUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
+            else showMessage('❌ Не хватает монет!', true);
+        }
+        function upgradePassive() {
+            if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
+                coins -= passiveIncomeUpgradeCost; passiveIncomeLevel++;
+                passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
+                updateUI(); saveGame(); syncToServer();
+                showMessage('✅ Пассивный доход +5/мин');
+            } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
+            else showMessage('❌ Не хватает монет!', true);
+        }
+        function applyPassiveIncome() { if (passiveIncomeRate > 0) { coins += passiveIncomeRate; updateUI(); saveGame(); syncToServer(); } }
+        function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy + 3, maxEnergy); updateUI(); } }
+        function showMessage(text, isError = false) { const msg = document.getElementById('message'); msg.textContent = text; msg.style.color = isError ? '#ff6b6b' : '#ffd700'; msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
+
+        function loadLeaderboardFromAPI() {
+            const container = document.getElementById('leaderboardList');
+            if (!container) return;
+            const demoPlayers = [
+                { name: displayName, coins: coins, level: getLevel(), isCurrent: true },
+                { name: "⭐ Александр", coins: 1250000, level: 5 },
+                { name: "🌙 Екатерина", coins: 850000, level: 4 },
+                { name: "🚀 Дмитрий", coins: 420000, level: 3 },
+                { name: "🪐 Сергей", coins: 210000, level: 2 }
+            ];
+            const sorted = demoPlayers.sort((a,b) => b.coins - a.coins);
+            container.innerHTML = sorted.map((p, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+                const isCurrent = p.isCurrent;
+                return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
+            }).join('');
+        }
+
+        function loadFriendsFromAPI() {
+            const container = document.getElementById('level1List');
+            if (!container) return;
+            container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+            document.getElementById('referralCount').textContent = '0';
+            document.getElementById('referralBonus').textContent = '0';
+            document.getElementById('profileReferrals').textContent = '0';
+        }
+
+        function setupTabs() {
+            const panels = { game: document.getElementById('gameArea'), tasks: document.getElementById('tasksPanel'), friends: document.getElementById('friendsPanel'), profile: document.getElementById('profilePanel'), leaderboard: document.getElementById('leaderboardPanel'), airdrop: document.getElementById('airdropPanel') };
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
+                    if (panels[tab]) panels[tab].style.display = 'block';
+                    if (tab === 'game') panels.game.style.display = 'flex';
+                    if (tab === 'leaderboard') loadLeaderboardFromAPI();
+                    if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
+                });
+            });
+        }
+
+        function setupTasksTabs() {
+            const tabs = document.querySelectorAll('.tasks-tab');
+            const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
+            tabs.forEach(t => {
+                t.addEventListener('click', () => {
+                    const target = t.dataset.tasksTab;
+                    tabs.forEach(tt => tt.classList.remove('active'));
+                    t.classList.add('active');
+                    Object.values(contents).forEach(c => c?.classList.remove('active'));
+                    if (contents[target]) contents[target].classList.add('active');
+                });
+            });
+        }
+
+        function updateReferralLink() { 
+            const linkInput = document.getElementById('referralLink'); 
+            if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
+        }
+        function copyReferralLink() { 
+            const input = document.getElementById('referralLink'); 
+            if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
+        }
+        function shareReferralLink() {
+            const input = document.getElementById('referralLink');
+            if(input && tg.openTelegramLink) {
+                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
+            } else if(input) {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
+            }
+        }
+
+        function init() {
+            loadGame();
+            setupTabs();
+            setupTasksTabs();
+            updateReferralLink();
+            document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
+            document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
+            document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
+            document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
+            document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
+            document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
+            document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
+            document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
+            document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
+            document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
+            document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
+            document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
+            const boostBtn = document.getElementById('boostBtn'); const boostModal = document.getElementById('boostModal'); const closeBoost = document.getElementById('closeBoostModal');
+            if(boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
+            if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
+            if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
+            setInterval(applyPassiveIncome, 60000);
+            setInterval(rechargeEnergy, 1000);
+            const raysContainer = document.getElementById('raysContainer');
+            if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
+            document.getElementById('gameArea').style.display = 'flex';
+            console.log('✅ Игра загружена!');
+            if(!document.querySelector('#popup-animation')) { const style = document.createElement('style'); style.id = 'popup-animation'; style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`; document.head.appendChild(style); }
+            setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
+        }
+        init();
+    </script>
 </body>
 </html>
