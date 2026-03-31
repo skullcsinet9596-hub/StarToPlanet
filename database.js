@@ -10,7 +10,7 @@ async function initializeDatabase() {
         driver: sqlite3.Database
     });
 
-    // Таблица пользователей (расширенная)
+    // Таблица пользователей
     await db.exec(`
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
