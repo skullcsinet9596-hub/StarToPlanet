@@ -32,7 +32,6 @@
             position: relative;
         }
 
-        /* iOS 26 стеклянные панели */
         .glass-panel {
             background: rgba(20, 20, 24, 0.75);
             backdrop-filter: blur(28px);
@@ -766,9 +765,11 @@
         let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
         let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
 
-        // ==================== 3D СЦЕНА ====================
-        let scene, camera, renderer, currentObject;
-        let starLight, time = 0;
+        // ==================== 3D ПЕРЕМЕННЫЕ ====================
+        let scene = null, camera = null, renderer = null, currentObject = null;
+        let starLight = null, time = 0;
+        let is3DReady = false;
+        let pendingUpdate = false;
 
         function getLevel() {
             if (coins >= 10000000000) return 7;
@@ -838,8 +839,28 @@
             return planet;
         }
 
+        function update3DObject() {
+            if (!is3DReady || !scene) {
+                pendingUpdate = true;
+                return;
+            }
+            pendingUpdate = false;
+            
+            const level = getLevel();
+            if (currentObject) scene.remove(currentObject);
+            
+            if (level === 0) {
+                currentObject = createStar();
+            } else {
+                currentObject = createPlanet(level);
+            }
+            scene.add(currentObject);
+        }
+
         function init3D() {
             const container = document.getElementById('canvas-container');
+            if (!container) return;
+            
             const width = container.clientWidth;
             const height = width;
             container.style.height = `${height}px`;
@@ -867,7 +888,9 @@
             starLight.position.set(0, 0, 0);
             scene.add(starLight);
             
-            update3DObject();
+            is3DReady = true;
+            
+            if (pendingUpdate) update3DObject();
             
             function animate() {
                 requestAnimationFrame(animate);
@@ -877,37 +900,28 @@
                     if (getLevel() === 0) {
                         const scale = 1 + Math.sin(time * 4) * 0.03;
                         currentObject.scale.set(scale, scale, scale);
-                        starLight.intensity = 0.6 + Math.sin(time * 5) * 0.3;
+                        if (starLight) starLight.intensity = 0.6 + Math.sin(time * 5) * 0.3;
                     } else {
-                        starLight.intensity = 0.2;
+                        if (starLight) starLight.intensity = 0.2;
                     }
                 }
-                renderer.render(scene, camera);
+                if (renderer && scene && camera) renderer.render(scene, camera);
             }
             animate();
             
             window.addEventListener('resize', () => {
+                if (!container) return;
                 const newWidth = container.clientWidth;
                 const newHeight = newWidth;
                 container.style.height = `${newHeight}px`;
-                camera.aspect = newWidth / newHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
+                if (camera) {
+                    camera.aspect = newWidth / newHeight;
+                    camera.updateProjectionMatrix();
+                }
+                if (renderer) renderer.setSize(newWidth, newHeight);
             });
             
             container.addEventListener('click', handleClick);
-        }
-
-        function update3DObject() {
-            const level = getLevel();
-            if (currentObject) scene.remove(currentObject);
-            
-            if (level === 0) {
-                currentObject = createStar();
-            } else {
-                currentObject = createPlanet(level);
-            }
-            scene.add(currentObject);
         }
 
         function handleClick() {
