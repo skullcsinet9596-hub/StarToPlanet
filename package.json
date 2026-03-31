@@ -1,14 +1,12 @@
 {
   "name": "star-to-planet-bot",
   "version": "1.0.0",
-  "main": "bot.js",
+  "main": "bot-simple.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot-simple.js"
   },
   "dependencies": {
     "telegraf": "^4.15.3",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "dotenv": "^16.3.1"
   }
 }
