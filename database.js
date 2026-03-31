@@ -110,7 +110,7 @@ async function createUser(telegramId, username, firstName, referrerId = null) {
         VALUES (?, ?, ?, ?, 1000, 1000, 1, 100, 1, 200, 0, 500, 1)
     `, telegramId, username, firstName, referrerId);
 
-    // ✅ УБРАЛ localStorage — теперь проверка по базе данных
+    // ✅ УБРАЛ localStorage — проверка через базу данных
     if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
         const referrer = await getUser(referrerId);
         if (referrer) {
