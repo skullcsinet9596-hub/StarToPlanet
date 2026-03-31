@@ -494,3 +494,43 @@ canvas {
     .task-card { flex-direction: column; text-align: center; }
     .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
 }
+/* iOS 26 стиль для стеклянных панелей */
+.top-bar, .energy-bar, .boost-btn, .modal-content, .profile-card, .auth-section, .task-card, .level-card, .stat-card {
+    backdrop-filter: blur(28px);
+    background: rgba(20, 20, 24, 0.75);
+    border: 0.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 32px;
+}
+
+.boost-btn {
+    background: rgba(44, 44, 48, 0.85);
+    border: 0.5px solid rgba(255, 214, 10, 0.4);
+}
+
+/* Золотые акценты */
+.balance, .click-power span, .passive-income span, .stat-value, .level-title, .leaderboard-coins, .boost-text, .airdrop-soon {
+    color: #FFD60A;
+}
+
+/* Анимация для звезды */
+@keyframes starPulse {
+    0%, 100% { opacity: 0.9; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+    50% { opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,0.8); }
+}
+
+/* 3D контейнер */
+#canvas-container {
+    width: 260px;
+    height: 260px;
+    margin: 10px auto;
+    cursor: pointer;
+    border-radius: 50%;
+    overflow: visible;
+}
+
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50%;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+}

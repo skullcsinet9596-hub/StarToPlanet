@@ -43,27 +43,52 @@ let weeklyClickCount = 0;
 let weeklyCoinsEarned = 0;
 let weeklyTasksClaimed = { click: false, coins: false };
 
-// ==================== ЭЛЕМЕНТЫ ====================
+// ==================== 3D ПЕРЕМЕННЫЕ ====================
+let scene, camera, renderer, planet3d;
 let planetElement = null;
 
-// ==================== ДЕМО-ДАННЫЕ ДЛЯ РЕЙТИНГА И ДРУЗЕЙ ====================
-const DEMO_PLAYERS = [
-    { name: displayName, coins: 0, level: 1, isCurrent: true },
-    { name: "⭐ Космический_воин", coins: 1250000, level: 8 },
-    { name: "🌙 Звездный_странник", coins: 850000, level: 7 },
-    { name: "🪐 Планетарный_гигант", coins: 420000, level: 6 },
-    { name: "✨ Галактический_рейнджер", coins: 180000, level: 5 }
-];
+// ==================== СОЗДАНИЕ БЕЛОЙ ЗВЕЗДЫ ====================
+function createStarTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.3, 'rgba(255, 255, 200, 0.9)');
+    gradient.addColorStop(0.6, 'rgba(200, 220, 255, 0.7)');
+    gradient.addColorStop(1, 'rgba(150, 180, 255, 0.4)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(256, 256, 250, 0, Math.PI * 2);
+    ctx.fill();
+    
+    for (let i = 0; i < 12; i++) {
+        const angle = (i * 30) * Math.PI / 180;
+        const x1 = 256 + Math.cos(angle) * 200;
+        const y1 = 256 + Math.sin(angle) * 200;
+        const x2 = 256 + Math.cos(angle) * 280;
+        const y2 = 256 + Math.sin(angle) * 280;
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(angle) * 0.2})`;
+        ctx.stroke();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
 
-const DEMO_FRIENDS = [
-    { name: "@friend1", coins: 25000, date: "15.03.2026" },
-    { name: "@friend2", coins: 12000, date: "16.03.2026" },
-    { name: "@friend3", coins: 5000, date: "17.03.2026" }
-];
-
-// ==================== СОЗДАНИЕ 3D ПЛАНЕТЫ ====================
-let scene, camera, renderer, planet3d;
-
+// ==================== 3D ПЛАНЕТА ====================
 function init3D() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
@@ -73,38 +98,48 @@ function init3D() {
     container.style.height = `${height}px`;
     
     import('https://unpkg.com/three@0.128.0/build/three.module.js').then(THREE => {
-        container.innerHTML = '';
-        
         scene = new THREE.Scene();
         scene.background = null;
         
         camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(0, 0, 3);
+        camera.position.set(0, 0, 3.5);
         
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
         
-        const textureLoader = new THREE.TextureLoader();
-        const map = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const starTexture = createStarTexture();
         const geometry = new THREE.SphereGeometry(1, 64, 64);
-        const material = new THREE.MeshPhongMaterial({ map: map, shininess: 25 });
+        const material = new THREE.MeshPhongMaterial({ 
+            map: starTexture,
+            emissive: 0x4466aa,
+            emissiveIntensity: 0.3,
+            shininess: 60
+        });
         planet3d = new THREE.Mesh(geometry, material);
         scene.add(planet3d);
         
         const ambientLight = new THREE.AmbientLight(0x404060);
         scene.add(ambientLight);
         const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        mainLight.position.set(1, 1, 1);
+        mainLight.position.set(2, 2, 2);
         scene.add(mainLight);
-        const backLight = new THREE.PointLight(0x4466cc, 0.3);
-        backLight.position.set(-1, -0.5, -2);
+        const backLight = new THREE.PointLight(0x88aaff, 0.5);
+        backLight.position.set(-1, -0.5, -1.5);
         scene.add(backLight);
         
+        let time = 0;
         function animate() {
             requestAnimationFrame(animate);
-            if (planet3d) planet3d.rotation.y += 0.005;
+            time += 0.01;
+            if (planet3d) {
+                planet3d.rotation.y += 0.005;
+                if (coins < 100) {
+                    const scale = 1 + Math.sin(time * 5) * 0.02;
+                    planet3d.scale.set(scale, scale, scale);
+                }
+            }
             renderer.render(scene, camera);
         }
         animate();
@@ -114,66 +149,61 @@ function init3D() {
         container.style.touchAction = 'manipulation';
         setupTouchHandlers(container);
         
+        console.log('✅ 3D загружена');
+        
     }).catch(err => {
         console.error('Three.js error:', err);
         createFallbackStar();
     });
-    
-    setTimeout(() => {
-        const container = document.getElementById('canvas-container');
-        if (container && container.children.length === 0) {
-            createFallbackStar();
-        }
-    }, 3000);
 }
 
-// ==================== ЗАПАСНАЯ ЗВЕЗДА (если 3D не загрузился) ====================
 function createFallbackStar() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
-    
     container.innerHTML = '';
     container.style.display = 'flex';
     container.style.alignItems = 'center';
     container.style.justifyContent = 'center';
-    container.style.background = 'radial-gradient(circle at 30% 30%, #ffd700, #ff8c00)';
+    container.style.background = 'radial-gradient(circle at 30% 30%, #ffffff, #aaccff)';
     container.style.borderRadius = '50%';
-    container.style.boxShadow = '0 0 30px rgba(255,215,0,0.5)';
+    container.style.boxShadow = '0 0 40px rgba(100,150,255,0.6)';
     container.style.cursor = 'pointer';
-    container.style.touchAction = 'manipulation';
-    
     const star = document.createElement('div');
     star.textContent = '⭐';
     star.style.fontSize = '80px';
-    star.style.textShadow = '0 0 20px rgba(0,0,0,0.5)';
+    star.style.color = 'white';
+    star.style.textShadow = '0 0 20px rgba(100,150,255,0.8)';
     star.style.pointerEvents = 'none';
     container.appendChild(star);
-    
     planetElement = container;
-    container.style.animation = 'float 3s ease-in-out infinite';
-    
-    if (!document.querySelector('#star-animation-style')) {
-        const style = document.createElement('style');
-        style.id = 'star-animation-style';
-        style.textContent = `
-            @keyframes float {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-8px); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
     setupTouchHandlers(container);
 }
 
-// ==================== МУЛЬТИТАЧ ОБРАБОТЧИК ====================
+// ==================== СИНХРОНИЗАЦИЯ С СЕРВЕРОМ ====================
+async function syncToServer() {
+    if (!userId || userId.toString().startsWith('guest')) return;
+    try {
+        await fetch(`https://startoplanet.onrender.com/api/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId: userId,
+                coins: Math.floor(coins),
+                clickPower: clickPower,
+                maxEnergy: maxEnergy
+            })
+        });
+        console.log('✅ Данные отправлены на сервер');
+    } catch (e) {
+        console.log('⚠️ Сервер недоступен, данные сохранены локально');
+    }
+}
+
+// ==================== МУЛЬТИТАЧ ====================
 function setupTouchHandlers(element) {
     if (!element) return;
-    
     element.removeEventListener('touchstart', touchHandler);
     element.removeEventListener('mousedown', mouseHandler);
-    
     element.addEventListener('touchstart', touchHandler, { passive: false });
     element.addEventListener('mousedown', mouseHandler);
 }
@@ -182,19 +212,13 @@ function touchHandler(e) {
     e.preventDefault();
     for (let i = 0; i < e.touches.length; i++) {
         const touch = e.touches[i];
-        processClick({
-            clientX: touch.clientX,
-            clientY: touch.clientY
-        });
+        processClick({ clientX: touch.clientX, clientY: touch.clientY });
     }
 }
 
 function mouseHandler(e) {
     e.preventDefault();
-    processClick({
-        clientX: e.clientX,
-        clientY: e.clientY
-    });
+    processClick({ clientX: e.clientX, clientY: e.clientY });
 }
 
 function processClick(eventData) {
@@ -211,8 +235,8 @@ function processClick(eventData) {
     weeklyCoinsEarned += clickPower;
     updateUI();
     saveGame();
+    syncToServer(); // ← ОТПРАВЛЯЕМ НА СЕРВЕР
     
-    // Анимация нажатия
     if (planetElement) {
         planetElement.style.transform = 'scale(0.95)';
         setTimeout(() => {
@@ -220,7 +244,6 @@ function processClick(eventData) {
         }, 100);
     }
     
-    // Всплывающая цифра
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
     popup.style.position = 'fixed';
@@ -231,7 +254,6 @@ function processClick(eventData) {
     popup.style.fontWeight = 'bold';
     popup.style.pointerEvents = 'none';
     popup.style.zIndex = '1000';
-    popup.style.textShadow = '0 0 5px #000';
     popup.style.animation = 'popup 0.5s ease-out forwards';
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 500);
@@ -255,6 +277,8 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
+    updatePlanetByLevel();
+    
     let level = 1;
     if (coins >= 100000) level = 10;
     else if (coins >= 50000) level = 9;
@@ -267,7 +291,6 @@ function updateUI() {
     else if (coins >= 100) level = 2;
     document.getElementById('userLevel').textContent = `Уровень ${level}`;
     
-    // Обновляем профиль
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
@@ -276,30 +299,58 @@ function updateUI() {
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
     document.getElementById('profileName').textContent = displayName;
     
-    // Обновляем задания
     document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
     document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
     document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
     
     updateTaskButtons();
+}
+
+function updatePlanetByLevel() {
+    if (!planet3d) return;
     
-    // Обновляем демо-рейтинг с твоими монетами
-    DEMO_PLAYERS[0].coins = coins;
-    DEMO_PLAYERS[0].level = level;
-    DEMO_PLAYERS[0].name = displayName;
+    let level = 1;
+    if (coins >= 100000) level = 10;
+    else if (coins >= 50000) level = 9;
+    else if (coins >= 25000) level = 8;
+    else if (coins >= 10000) level = 7;
+    else if (coins >= 5000) level = 6;
+    else if (coins >= 2500) level = 5;
+    else if (coins >= 1000) level = 4;
+    else if (coins >= 500) level = 3;
+    else if (coins >= 100) level = 2;
     
-    updateLeaderboardUI();
-    updateFriendsUI();
+    const baseScale = 1.0;
+    const maxScale = 1.6;
+    const scale = baseScale + (level / 10) * (maxScale - baseScale);
+    planet3d.scale.set(scale, scale, scale);
+    
+    if (level >= 7) {
+        planet3d.material.color.setHex(0xffaa66);
+        planet3d.material.emissiveIntensity = 0.2;
+    } else if (level >= 5) {
+        planet3d.material.color.setHex(0x88aaff);
+        planet3d.material.emissiveIntensity = 0.1;
+    } else if (level >= 3) {
+        planet3d.material.color.setHex(0xffaa88);
+    } else if (level >= 2) {
+        planet3d.material.color.setHex(0xccaa77);
+    } else {
+        planet3d.material.color.setHex(0xffffff);
+        planet3d.material.emissiveIntensity = 0.3;
+    }
 }
 
 function saveGame() {
-    localStorage.setItem('starToPlanet', JSON.stringify({
+    const saveData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
         dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
-        weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed
-    }));
+        weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
+        displayName, registrationDate: new Date().toLocaleDateString()
+    };
+    localStorage.setItem('starToPlanet', JSON.stringify(saveData));
 }
 
 function loadGame() {
@@ -323,8 +374,19 @@ function loadGame() {
             weeklyClickCount = data.weeklyClickCount || 0;
             weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
             weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false };
-        } catch(e) {}
+            if (data.displayName) displayName = data.displayName;
+        } catch(e) { console.error(e); }
     }
+    
+    // Обработка реферального бонуса (только при первом запуске)
+    if (referrerId && referrerId !== userId && !localStorage.getItem(`ref_bonus_${referrerId}_${userId}`)) {
+        localStorage.setItem(`ref_bonus_${referrerId}_${userId}`, 'claimed');
+        coins += 500;
+        showMessage('🎉 +500 монет за приглашение!');
+        saveGame();
+        syncToServer();
+    }
+    
     updateUI();
 }
 
@@ -376,6 +438,7 @@ async function claimTask(taskId, reward, type) {
     }
     updateUI();
     saveGame();
+    syncToServer();
     updateTaskButtons();
 }
 
@@ -387,6 +450,7 @@ function upgradeClick() {
         clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
         updateUI();
         saveGame();
+        syncToServer();
         showMessage('✅ Сила клика +1');
     } else if (clickUpgradeLevel >= 100) {
         showMessage('⚠️ Максимальный уровень!', true);
@@ -404,6 +468,7 @@ function upgradeEnergy() {
         energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
         updateUI();
         saveGame();
+        syncToServer();
         showMessage('✅ Энергия +50');
     } else if (energyUpgradeLevel >= 100) {
         showMessage('⚠️ Максимальный уровень!', true);
@@ -419,6 +484,7 @@ function upgradePassive() {
         passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
         updateUI();
         saveGame();
+        syncToServer();
         showMessage('✅ Пассивный доход +5/мин');
     } else if (passiveIncomeLevel >= 100) {
         showMessage('⚠️ Максимальный уровень!', true);
@@ -432,6 +498,7 @@ function applyPassiveIncome() {
         coins += passiveIncomeRate;
         updateUI();
         saveGame();
+        syncToServer();
     }
 }
 
@@ -450,46 +517,39 @@ function showMessage(text, isError = false) {
     setTimeout(() => msg.classList.remove('show'), 2000);
 }
 
-// ==================== РЕЙТИНГ (ДЕМО-ВЕРСИЯ) ====================
+// ==================== РЕЙТИНГ И ДРУЗЬЯ ====================
+const DEMO_PLAYERS = [
+    { name: displayName, coins: 0, level: 1, isCurrent: true },
+    { name: "⭐ Космический_воин", coins: 1250000, level: 8 },
+    { name: "🌙 Звездный_странник", coins: 850000, level: 7 }
+];
+
+const DEMO_FRIENDS = [
+    { name: "@friend1", coins: 25000, date: "15.03.2026" },
+    { name: "@friend2", coins: 12000, date: "16.03.2026" }
+];
+
 function updateLeaderboardUI() {
     const container = document.getElementById('leaderboardList');
     if (!container) return;
-    
+    DEMO_PLAYERS[0].coins = coins;
     const sorted = [...DEMO_PLAYERS].sort((a, b) => b.coins - a.coins);
-    
-    container.innerHTML = sorted.slice(0, 10).map((player, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
-        const isCurrent = player.isCurrent;
-        return `
-            <div class="leaderboard-item" style="${isCurrent ? 'border: 1px solid #ffd700; background: rgba(255,215,0,0.1);' : ''}">
-                <div class="leaderboard-rank ${index < 3 ? `top-${index+1}` : ''}">${medal}</div>
-                <div class="leaderboard-name">${player.name} ${isCurrent ? '👤' : ''}</div>
-                <div class="leaderboard-coins">${player.coins.toLocaleString()} 🪙</div>
-                <div class="leaderboard-level">Ур.${player.level}</div>
-            </div>
-        `;
+    container.innerHTML = sorted.slice(0, 10).map((p, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+        const isCurrent = p.isCurrent;
+        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
     }).join('');
 }
 
-// ==================== ДРУЗЬЯ (ДЕМО-ВЕРСИЯ) ====================
 function updateFriendsUI() {
     const container = document.getElementById('level1List');
     if (!container) return;
-    
-    container.innerHTML = DEMO_FRIENDS.map(friend => `
-        <div class="level-item">
-            <span>${friend.name}</span>
-            <span>${friend.coins.toLocaleString()} 🪙</span>
-            <span style="font-size: 10px; opacity:0.6;">${friend.date}</span>
-        </div>
-    `).join('');
-    
+    container.innerHTML = DEMO_FRIENDS.map(f => `<div class="level-item"><span>${f.name}</span><span>${f.coins.toLocaleString()} 🪙</span><span style="font-size:10px;">${f.date}</span></div>`).join('');
     document.getElementById('referralCount').textContent = DEMO_FRIENDS.length;
     document.getElementById('referralBonus').textContent = (DEMO_FRIENDS.length * 1000).toLocaleString();
     document.getElementById('profileReferrals').textContent = DEMO_FRIENDS.length;
 }
 
-// ==================== РЕАЛЬНЫЙ API (ЗАГЛУШКА, ЕСЛИ НЕ РАБОТАЕТ) ====================
 async function loadLeaderboardFromAPI() {
     try {
         const response = await fetch(`https://startoplanet.onrender.com/api/leaderboard?limit=20`);
@@ -499,12 +559,7 @@ async function loadLeaderboardFromAPI() {
                 const allPlayers = [...players];
                 const currentExists = allPlayers.some(p => p.telegram_id == userId);
                 if (!currentExists && coins > 0) {
-                    allPlayers.push({
-                        telegram_id: userId,
-                        first_name: displayName,
-                        coins: coins,
-                        level: Math.floor(Math.log10(coins + 1) / 3) + 1
-                    });
+                    allPlayers.push({ telegram_id: userId, first_name: displayName, coins: coins, level: Math.floor(Math.log10(coins+1)/3)+1 });
                 }
                 const sorted = allPlayers.sort((a, b) => b.coins - a.coins);
                 const container = document.getElementById('leaderboardList');
@@ -513,15 +568,13 @@ async function loadLeaderboardFromAPI() {
                         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
                         const name = p.first_name || p.username || `Игрок ${p.telegram_id}`;
                         const isCurrent = p.telegram_id == userId;
-                        return `<div class="leaderboard-item" style="${isCurrent ? 'border: 1px solid #ffd700; background: rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i+1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${(p.coins || 0).toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level || 1}</div></div>`;
+                        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${(p.coins || 0).toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level || 1}</div></div>`;
                     }).join('');
                     return;
                 }
             }
         }
-    } catch(e) {
-        console.log('API недоступен, используем демо-данные');
-    }
+    } catch(e) {}
     updateLeaderboardUI();
 }
 
@@ -533,13 +586,7 @@ async function loadFriendsFromAPI() {
             if (friends.length > 0) {
                 const container = document.getElementById('level1List');
                 if (container) {
-                    container.innerHTML = friends.slice(0, 5).map(f => `
-                        <div class="level-item">
-                            <span>${f.first_name || f.username}</span>
-                            <span>${(f.coins || 0).toLocaleString()} 🪙</span>
-                            <span style="font-size: 10px; opacity:0.6;">${new Date(f.created_at).toLocaleDateString()}</span>
-                        </div>
-                    `).join('');
+                    container.innerHTML = friends.slice(0, 5).map(f => `<div class="level-item"><span>${f.first_name || f.username}</span><span>${(f.coins || 0).toLocaleString()} 🪙</span><span style="font-size:10px;">${new Date(f.created_at).toLocaleDateString()}</span></div>`).join('');
                     document.getElementById('referralCount').textContent = friends.length;
                     document.getElementById('referralBonus').textContent = (friends.length * 1000).toLocaleString();
                     document.getElementById('profileReferrals').textContent = friends.length;
@@ -547,9 +594,7 @@ async function loadFriendsFromAPI() {
                 }
             }
         }
-    } catch(e) {
-        console.log('API друзей недоступен, используем демо');
-    }
+    } catch(e) {}
     updateFriendsUI();
 }
 
@@ -645,24 +690,15 @@ function init() {
     }
     
     document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена! 3D-планета и мультитач активны');
+    console.log('✅ Игра загружена! Прогресс синхронизируется с сервером');
     
     if (!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
         style.id = 'popup-animation';
-        style.textContent = `
-            @keyframes popup {
-                0% { opacity: 1; transform: translateY(0) scale(0.8); }
-                100% { opacity: 0; transform: translateY(-50px) scale(1); }
-            }
-            .floating-number {
-                animation: popup 0.5s ease-out forwards !important;
-            }
-        `;
+        style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`;
         document.head.appendChild(style);
     }
     
-    // Загружаем рейтинг и друзей
     setTimeout(() => {
         loadLeaderboardFromAPI();
         loadFriendsFromAPI();
