@@ -145,13 +145,14 @@ app.post('/api/toggle-sound', async (req, res) => {
 bot.start(async (ctx) => {
     try {
         const user = ctx.from;
-        const text = ctx.message?.text;
+        // ✅ БЕЗОПАСНО: проверяем, существует ли текст сообщения
+        const text = ctx.message && ctx.message.text ? ctx.message.text : '';
         let referrerId = null;
 
-        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ГЛАВНОЕ ИСПРАВЛЕНИЕ
+        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА — ТЕПЕРЬ ТОЧНО БЕЗ ОШИБОК
         if (text && typeof text === 'string') {
             const parts = text.split(' ');
-            // ВАЖНО: проверяем, существует ли parts[1] и является ли он строкой
+            // Проверяем, что parts[1] существует и является строкой
             if (parts.length > 1 && parts[1] && typeof parts[1] === 'string' && parts[1].startsWith('ref_')) {
                 const refNum = parseInt(parts[1].replace('ref_', ''));
                 if (!isNaN(refNum) && refNum !== user.id) {
