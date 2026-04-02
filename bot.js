@@ -6,8 +6,7 @@ require('dotenv').config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
-const APP_URL = process.env.APP_URL || 'https://star-to-planet-bot.onrender.com';
-
+const APP_URL = process.env.APP_URL || 'https://star-to-planet.vercel.app';  // ← ПРАВИЛЬНЫЙ АДРЕС
 if (!BOT_TOKEN) {
     console.error('❌ BOT_TOKEN не найден в .env');
     process.exit(1);
