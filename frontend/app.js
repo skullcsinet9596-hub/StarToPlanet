@@ -1,19 +1,28 @@
 import * as THREE from 'three';
 
 // ========== АДРЕС БОТА (RENDER) ==========
-const API_BASE = 'https://startoplanet.onrender.com';
+// Игра и бот находятся на одном сервере, поэтому используем относительные пути.
+// Это проще и надежнее.
+const API_BASE = ''; // Пустая строка означает "текущий сервер"
 
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
+let initData = null;
 
 if (window.Telegram && window.Telegram.WebApp) {
     tg = window.Telegram.WebApp;
     tg.expand();
     tg.ready();
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        userId = tg.initDataUnsafe.user.id;
+    initData = tg.initDataUnsafe;
+    if (initData && initData.user) {
+        userId = initData.user.id;
+        console.log('✅ Пользователь авторизован в Telegram, ID:', userId);
+    } else {
+        console.log('⚠️ Запущено вне Telegram или данные пользователя не получены.');
     }
+} else {
+    console.log('⚠️ Telegram WebApp не обнаружен.');
 }
 
 // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
@@ -42,7 +51,7 @@ function initAudio() {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.25;
         gainNode.connect(audioContext.destination);
-        
+
         playTapSound = () => {
             if (!soundEnabled) return;
             if (audioContext.state === 'suspended') audioContext.resume();
@@ -119,13 +128,16 @@ window.addEventListener('resize', () => {
 // ========== ЗАГРУЗКА С СЕРВЕРА ==========
 async function loadFromServer() {
     if (!userId) {
-        console.log('Нет userId');
+        console.log('❌ Нет userId, загружаем демо-данные');
+        updateUI(); // Показываем интерфейс с 0
         return;
     }
+    console.log(`🔄 Загружаем данные для пользователя ${userId}...`);
     try {
         const response = await fetch(`${API_BASE}/api/user/${userId}`);
         if (response.ok) {
             const data = await response.json();
+            console.log('✅ Данные получены:', data);
             coins = data.coins || 0;
             energy = data.energy ?? 100;
             maxEnergy = data.maxEnergy ?? 100;
@@ -136,10 +148,12 @@ async function loadFromServer() {
             hasSun = data.hasSun || false;
             if (energy > maxEnergy) energy = maxEnergy;
             updateUI();
-            console.log('✅ Данные загружены с сервера');
+            console.log('✅ Интерфейс обновлён загруженными данными');
+        } else {
+            console.error('❌ Ошибка загрузки с сервера:', response.status);
         }
     } catch(e) { 
-        console.log('Ошибка загрузки с сервера', e);
+        console.error('❌ Ошибка сети при загрузке:', e);
     }
 }
 
@@ -147,29 +161,31 @@ async function loadFromServer() {
 async function saveToServer() {
     if (!userId || isSaving) return;
     isSaving = true;
+    const gameData = {
+        coins: Math.floor(coins),
+        energy: energy,
+        maxEnergy: maxEnergy,
+        clickPower: clickPower,
+        passiveIncomeLevel: passiveIncomeLevel,
+        hasMoon: hasMoon,
+        hasEarth: hasEarth,
+        hasSun: hasSun
+    };
+    console.log(`🔄 Сохраняем данные для пользователя ${userId}:`, gameData);
     try {
         const response = await fetch(`${API_BASE}/api/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: userId,
-                gameData: {
-                    coins: Math.floor(coins),
-                    energy: energy,
-                    maxEnergy: maxEnergy,
-                    clickPower: clickPower,
-                    passiveIncomeLevel: passiveIncomeLevel,
-                    hasMoon: hasMoon,
-                    hasEarth: hasEarth,
-                    hasSun: hasSun
-                }
-            })
+            body: JSON.stringify({ userId: userId, gameData: gameData })
         });
         if (response.ok) {
-            console.log('✅ Данные сохранены на сервере');
+            const result = await response.json();
+            console.log('✅ Данные сохранены на сервере. Ранг:', result.rank);
+        } else {
+            console.error('❌ Ошибка сохранения на сервере:', response.status);
         }
     } catch(e) { 
-        console.log('Ошибка сохранения', e);
+        console.error('❌ Ошибка сети при сохранении:', e);
     }
     finally { isSaving = false; }
 }
@@ -185,24 +201,24 @@ async function handleTap(clientX, clientY) {
     }
     if (!audioContext) initAudio();
     if (playTapSound) playTapSound();
-    
+
     energy -= clickPower;
     coins += clickPower;
-    
+
     planet.scale.set(0.96, 0.96, 0.96);
     setTimeout(() => planet.scale.set(1, 1, 1), 100);
-    
+
     const flash = new THREE.PointLight(0xffaa66, 0.8);
     flash.position.set((clientX / window.innerWidth - 0.5) * 5, -(clientY / window.innerHeight - 0.5) * 4, 2);
     scene.add(flash);
     setTimeout(() => scene.remove(flash), 150);
-    
+
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
     popup.style.cssText = `position:fixed; left:${clientX}px; top:${clientY-30}px; color:#FFD60A; font-size:22px; font-weight:bold; pointer-events:none; z-index:1000; text-shadow:0 0 5px black; animation:popupAnim 0.4s ease-out forwards;`;
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 400);
-    
+
     updateUI();
     await saveToServer();
 }
@@ -230,15 +246,22 @@ function getPassiveRate() {
 }
 
 function updateUI() {
-    document.getElementById('coins').textContent = Math.floor(coins);
-    document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
-    document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
-    document.getElementById('clickPower').textContent = clickPower;
-    document.getElementById('passiveRate').textContent = getPassiveRate();
+    const coinsElement = document.getElementById('coins');
+    const energyValueElement = document.getElementById('energyValue');
+    const energyFillElement = document.getElementById('energyFill');
+    const clickPowerElement = document.getElementById('clickPower');
+    const passiveRateElement = document.getElementById('passiveRate');
+
+    if (coinsElement) coinsElement.textContent = Math.floor(coins);
+    if (energyValueElement) energyValueElement.textContent = `${Math.floor(energy)}/${maxEnergy}`;
+    if (energyFillElement) energyFillElement.style.width = (energy / maxEnergy) * 100 + '%';
+    if (clickPowerElement) clickPowerElement.textContent = clickPower;
+    if (passiveRateElement) passiveRateElement.textContent = getPassiveRate();
 }
 
 function showMessage(text, isError = false) {
     const msg = document.getElementById('message');
+    if (!msg) return;
     msg.textContent = text;
     msg.style.color = isError ? '#ff6b6b' : '#FFD60A';
     msg.style.display = 'block';
@@ -349,20 +372,21 @@ async function showRatingPanel() {
             players = await response.json();
         }
     } catch(e) { console.log('Ошибка рейтинга', e); }
-    
+
     if (!players || players.length === 0) {
         players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
+    } else {
+        // Обновляем данные текущего игрока в списке лидеров
+        const currentPlayerIndex = players.findIndex(p => p.id == userId);
+        if (currentPlayerIndex !== -1) {
+            players[currentPlayerIndex].coins = Math.floor(coins);
+            players[currentPlayerIndex].isCurrent = true;
+        } else if (userId) {
+            players.push({ id: userId, name: 'Вы', coins: Math.floor(coins), isCurrent: true });
+        }
+        players.sort((a,b) => b.coins - a.coins);
     }
-    
-    const existingIndex = players.findIndex(p => p.id == userId);
-    if (existingIndex !== -1) {
-        players[existingIndex].coins = Math.floor(coins);
-        players[existingIndex].isCurrent = true;
-    } else if (userId) {
-        players.push({ id: userId, name: 'Вы', coins: Math.floor(coins), isCurrent: true });
-    }
-    players.sort((a,b) => b.coins - a.coins);
-    
+
     let html = '<h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>';
     for (let i = 0; i < Math.min(players.length, 10); i++) {
         const p = players[i];
@@ -402,6 +426,8 @@ if (soundToggle) {
         soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
         showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
     });
+} else {
+    console.error('❌ Кнопка звука (#soundToggle) не найдена в DOM!');
 }
 
 // ========== ЭНЕРГИЯ 5/СЕК ==========
@@ -424,5 +450,9 @@ setInterval(async () => {
 }, 60000);
 
 // ========== ЗАПУСК ==========
-await loadFromServer();
-console.log('✅ Игра загружена, данные с сервера');
+// Загружаем данные с сервера и запускаем игру
+loadFromServer().then(() => {
+    console.log('✅ Игра загружена и синхронизирована с сервером');
+}).catch(err => {
+    console.error('❌ Критическая ошибка при загрузке игры:', err);
+});
