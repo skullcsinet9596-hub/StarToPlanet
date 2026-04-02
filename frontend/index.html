@@ -24,7 +24,6 @@
             height: 100%;
         }
 
-        /* 3D контейнер */
         #canvas-container {
             position: fixed;
             top: 0;
@@ -34,7 +33,6 @@
             z-index: 1;
         }
 
-        /* UI поверх canvas */
         .ui-overlay {
             position: fixed;
             bottom: 0;
@@ -53,18 +51,33 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 16px;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.7);
             backdrop-filter: blur(20px);
             z-index: 10;
             pointer-events: auto;
         }
 
+        .logo {
+            font-weight: bold;
+            font-size: 16px;
+            background: linear-gradient(135deg, #FFD60A, #FF9F0A);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
         .balance {
             background: rgba(0,0,0,0.6);
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 40px;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
             color: #FFD60A;
         }
 
@@ -72,8 +85,8 @@
             background: rgba(0,0,0,0.6);
             border: none;
             border-radius: 40px;
-            padding: 8px 16px;
-            font-size: 20px;
+            padding: 6px 14px;
+            font-size: 18px;
             cursor: pointer;
             color: #FFD60A;
         }
@@ -81,18 +94,24 @@
         .energy-bar {
             background: rgba(0,0,0,0.6);
             backdrop-filter: blur(20px);
-            padding: 8px 16px;
+            padding: 10px 16px;
             margin: 70px 16px 16px 16px;
-            border-radius: 32px;
+            border-radius: 28px;
             pointer-events: auto;
+        }
+
+        .energy-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 6px;
         }
 
         .energy-progress {
             background: rgba(255,255,255,0.2);
             border-radius: 20px;
-            height: 8px;
+            height: 6px;
             overflow: hidden;
-            margin-top: 4px;
         }
 
         .energy-fill {
@@ -109,6 +128,10 @@
             padding: 8px 16px;
             font-size: 12px;
             color: #ccc;
+            background: rgba(0,0,0,0.4);
+            margin: 0 16px;
+            border-radius: 20px;
+            pointer-events: auto;
         }
 
         .nav-bar {
@@ -118,8 +141,8 @@
             right: 0;
             display: flex;
             justify-content: space-around;
-            padding: 8px 16px 20px;
-            background: rgba(0,0,0,0.8);
+            padding: 10px 16px 20px;
+            background: rgba(0,0,0,0.85);
             backdrop-filter: blur(20px);
             border-top: 0.5px solid rgba(255,255,255,0.1);
             z-index: 10;
@@ -134,11 +157,10 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            padding: 6px 12px;
+            padding: 8px 16px;
             border-radius: 32px;
-            font-size: 12px;
-            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
         .nav-btn.active { 
@@ -150,19 +172,25 @@
             font-size: 22px;
         }
 
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
         .message {
             position: fixed;
             bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             color: #FFD60A;
             padding: 8px 16px;
             border-radius: 40px;
-            font-size: 14px;
+            font-size: 13px;
             z-index: 100;
             pointer-events: none;
             white-space: nowrap;
+            backdrop-filter: blur(10px);
         }
 
         @keyframes fadeOut {
@@ -178,15 +206,18 @@
 
 <div class="ui-overlay">
     <div class="top-bar">
-        <div>⭐ Star to Planet</div>
-        <div style="display: flex; gap: 10px;">
+        <div class="logo">⭐ STAR TO PLANET</div>
+        <div class="right-buttons">
             <button class="sound-btn" id="soundToggle">🔊</button>
             <div class="balance">🪙 <span id="coins">0</span></div>
         </div>
     </div>
 
     <div class="energy-bar">
-        <div>⚡ Энергия <span id="energyValue">100/100</span></div>
+        <div class="energy-header">
+            <span>⚡ Энергия</span>
+            <span id="energyValue">100/100</span>
+        </div>
         <div class="energy-progress">
             <div class="energy-fill" id="energyFill" style="width:100%"></div>
         </div>
@@ -200,15 +231,15 @@
     <div class="nav-bar">
         <button class="nav-btn active" data-tab="game">
             <span class="nav-icon">🎮</span>
-            <span>Игра</span>
+            <span class="nav-label">Игра</span>
         </button>
         <button class="nav-btn" data-tab="boost">
             <span class="nav-icon">⚡</span>
-            <span>Буст</span>
+            <span class="nav-label">Буст</span>
         </button>
         <button class="nav-btn" data-tab="profile">
             <span class="nav-icon">👤</span>
-            <span>Профиль</span>
+            <span class="nav-label">Профиль</span>
         </button>
     </div>
 </div>
@@ -237,43 +268,37 @@
     let hasSun = false;
     
     let lastClickTime = 0;
-    let clickCooldown = 30; // миллисекунд между кликами (для мультитапа)
+    let clickCooldown = 30;
     
     // ========== ЗВУК ==========
     let soundEnabled = true;
-    let tapSound = null;
-    
-    // Создаём звук через Web Audio API (не требует файлов)
-    function createTapSound() {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.3;
-        gainNode.connect(audioContext.destination);
-        
-        return () => {
-            if (!soundEnabled) return;
-            const oscillator = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            oscillator.connect(gain);
-            gain.connect(gainNode);
-            oscillator.frequency.value = 800;
-            gain.gain.value = 0.2;
-            oscillator.type = 'sine';
-            oscillator.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
-            oscillator.stop(audioContext.currentTime + 0.3);
-        };
-    }
-    
-    // Инициализируем звук после взаимодействия пользователя
     let playTapSound = null;
-    let audioContextInitialized = false;
+    let audioContext = null;
     
     function initAudio() {
-        if (audioContextInitialized) return;
+        if (audioContext) return;
         try {
-            playTapSound = createTapSound();
-            audioContextInitialized = true;
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.25;
+            gainNode.connect(audioContext.destination);
+            
+            playTapSound = () => {
+                if (!soundEnabled) return;
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(gainNode);
+                osc.frequency.value = 880;
+                gain.gain.value = 0.15;
+                osc.type = 'sine';
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
+                osc.stop(audioContext.currentTime + 0.2);
+            };
         } catch(e) {
             console.log('Web Audio API не поддерживается');
         }
@@ -305,7 +330,7 @@
     fillLight.position.set(-2, 1, 2);
     scene.add(fillLight);
     
-    // Создаём планету
+    // Планета
     const geometry = new THREE.SphereGeometry(1, 128, 128);
     const textureLoader = new THREE.TextureLoader();
     const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
@@ -317,7 +342,7 @@
     const planet = new THREE.Mesh(geometry, material);
     scene.add(planet);
     
-    // Звёздный фон
+    // Звёзды
     const starCount = 1500;
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
@@ -327,11 +352,10 @@
         starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
     }
     starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMaterialObj = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.7 });
+    const starMaterialObj = new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 });
     const stars = new THREE.Points(starGeometry, starMaterialObj);
     scene.add(stars);
     
-    // Анимация вращения
     function animate() {
         requestAnimationFrame(animate);
         planet.rotation.y += 0.003;
@@ -340,14 +364,13 @@
     }
     animate();
     
-    window.addEventListener('resize', onWindowResize);
-    function onWindowResize() {
+    window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+    });
     
-    // ========== МУЛЬТИТАП С ЗВУКОМ ==========
+    // ========== МУЛЬТИТАП ==========
     function handleTap(clientX, clientY) {
         const now = Date.now();
         if (now - lastClickTime < clickCooldown) return;
@@ -358,25 +381,16 @@
             return;
         }
         
-        // Активируем звук при первом касании
-        if (!audioContextInitialized) {
-            initAudio();
-        }
-        
-        // Воспроизводим звук
+        if (!audioContext) initAudio();
         if (playTapSound) playTapSound();
         
         energy -= clickPower;
         coins += clickPower;
         
-        // Анимация нажатия
         planet.scale.set(0.96, 0.96, 0.96);
-        setTimeout(() => {
-            planet.scale.set(1, 1, 1);
-        }, 100);
+        setTimeout(() => planet.scale.set(1, 1, 1), 100);
         
-        // Вспышка света
-        const flashLight = new THREE.PointLight(0xffaa66, 1);
+        const flashLight = new THREE.PointLight(0xffaa66, 0.8);
         flashLight.position.set(
             (clientX / window.innerWidth - 0.5) * 5,
             -(clientY / window.innerHeight - 0.5) * 4,
@@ -385,14 +399,13 @@
         scene.add(flashLight);
         setTimeout(() => scene.remove(flashLight), 150);
         
-        // Всплывающее число
         const popup = document.createElement('div');
         popup.textContent = `+${clickPower}`;
         popup.style.position = 'fixed';
         popup.style.left = clientX + 'px';
         popup.style.top = clientY - 30 + 'px';
         popup.style.color = '#FFD60A';
-        popup.style.fontSize = '24px';
+        popup.style.fontSize = '22px';
         popup.style.fontWeight = 'bold';
         popup.style.pointerEvents = 'none';
         popup.style.zIndex = '1000';
@@ -406,13 +419,10 @@
         sendDataToBot();
     }
     
-    // Обработчики мультитапа
     renderer.domElement.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        const touches = e.touches;
-        for (let i = 0; i < touches.length; i++) {
-            const touch = touches[i];
-            handleTap(touch.clientX, touch.clientY);
+        for (let i = 0; i < e.touches.length; i++) {
+            handleTap(e.touches[i].clientX, e.touches[i].clientY);
         }
     });
     
@@ -421,17 +431,16 @@
         handleTap(e.clientX, e.clientY);
     });
     
-    // Анимация для всплывающих чисел
-    const style = document.createElement('style');
-    style.textContent = `
+    const styleAnim = document.createElement('style');
+    styleAnim.textContent = `
         @keyframes popupAnim {
             0% { opacity: 1; transform: translateY(0) scale(0.8); }
-            100% { opacity: 0; transform: translateY(-50px) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1); }
         }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(styleAnim);
     
-    // ========== ФУНКЦИИ ИГРЫ ==========
+    // ========== ИГРОВАЯ ЛОГИКА ==========
     function getPassiveRate() {
         let rate = passiveIncomeLevel * 5;
         if (hasSun) rate += 100000;
@@ -511,7 +520,7 @@
     
     // ========== БУСТЫ ==========
     function upgradeClick() {
-        const cost = 100 * Math.pow(1.3, clickPower - 1);
+        const cost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
         if (coins >= cost && clickPower < 100) {
             coins -= cost;
             clickPower++;
@@ -520,12 +529,13 @@
             sendDataToBot();
             showMessage(`✅ Сила клика +1 (${clickPower})`);
         } else {
-            showMessage(`❌ Нужно ${Math.floor(cost)} монет`, true);
+            showMessage(`❌ Нужно ${cost} монет`, true);
         }
     }
     
     function upgradeEnergy() {
-        const cost = 200 * Math.pow(1.25, (maxEnergy - 100) / 50);
+        const level = (maxEnergy - 100) / 50;
+        const cost = Math.floor(200 * Math.pow(1.25, level));
         if (coins >= cost && maxEnergy < 500) {
             coins -= cost;
             maxEnergy += 50;
@@ -535,12 +545,12 @@
             sendDataToBot();
             showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
         } else {
-            showMessage(`❌ Нужно ${Math.floor(cost)} монет`, true);
+            showMessage(`❌ Нужно ${cost} монет`, true);
         }
     }
     
     function upgradePassive() {
-        const cost = 500 * Math.pow(1.25, passiveIncomeLevel);
+        const cost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
         if (coins >= cost && passiveIncomeLevel < 100) {
             coins -= cost;
             passiveIncomeLevel++;
@@ -549,27 +559,11 @@
             sendDataToBot();
             showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
         } else {
-            showMessage(`❌ Нужно ${Math.floor(cost)} монет`, true);
+            showMessage(`❌ Нужно ${cost} монет`, true);
         }
     }
     
-    // ========== НАВИГАЦИЯ ==========
-    let currentTab = 'game';
-    
-    function showTab(tab) {
-        currentTab = tab;
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            if (btn.dataset.tab === tab) btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-        
-        if (tab === 'boost') {
-            showBoostPanel();
-        } else if (tab === 'profile') {
-            showProfilePanel();
-        }
-    }
-    
+    // ========== ПАНЕЛИ ==========
     function closePanel() {
         const panel = document.querySelector('.floating-panel');
         if (panel) panel.remove();
@@ -579,7 +573,8 @@
         closePanel();
         const passiveRate = getPassiveRate();
         const clickCost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
-        const energyCost = Math.floor(200 * Math.pow(1.25, (maxEnergy - 100) / 50));
+        const level = (maxEnergy - 100) / 50;
+        const energyCost = Math.floor(200 * Math.pow(1.25, level));
         const passiveCost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
         
         const panel = document.createElement('div');
@@ -592,7 +587,7 @@
             background: rgba(0,0,0,0.95);
             backdrop-filter: blur(20px);
             border-radius: 32px;
-            padding: 20px;
+            padding: 24px;
             width: 280px;
             z-index: 20;
             border: 1px solid rgba(255,214,10,0.3);
@@ -600,11 +595,11 @@
         `;
         
         panel.innerHTML = `
-            <h3 style="color:#FFD60A; margin-bottom:16px; text-align:center">⚡ УЛУЧШЕНИЯ</h3>
-            <button id="upgrade-click" style="width:100%; padding:12px; margin-bottom:12px; background:#FFD60A; border:none; border-radius:24px; font-weight:bold; cursor:pointer">⭐ Сила клика (${clickPower}) — ${clickCost} 🪙</button>
-            <button id="upgrade-energy" style="width:100%; padding:12px; margin-bottom:12px; background:#FFD60A; border:none; border-radius:24px; font-weight:bold; cursor:pointer">⚡ Энергия (${maxEnergy}) — ${energyCost} 🪙</button>
-            <button id="upgrade-passive" style="width:100%; padding:12px; margin-bottom:12px; background:#FFD60A; border:none; border-radius:24px; font-weight:bold; cursor:pointer">🤖 Пассивный доход (${passiveRate}/мин) — ${passiveCost} 🪙</button>
-            <button id="close-boost" style="width:100%; padding:10px; background:#333; border:none; border-radius:24px; color:white; cursor:pointer">Закрыть</button>
+            <h3 style="color:#FFD60A; margin-bottom:20px; text-align:center; font-size:18px;">⚡ УЛУЧШЕНИЯ</h3>
+            <button id="upgrade-click" style="width:100%; padding:12px; margin-bottom:12px; background:#FFD60A; border:none; border-radius:28px; font-weight:bold; cursor:pointer; font-size:14px;">⭐ Сила клика (${clickPower}) — ${clickCost} 🪙</button>
+            <button id="upgrade-energy" style="width:100%; padding:12px; margin-bottom:12px; background:#FFD60A; border:none; border-radius:28px; font-weight:bold; cursor:pointer; font-size:14px;">⚡ Энергия (${maxEnergy}) — ${energyCost} 🪙</button>
+            <button id="upgrade-passive" style="width:100%; padding:12px; margin-bottom:20px; background:#FFD60A; border:none; border-radius:28px; font-weight:bold; cursor:pointer; font-size:14px;">🤖 Пассивный доход (${passiveRate}/мин) — ${passiveCost} 🪙</button>
+            <button id="close-boost" style="width:100%; padding:10px; background:#333; border:none; border-radius:28px; color:white; cursor:pointer;">Закрыть</button>
         `;
         
         document.body.appendChild(panel);
@@ -640,7 +635,7 @@
             background: rgba(0,0,0,0.95);
             backdrop-filter: blur(20px);
             border-radius: 32px;
-            padding: 20px;
+            padding: 24px;
             width: 280px;
             z-index: 20;
             border: 1px solid rgba(255,214,10,0.3);
@@ -648,24 +643,36 @@
         `;
         
         panel.innerHTML = `
-            <h3 style="color:#FFD60A; margin-bottom:16px; text-align:center">👤 ПРОФИЛЬ</h3>
-            <div style="margin-bottom:12px"><b>⭐ Уровень:</b> ${planetName}</div>
-            <div style="margin-bottom:12px"><b>💰 Монет:</b> ${Math.floor(coins).toLocaleString()}</div>
-            <div style="margin-bottom:12px"><b>💪 Сила клика:</b> ${clickPower}</div>
-            <div style="margin-bottom:12px"><b>⚡ Энергия:</b> ${Math.floor(energy)}/${maxEnergy}</div>
-            <div style="margin-bottom:12px"><b>🤖 Пассивный доход:</b> ${passiveRate}/мин</div>
-            <button id="close-profile" style="width:100%; padding:10px; background:#333; border:none; border-radius:24px; color:white; cursor:pointer">Закрыть</button>
+            <h3 style="color:#FFD60A; margin-bottom:20px; text-align:center; font-size:18px;">👤 ПРОФИЛЬ</h3>
+            <div style="margin-bottom:12px; font-size:14px;"><b>⭐ Уровень:</b> ${planetName}</div>
+            <div style="margin-bottom:12px; font-size:14px;"><b>💰 Монет:</b> ${Math.floor(coins).toLocaleString()}</div>
+            <div style="margin-bottom:12px; font-size:14px;"><b>💪 Сила клика:</b> ${clickPower}</div>
+            <div style="margin-bottom:12px; font-size:14px;"><b>⚡ Энергия:</b> ${Math.floor(energy)}/${maxEnergy}</div>
+            <div style="margin-bottom:20px; font-size:14px;"><b>🤖 Пассивный доход:</b> ${passiveRate}/мин</div>
+            <button id="close-profile" style="width:100%; padding:10px; background:#333; border:none; border-radius:28px; color:white; cursor:pointer;">Закрыть</button>
         `;
         
         document.body.appendChild(panel);
         document.getElementById('close-profile').onclick = () => panel.remove();
     }
     
-    // Навигация
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showTab(btn.dataset.tab);
+    function showTab(tab) {
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            if (btn.dataset.tab === tab) btn.classList.add('active');
+            else btn.classList.remove('active');
         });
+        
+        if (tab === 'boost') {
+            showBoostPanel();
+        } else if (tab === 'profile') {
+            showProfilePanel();
+        } else if (tab === 'game') {
+            closePanel();
+        }
+    }
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => showTab(btn.dataset.tab));
     });
     
     // ========== ЗВУК TOGGLE ==========
@@ -676,7 +683,7 @@
         showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
     });
     
-    // ========== ЭНЕРГИЯ ВОССТАНАВЛИВАЕТСЯ 5 В СЕКУНДУ ==========
+    // ========== ЭНЕРГИЯ 5/СЕК ==========
     setInterval(() => {
         if (energy < maxEnergy) {
             energy = Math.min(energy + 5, maxEnergy);
@@ -685,7 +692,7 @@
         }
     }, 1000);
     
-    // Пассивный доход (каждую минуту)
+    // Пассивный доход каждую минуту
     setInterval(() => {
         const rate = getPassiveRate();
         if (rate > 0) {
@@ -696,17 +703,15 @@
         }
     }, 60000);
     
-    // Инициализация Telegram WebApp
+    // Telegram WebApp
     if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
     }
     
-    // Загрузка сохранённой игры
     loadGame();
-    
-    console.log('✅ Игра загружена: мультитап, звук, энергия 5/сек, названия вкладок');
+    console.log('✅ Игра загружена: мультитап, звук 🔊, энергия 5/сек, вкладки с названиями');
 </script>
 </body>
 </html>
