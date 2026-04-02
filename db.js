@@ -7,9 +7,10 @@ dotenv.config();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        sslmode: 'verify-full'
     },
-    connectionTimeoutMillis: 10000,  // 10 секунд таймаут
+    connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000
 });
 
@@ -36,23 +37,64 @@ export async function initDB() {
     try {
         await pool.query(query);
         console.log('✅ Таблица users создана/проверена');
+        return true;
     } catch (err) {
         console.error('❌ Ошибка создания таблицы:', err.message);
+        return false;
     }
 }
 
-// Получить пользователя
+// Получить пользователя (всегда возвращает объект)
 export async function getUser(userId) {
     try {
         let res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        
         if (res.rows.length === 0) {
-            await pool.query('INSERT INTO users (id) VALUES ($1)', [userId]);
+            await pool.query(
+                'INSERT INTO users (id, name, last_active_time) VALUES ($1, $2, $3)',
+                [userId, 'Игрок', Date.now()]
+            );
             res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
         }
+        
+        if (res.rows.length === 0) {
+            return {
+                id: userId,
+                name: 'Игрок',
+                coins: 0,
+                energy: 100,
+                max_energy: 100,
+                click_power: 1,
+                passive_income_level: 0,
+                click_upgrade_level: 1,
+                energy_upgrade_level: 1,
+                has_moon: false,
+                has_earth: false,
+                has_sun: false,
+                last_active_time: Date.now(),
+                total_clicks: 0
+            };
+        }
+        
         return res.rows[0];
     } catch (err) {
         console.error('❌ Ошибка getUser:', err.message);
-        return null;
+        return {
+            id: userId,
+            name: 'Игрок',
+            coins: 0,
+            energy: 100,
+            max_energy: 100,
+            click_power: 1,
+            passive_income_level: 0,
+            click_upgrade_level: 1,
+            energy_upgrade_level: 1,
+            has_moon: false,
+            has_earth: false,
+            has_sun: false,
+            last_active_time: Date.now(),
+            total_clicks: 0
+        };
     }
 }
 
@@ -60,7 +102,7 @@ export async function getUser(userId) {
 export async function updateUser(userId, data) {
     try {
         const user = await getUser(userId);
-        if (!user) return;
+        if (!user) return false;
         
         const updatedUser = { ...user, ...data };
         const query = `
@@ -73,15 +115,25 @@ export async function updateUser(userId, data) {
             WHERE id = $1
         `;
         await pool.query(query, [
-            userId, updatedUser.name, updatedUser.coins, updatedUser.energy,
-            updatedUser.max_energy, updatedUser.click_power,
-            updatedUser.passive_income_level, updatedUser.click_upgrade_level,
-            updatedUser.energy_upgrade_level, updatedUser.has_moon,
-            updatedUser.has_earth, updatedUser.has_sun,
-            updatedUser.last_active_time || Date.now(), updatedUser.total_clicks || 0
+            userId, 
+            updatedUser.name || 'Игрок', 
+            updatedUser.coins !== undefined ? updatedUser.coins : 0,
+            updatedUser.energy !== undefined ? updatedUser.energy : 100,
+            updatedUser.max_energy !== undefined ? updatedUser.max_energy : 100,
+            updatedUser.click_power !== undefined ? updatedUser.click_power : 1,
+            updatedUser.passive_income_level !== undefined ? updatedUser.passive_income_level : 0,
+            updatedUser.click_upgrade_level !== undefined ? updatedUser.click_upgrade_level : 1,
+            updatedUser.energy_upgrade_level !== undefined ? updatedUser.energy_upgrade_level : 1,
+            updatedUser.has_moon || false,
+            updatedUser.has_earth || false,
+            updatedUser.has_sun || false,
+            updatedUser.last_active_time || Date.now(),
+            updatedUser.total_clicks || 0
         ]);
+        return true;
     } catch (err) {
         console.error('❌ Ошибка updateUser:', err.message);
+        return false;
     }
 }
 
@@ -103,13 +155,13 @@ export async function getTopPlayers(limit = 10) {
 export async function getPlayerRank(userId) {
     try {
         const res = await pool.query(
-            'SELECT COUNT(*) FROM users WHERE coins > (SELECT coins FROM users WHERE id = $1)',
+            'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins, 0) FROM users WHERE id = $1)',
             [userId]
         );
         return parseInt(res.rows[0].count) + 1;
     } catch (err) {
         console.error('❌ Ошибка getPlayerRank:', err.message);
-        return 0;
+        return 1;
     }
 }
 

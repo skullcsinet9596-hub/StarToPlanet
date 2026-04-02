@@ -20,6 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('frontend'));
 
+// ========== API ==========
 app.get('/api/leaderboard', async (req, res) => {
     const top = await getTopPlayers(20);
     res.json(top);
@@ -27,20 +28,16 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/user/:userId', async (req, res) => {
     const user = await getUser(parseInt(req.params.userId));
-    if (user) {
-        res.json({
-            coins: user.coins,
-            energy: user.energy,
-            maxEnergy: user.max_energy,
-            clickPower: user.click_power,
-            passiveIncomeLevel: user.passive_income_level,
-            hasMoon: user.has_moon,
-            hasEarth: user.has_earth,
-            hasSun: user.has_sun
-        });
-    } else {
-        res.json({ error: 'User not found' });
-    }
+    res.json({
+        coins: user.coins,
+        energy: user.energy,
+        maxEnergy: user.max_energy,
+        clickPower: user.click_power,
+        passiveIncomeLevel: user.passive_income_level,
+        hasMoon: user.has_moon,
+        hasEarth: user.has_earth,
+        hasSun: user.has_sun
+    });
 });
 
 app.post('/api/save', async (req, res) => {
@@ -66,17 +63,13 @@ app.post('/api/save', async (req, res) => {
 
 app.listen(PORT, () => console.log(`✅ Веб-сервер на порту ${PORT}`));
 
+// ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
     const userName = ctx.from.first_name || 'игрок';
+    
     await updateUser(userId, { name: userName });
-    
     const user = await getUser(userId);
-    if (!user) {
-        await ctx.reply('❌ Ошибка загрузки данных');
-        return;
-    }
-    
     const rank = await getPlayerRank(userId);
     const totalPlayers = await getTotalPlayers();
     const passiveRate = (user.passive_income_level || 0) * 5;
@@ -112,6 +105,49 @@ bot.command('rating', async (ctx) => {
     await ctx.reply(message, { parse_mode: 'HTML' });
 });
 
+bot.command('stats', async (ctx) => {
+    const userId = ctx.from.id;
+    const user = await getUser(userId);
+    const rank = await getPlayerRank(userId);
+    const totalPlayers = await getTotalPlayers();
+    const passiveRate = (user.passive_income_level || 0) * 5;
+    
+    await ctx.reply(`
+📊 <b>ВАША СТАТИСТИКА</b>
+
+👤 <b>Игрок:</b> ${user.name}
+🏆 <b>Место в рейтинге:</b> #${rank} из ${totalPlayers}
+
+💰 <b>Монет:</b> ${user.coins || 0}
+💪 <b>Сила клика:</b> ${user.click_power || 1}
+⚡ <b>Энергия:</b> ${user.energy || 100}/${user.max_energy || 100}
+🤖 <b>Пассивный доход:</b> ${passiveRate} монет/мин
+    `, { parse_mode: 'HTML' });
+});
+
+bot.command('ping', async (ctx) => {
+    const total = await getTotalPlayers();
+    await ctx.reply(`🏓 Pong! Бот работает\n📊 Всего игроков: ${total}`);
+});
+
+bot.command('help', async (ctx) => {
+    await ctx.reply(`
+📖 <b>КОМАНДЫ БОТА</b>
+
+/start — Главное меню
+/rating — Таблица лидеров
+/stats — Моя статистика
+/ping — Проверить работу
+/help — Эта справка
+
+🎮 <b>Как играть:</b>
+1. Нажми "ЗАПУСТИТЬ ИГРУ"
+2. Тапай по планете
+3. Покупай улучшения в разделе БУСТ
+4. Поднимайся в рейтинге!
+    `, { parse_mode: 'HTML' });
+});
+
 bot.on('web_app_data', async (ctx) => {
     const userId = ctx.from.id;
     const data = ctx.webAppData.data;
@@ -135,7 +171,7 @@ bot.on('web_app_data', async (ctx) => {
     }
 });
 
-// Запуск без проверки подключения
+// ========== ЗАПУСК ==========
 try {
     await initDB();
     console.log('✅ База данных инициализирована');
