@@ -1,7 +1,8 @@
 import { Telegraf } from 'telegraf';
 import express from 'express';
 import dotenv from 'dotenv';
-import { initDB, getUser, updateUser, getTopPlayers, getPlayerRank, getTotalPlayers } from './db.js';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 dotenv.config();
 
@@ -17,10 +18,117 @@ if (!BOT_TOKEN) {
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 
+// ========== БАЗА ДАННЫХ ==========
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000
+});
+
+async function initDB() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGINT PRIMARY KEY,
+                name VARCHAR(255) DEFAULT 'Игрок',
+                coins BIGINT DEFAULT 0,
+                energy INT DEFAULT 100,
+                max_energy INT DEFAULT 100,
+                click_power INT DEFAULT 1,
+                passive_income_level INT DEFAULT 0,
+                has_moon BOOLEAN DEFAULT FALSE,
+                has_earth BOOLEAN DEFAULT FALSE,
+                has_sun BOOLEAN DEFAULT FALSE,
+                last_active_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+            )
+        `);
+        console.log('✅ Таблица users создана');
+    } catch (err) {
+        console.error('❌ Ошибка БД:', err.message);
+    }
+}
+
+async function getUser(userId) {
+    try {
+        let res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if (res.rows.length === 0) {
+            await pool.query('INSERT INTO users (id) VALUES ($1)', [userId]);
+            res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        }
+        return res.rows[0];
+    } catch (err) {
+        console.error('Ошибка getUser:', err.message);
+        return {
+            id: userId,
+            name: 'Игрок',
+            coins: 0,
+            energy: 100,
+            max_energy: 100,
+            click_power: 1,
+            passive_income_level: 0,
+            has_moon: false,
+            has_earth: false,
+            has_sun: false
+        };
+    }
+}
+
+async function updateUser(userId, data) {
+    try {
+        const user = await getUser(userId);
+        const updated = { ...user, ...data };
+        await pool.query(
+            `UPDATE users SET 
+                name=$2, coins=$3, energy=$4, max_energy=$5,
+                click_power=$6, passive_income_level=$7,
+                has_moon=$8, has_earth=$9, has_sun=$10, last_active_time=$11
+            WHERE id=$1`,
+            [userId, updated.name, updated.coins, updated.energy,
+             updated.max_energy, updated.click_power, updated.passive_income_level,
+             updated.has_moon, updated.has_earth, updated.has_sun, Date.now()]
+        );
+    } catch (err) {
+        console.error('Ошибка updateUser:', err.message);
+    }
+}
+
+async function getTopPlayers(limit = 10) {
+    try {
+        const res = await pool.query(
+            'SELECT id, name, coins FROM users ORDER BY coins DESC LIMIT $1',
+            [limit]
+        );
+        return res.rows;
+    } catch (err) {
+        return [];
+    }
+}
+
+async function getPlayerRank(userId) {
+    try {
+        const res = await pool.query(
+            'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins,0) FROM users WHERE id=$1)',
+            [userId]
+        );
+        return parseInt(res.rows[0].count) + 1;
+    } catch (err) {
+        return 1;
+    }
+}
+
+async function getTotalPlayers() {
+    try {
+        const res = await pool.query('SELECT COUNT(*) FROM users');
+        return parseInt(res.rows[0].count);
+    } catch (err) {
+        return 0;
+    }
+}
+
+// ========== ВЕБ-СЕРВЕР ==========
 app.use(express.json());
 app.use(express.static('frontend'));
 
-// ========== API ==========
 app.get('/api/leaderboard', async (req, res) => {
     const top = await getTopPlayers(20);
     res.json(top);
@@ -51,11 +159,9 @@ app.post('/api/save', async (req, res) => {
             passive_income_level: gameData.passiveIncomeLevel,
             has_moon: gameData.hasMoon,
             has_earth: gameData.hasEarth,
-            has_sun: gameData.hasSun,
-            last_active_time: Date.now()
+            has_sun: gameData.hasSun
         });
-        const rank = await getPlayerRank(parseInt(userId));
-        res.json({ success: true, rank });
+        res.json({ success: true });
     } else {
         res.json({ success: false });
     }
@@ -67,23 +173,20 @@ app.listen(PORT, () => console.log(`✅ Веб-сервер на порту ${PO
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
     const userName = ctx.from.first_name || 'игрок';
-    
     await updateUser(userId, { name: userName });
     const user = await getUser(userId);
     const rank = await getPlayerRank(userId);
-    const totalPlayers = await getTotalPlayers();
-    const passiveRate = (user.passive_income_level || 0) * 5;
+    const total = await getTotalPlayers();
     
     await ctx.replyWithHTML(`
-🌟 <b>Добро пожаловать в Star to Planet, ${userName}!</b> 🌟
+🌟 <b>Добро пожаловать, ${userName}!</b> 🌟
 
-💰 <b>Баланс:</b> ${user.coins || 0} монет
-⚡ <b>Энергия:</b> ${user.energy || 100}/${user.max_energy || 100}
-💪 <b>Сила клика:</b> ${user.click_power || 1}
-🤖 <b>Пассивный доход:</b> ${passiveRate} монет/мин
-🏆 <b>Место в рейтинге:</b> #${rank} из ${totalPlayers}
+💰 Баланс: ${user.coins} монет
+⚡ Энергия: ${user.energy}/${user.max_energy}
+💪 Сила клика: ${user.click_power}
+🏆 Место в рейтинге: #${rank} из ${total}
 
-🎮 <b>Нажми на кнопку ниже, чтобы открыть игру!</b>
+🎮 Нажми на кнопку ниже!
     `, {
         reply_markup: {
             inline_keyboard: [[{ text: '✨ ЗАПУСТИТЬ ИГРУ ✨', web_app: { url: APP_URL } }]]
@@ -93,91 +196,25 @@ bot.start(async (ctx) => {
 
 bot.command('rating', async (ctx) => {
     const top = await getTopPlayers(10);
-    let message = `🏆 <b>ТАБЛИЦА ЛИДЕРОВ</b> 🏆\n\n`;
-    if (top.length === 0) {
-        message += 'Пока нет игроков. Будь первым!';
-    } else {
-        for (let i = 0; i < top.length; i++) {
-            const p = top[i];
-            message += `${i+1}. ${p.name} — ${p.coins} 🪙\n`;
-        }
+    let msg = '🏆 ТОП ИГРОКОВ 🏆\n\n';
+    for (let i = 0; i < top.length; i++) {
+        msg += `${i+1}. ${top[i].name} — ${top[i].coins} 🪙\n`;
     }
-    await ctx.reply(message, { parse_mode: 'HTML' });
-});
-
-bot.command('stats', async (ctx) => {
-    const userId = ctx.from.id;
-    const user = await getUser(userId);
-    const rank = await getPlayerRank(userId);
-    const totalPlayers = await getTotalPlayers();
-    const passiveRate = (user.passive_income_level || 0) * 5;
-    
-    await ctx.reply(`
-📊 <b>ВАША СТАТИСТИКА</b>
-
-👤 <b>Игрок:</b> ${user.name}
-🏆 <b>Место в рейтинге:</b> #${rank} из ${totalPlayers}
-
-💰 <b>Монет:</b> ${user.coins || 0}
-💪 <b>Сила клика:</b> ${user.click_power || 1}
-⚡ <b>Энергия:</b> ${user.energy || 100}/${user.max_energy || 100}
-🤖 <b>Пассивный доход:</b> ${passiveRate} монет/мин
-    `, { parse_mode: 'HTML' });
-});
-
-bot.command('ping', async (ctx) => {
-    const total = await getTotalPlayers();
-    await ctx.reply(`🏓 Pong! Бот работает\n📊 Всего игроков: ${total}`);
-});
-
-bot.command('help', async (ctx) => {
-    await ctx.reply(`
-📖 <b>КОМАНДЫ БОТА</b>
-
-/start — Главное меню
-/rating — Таблица лидеров
-/stats — Моя статистика
-/ping — Проверить работу
-/help — Эта справка
-
-🎮 <b>Как играть:</b>
-1. Нажми "ЗАПУСТИТЬ ИГРУ"
-2. Тапай по планете
-3. Покупай улучшения в разделе БУСТ
-4. Поднимайся в рейтинге!
-    `, { parse_mode: 'HTML' });
+    await ctx.reply(msg);
 });
 
 bot.on('web_app_data', async (ctx) => {
-    const userId = ctx.from.id;
-    const data = ctx.webAppData.data;
     try {
-        const gameData = JSON.parse(data);
-        await updateUser(userId, {
-            coins: gameData.coins,
-            energy: gameData.energy,
-            max_energy: gameData.maxEnergy,
-            click_power: gameData.clickPower,
-            passive_income_level: gameData.passiveIncomeLevel,
-            has_moon: gameData.hasMoon,
-            has_earth: gameData.hasEarth,
-            has_sun: gameData.hasSun,
-            last_active_time: Date.now()
-        });
-        await ctx.reply(`✅ Данные сохранены!`);
+        const data = JSON.parse(ctx.webAppData.data);
+        await updateUser(ctx.from.id, data);
+        await ctx.reply('✅ Данные сохранены!');
     } catch (e) {
         console.error(e);
-        await ctx.reply('❌ Ошибка сохранения');
+        await ctx.reply('❌ Ошибка');
     }
 });
 
 // ========== ЗАПУСК ==========
-try {
-    await initDB();
-    console.log('✅ База данных инициализирована');
-} catch (err) {
-    console.error('❌ Ошибка инициализации БД:', err.message);
-}
-
+await initDB();
 bot.launch();
-console.log('🤖 Star to Planet Bot запущен!');
+console.log('🤖 Бот запущен!');
