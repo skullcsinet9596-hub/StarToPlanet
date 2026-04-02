@@ -1,438 +1,403 @@
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
-const tg = window.Telegram.WebApp;
-tg.expand();
-tg.enableClosingConfirmation();
+import * as THREE from 'three';
 
-const tgUser = tg.initDataUnsafe?.user;
-let userId = tgUser?.id || 'guest_' + Math.floor(Math.random() * 1000000000);
-let displayName = "Игрок";
-let userAvatar = tgUser?.photo_url || 'https://telegram.org/img/tg_icon_light.png';
-if (tgUser) {
-    if (tgUser.username) displayName = `@${tgUser.username}`;
-    else if (tgUser.first_name) displayName = tgUser.first_name;
+// ========== Telegram WebApp ==========
+let tg = null;
+let userId = null;
+
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        userId = tg.initDataUnsafe.user.id;
+    }
 }
-document.getElementById('userName').textContent = displayName;
-document.getElementById('profileName').textContent = displayName;
-document.getElementById('userAvatar')?.setAttribute('src', userAvatar);
-document.getElementById('profileAvatar')?.setAttribute('src', userAvatar);
 
-function getReferrerId() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const startapp = urlParams.get('startapp');
-    if (startapp && startapp.startsWith('ref_')) return startapp.replace('ref_', '');
-    return null;
-}
-const referrerId = getReferrerId();
-
-// ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
+// ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
 let coins = 0;
 let energy = 100;
 let maxEnergy = 100;
 let clickPower = 1;
-let clickUpgradeCost = 100;
-let clickUpgradeLevel = 1;
-let energyUpgradeCost = 200;
-let energyUpgradeLevel = 1;
 let passiveIncomeLevel = 0;
-let passiveIncomeUpgradeCost = 500;
-let passiveIncomeRate = 0;
-
 let hasMoon = false;
 let hasEarth = false;
 let hasSun = false;
 
-let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
-let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
+let lastClickTime = 0;
+let clickCooldown = 30;
+let isSaving = false;
 
-// ==================== ЗВЕЗДА (клик по контейнеру) ====================
-const starContainer = document.getElementById('star-container');
-if (starContainer) {
-    starContainer.addEventListener('click', handleClick);
+// ========== ЗВУК ==========
+let soundEnabled = true;
+let playTapSound = null;
+let audioContext = null;
+
+function initAudio() {
+    if (audioContext) return;
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.25;
+        gainNode.connect(audioContext.destination);
+        
+        playTapSound = () => {
+            if (!soundEnabled) return;
+            if (audioContext.state === 'suspended') audioContext.resume();
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(gainNode);
+            osc.frequency.value = 880;
+            gain.gain.value = 0.15;
+            osc.type = 'sine';
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
+            osc.stop(audioContext.currentTime + 0.2);
+        };
+    } catch(e) { console.log('Web Audio не поддерживается'); }
 }
 
-function handleClick(event) {
+// ========== 3D СЦЕНА ==========
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x030318);
+scene.fog = new THREE.FogExp2(0x030318, 0.003);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+const ambientLight = new THREE.AmbientLight(0x404060);
+scene.add(ambientLight);
+const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+mainLight.position.set(2, 3, 4);
+scene.add(mainLight);
+const fillLight = new THREE.PointLight(0x4466aa, 0.5);
+fillLight.position.set(-2, 1, 2);
+scene.add(fillLight);
+
+const geometry = new THREE.SphereGeometry(1, 128, 128);
+const textureLoader = new THREE.TextureLoader();
+const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+const material = new THREE.MeshStandardMaterial({ map: earthMap, roughness: 0.5, metalness: 0.1 });
+const planet = new THREE.Mesh(geometry, material);
+scene.add(planet);
+
+const starCount = 1500;
+const starGeometry = new THREE.BufferGeometry();
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+    starPositions[i*3] = (Math.random() - 0.5) * 200;
+    starPositions[i*3+1] = (Math.random() - 0.5) * 200;
+    starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
+}
+starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 }));
+scene.add(stars);
+
+function animate() {
+    requestAnimationFrame(animate);
+    planet.rotation.y += 0.003;
+    stars.rotation.y += 0.0005;
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ========== ЗАГРУЗКА С СЕРВЕРА ==========
+async function loadFromServer() {
+    if (!userId) return;
+    try {
+        const response = await fetch(`/api/user/${userId}`);
+        const data = await response.json();
+        coins = data.coins || 0;
+        energy = data.energy ?? 100;
+        maxEnergy = data.maxEnergy ?? 100;
+        clickPower = data.clickPower || 1;
+        passiveIncomeLevel = data.passiveIncomeLevel || 0;
+        hasMoon = data.hasMoon || false;
+        hasEarth = data.hasEarth || false;
+        hasSun = data.hasSun || false;
+        if (energy > maxEnergy) energy = maxEnergy;
+        updateUI();
+        console.log('✅ Данные загружены с сервера');
+    } catch(e) { console.log('Ошибка загрузки', e); }
+}
+
+// ========== СОХРАНЕНИЕ НА СЕРВЕР ==========
+async function saveToServer() {
+    if (!userId || isSaving) return;
+    isSaving = true;
+    try {
+        await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userId,
+                gameData: {
+                    coins: Math.floor(coins),
+                    energy: energy,
+                    maxEnergy: maxEnergy,
+                    clickPower: clickPower,
+                    passiveIncomeLevel: passiveIncomeLevel,
+                    hasMoon: hasMoon,
+                    hasEarth: hasEarth,
+                    hasSun: hasSun
+                }
+            })
+        });
+        console.log('✅ Данные сохранены');
+    } catch(e) { console.log('Ошибка сохранения', e); }
+    finally { isSaving = false; }
+}
+
+// ========== МУЛЬТИТАП ==========
+async function handleTap(clientX, clientY) {
+    const now = Date.now();
+    if (now - lastClickTime < clickCooldown) return;
+    lastClickTime = now;
     if (energy < clickPower) {
         showMessage('❌ Нет энергии!', true);
         return;
     }
+    if (!audioContext) initAudio();
+    if (playTapSound) playTapSound();
+    
     energy -= clickPower;
     coins += clickPower;
-    dailyClickCount++; weeklyClickCount++;
-    dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
-    updateUI(); saveGame(); syncToServer();
     
-    // Анимация нажатия
-    starContainer.style.transform = 'scale(0.95)';
-    setTimeout(() => { if (starContainer) starContainer.style.transform = 'scale(1)'; }, 100);
+    planet.scale.set(0.96, 0.96, 0.96);
+    setTimeout(() => planet.scale.set(1, 1, 1), 100);
     
-    // Всплывающая цифра
+    const flash = new THREE.PointLight(0xffaa66, 0.8);
+    flash.position.set((clientX / window.innerWidth - 0.5) * 5, -(clientY / window.innerHeight - 0.5) * 4, 2);
+    scene.add(flash);
+    setTimeout(() => scene.remove(flash), 150);
+    
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
-    popup.style.position = 'fixed';
-    popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
-    popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
-    popup.style.color = '#ffd700';
-    popup.style.fontSize = '24px';
-    popup.style.fontWeight = 'bold';
-    popup.style.pointerEvents = 'none';
-    popup.style.zIndex = '1000';
-    popup.style.textShadow = '0 0 5px #000';
-    popup.style.animation = 'popup 0.5s ease-out forwards';
+    popup.style.cssText = `position:fixed; left:${clientX}px; top:${clientY-30}px; color:#FFD60A; font-size:22px; font-weight:bold; pointer-events:none; z-index:1000; text-shadow:0 0 5px black; animation:popupAnim 0.4s ease-out forwards;`;
     document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 500);
-}
-
-async function syncToServer() {
-    if (!userId || userId.toString().startsWith('guest')) return;
-    try { await fetch(`https://startoplanet.onrender.com/api/update`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy }) }); } catch(e) {}
-}
-
-function getLevel() {
-    if (coins >= 10000000000) return 7;
-    if (coins >= 1000000000) return 6;
-    if (coins >= 100000000) return 5;
-    if (coins >= 10000000) return 4;
-    if (coins >= 1000000) return 3;
-    if (coins >= 100000) return 2;
-    if (coins >= 10000) return 1;
-    return 0;
-}
-
-function updateStarOrPlanet() {
-    const level = getLevel();
-    const container = document.getElementById('star-container');
-    if (!container) return;
+    setTimeout(() => popup.remove(), 400);
     
-    // Убираем старые классы планет
-    container.classList.remove('planet-mercury', 'planet-mars', 'planet-venus', 'planet-neptune', 'planet-uranus', 'planet-saturn', 'planet-jupiter');
-    
-    if (level === 0) {
-        // Звезда с лучами
-        container.innerHTML = `
-            <div class="star-core"></div>
-            <div class="star-rays">
-                ${Array(12).fill('<div class="ray"></div>').join('')}
-            </div>
-            <div class="star-rays-short">
-                ${Array(12).fill('<div class="ray-short"></div>').join('')}
-            </div>
-        `;
-        container.style.background = 'transparent';
-        container.style.boxShadow = 'none';
-        container.style.borderRadius = '0';
-    } else {
-        // Планета
-        const planetNames = ['', 'mercury', 'mars', 'venus', 'neptune', 'uranus', 'saturn', 'jupiter'];
-        container.classList.add(`planet-${planetNames[level]}`);
-        container.innerHTML = '';
-        container.style.background = 'radial-gradient(circle at 30% 30%, var(--color1), var(--color2))';
-        container.style.borderRadius = '50%';
-        container.style.boxShadow = '0 0 30px rgba(0,0,0,0.3)';
-        
-        const emoji = document.createElement('div');
-        emoji.style.fontSize = '80px';
-        emoji.style.textAlign = 'center';
-        emoji.style.lineHeight = '200px';
-        const planetEmojis = ['', '☿', '♂', '♀', '♆', '⛢', '♄', '♃'];
-        emoji.textContent = planetEmojis[level];
-        container.appendChild(emoji);
-    }
+    updateUI();
+    await saveToServer();
 }
 
-function updateUI() {
-    const level = getLevel();
-    const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер'];
-    document.getElementById('userLevel').textContent = `Уровень ${level} · ${levelNames[level]}`;
-    document.getElementById('coins').textContent = Math.floor(coins);
-    document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
-    document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
-    document.getElementById('clickPower').textContent = clickPower;
-    document.getElementById('energyCost').textContent = clickPower;
-    document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
-    document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
-    document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
-    document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
-    document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
-    document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
-    
+renderer.domElement.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.touches.length; i++) handleTap(e.touches[i].clientX, e.touches[i].clientY);
+});
+renderer.domElement.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    handleTap(e.clientX, e.clientY);
+});
+
+const styleAnim = document.createElement('style');
+styleAnim.textContent = `@keyframes popupAnim { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 100% { opacity: 0; transform: translateY(-40px) scale(1); } }`;
+document.head.appendChild(styleAnim);
+
+// ========== ИГРОВАЯ ЛОГИКА ==========
+function getPassiveRate() {
     let rate = passiveIncomeLevel * 5;
     if (hasSun) rate += 100000;
     else if (hasEarth) rate += 50000;
     else if (hasMoon) rate += 20000;
-    passiveIncomeRate = rate;
-    document.getElementById('passiveIncomeRate').textContent = rate;
-    
-    updateStarOrPlanet();
-    
-    document.getElementById('profileCoins').textContent = Math.floor(coins);
-    document.getElementById('profileClickPower').textContent = clickPower;
-    document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-    document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
-    document.getElementById('profileId').textContent = userId;
-    document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
-    document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
-    document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
-    document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
-    document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
-    updateTaskButtons();
-    updatePremiumUI();
+    return rate;
 }
 
-function updatePremiumUI() {
-    const hasJupiter = coins >= 10000000000;
-    const moonCard = document.getElementById('premiumMoonCard');
-    const earthCard = document.getElementById('premiumEarthCard');
-    const sunCard = document.getElementById('premiumSunCard');
-    const moonBtn = document.getElementById('buyMoon');
-    const earthBtn = document.getElementById('buyEarth');
-    const sunBtn = document.getElementById('buySun');
-    if (hasJupiter && !hasMoon) {
-        if (moonCard) moonCard.classList.remove('premium-locked');
-        if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
-        const cond = document.getElementById('moonCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasMoon) {
-        if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('moonCondition');
-        if (cond) cond.innerHTML = '✅ Луна куплена';
+function updateUI() {
+    document.getElementById('coins').textContent = Math.floor(coins);
+    document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
+    document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
+    document.getElementById('clickPower').textContent = clickPower;
+    document.getElementById('passiveRate').textContent = getPassiveRate();
+}
+
+function showMessage(text, isError = false) {
+    const msg = document.getElementById('message');
+    msg.textContent = text;
+    msg.style.color = isError ? '#ff6b6b' : '#FFD60A';
+    msg.style.display = 'block';
+    msg.style.animation = 'fadeOut 2s forwards';
+    setTimeout(() => {
+        msg.style.display = 'none';
+        msg.style.animation = '';
+    }, 2000);
+}
+
+// ========== БУСТЫ ==========
+async function upgradeClick() {
+    const cost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
+    if (coins >= cost && clickPower < 100) {
+        coins -= cost;
+        clickPower++;
+        updateUI();
+        await saveToServer();
+        showMessage(`✅ Сила клика +1 (${clickPower})`);
+    } else showMessage(`❌ Нужно ${cost} монет`, true);
+}
+
+async function upgradeEnergy() {
+    const level = (maxEnergy - 100) / 50;
+    const cost = Math.floor(200 * Math.pow(1.25, level));
+    if (coins >= cost && maxEnergy < 500) {
+        coins -= cost;
+        maxEnergy += 50;
+        energy += 50;
+        updateUI();
+        await saveToServer();
+        showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
+    } else showMessage(`❌ Нужно ${cost} монет`, true);
+}
+
+async function upgradePassive() {
+    const cost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
+    if (coins >= cost && passiveIncomeLevel < 100) {
+        coins -= cost;
+        passiveIncomeLevel++;
+        updateUI();
+        await saveToServer();
+        showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
+    } else showMessage(`❌ Нужно ${cost} монет`, true);
+}
+
+// ========== ПАНЕЛИ ==========
+function closePanel() { document.querySelector('.floating-panel')?.remove(); }
+
+function showBoostPanel() {
+    closePanel();
+    const rate = getPassiveRate();
+    const clickCost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
+    const level = (maxEnergy - 100) / 50;
+    const energyCost = Math.floor(200 * Math.pow(1.25, level));
+    const passiveCost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
+    const panel = document.createElement('div');
+    panel.className = 'floating-panel';
+    panel.innerHTML = `
+        <h3>⚡ УЛУЧШЕНИЯ</h3>
+        <button id="upgrade-click">⭐ Сила клика (${clickPower}) — ${clickCost} 🪙</button>
+        <button id="upgrade-energy">⚡ Энергия (${maxEnergy}) — ${energyCost} 🪙</button>
+        <button id="upgrade-passive">🤖 Пассивный доход (${rate}/мин) — ${passiveCost} 🪙</button>
+        <button class="close-btn" id="close-boost">Закрыть</button>
+    `;
+    document.body.appendChild(panel);
+    document.getElementById('upgrade-click').onclick = () => { upgradeClick(); panel.remove(); showBoostPanel(); };
+    document.getElementById('upgrade-energy').onclick = () => { upgradeEnergy(); panel.remove(); showBoostPanel(); };
+    document.getElementById('upgrade-passive').onclick = () => { upgradePassive(); panel.remove(); showBoostPanel(); };
+    document.getElementById('close-boost').onclick = () => panel.remove();
+}
+
+function showProfilePanel() {
+    closePanel();
+    const rate = getPassiveRate();
+    let planetName = '⭐ Белая звезда';
+    if (hasSun) planetName = '☀️ Солнце';
+    else if (hasEarth) planetName = '🌍 Земля';
+    else if (hasMoon) planetName = '🌙 Луна';
+    else if (coins >= 10000000000) planetName = '♃ Юпитер';
+    else if (coins >= 1000000000) planetName = '♄ Сатурн';
+    else if (coins >= 100000000) planetName = '⛢ Уран';
+    else if (coins >= 10000000) planetName = '♆ Нептун';
+    else if (coins >= 1000000) planetName = '♀ Венера';
+    else if (coins >= 100000) planetName = '♂ Марс';
+    else if (coins >= 10000) planetName = '☿ Меркурий';
+    const panel = document.createElement('div');
+    panel.className = 'floating-panel';
+    panel.innerHTML = `
+        <h3>👤 ПРОФИЛЬ</h3>
+        <div class="profile-row"><b>⭐ Уровень:</b> ${planetName}</div>
+        <div class="profile-row"><b>💰 Монет:</b> ${Math.floor(coins).toLocaleString()}</div>
+        <div class="profile-row"><b>💪 Сила клика:</b> ${clickPower}</div>
+        <div class="profile-row"><b>⚡ Энергия:</b> ${Math.floor(energy)}/${maxEnergy}</div>
+        <div class="profile-row"><b>🤖 Пассивный доход:</b> ${rate}/мин</div>
+        <button class="close-btn" id="close-profile">Закрыть</button>
+    `;
+    document.body.appendChild(panel);
+    document.getElementById('close-profile').onclick = () => panel.remove();
+}
+
+async function showRatingPanel() {
+    closePanel();
+    let players = [];
+    try {
+        const response = await fetch('/api/leaderboard');
+        players = await response.json();
+    } catch(e) { console.log('Ошибка рейтинга', e); }
+    if (players.length === 0) players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
+    else {
+        const current = players.find(p => p.id == userId);
+        if (!current && userId) players.push({ id: userId, name: 'Вы', coins: Math.floor(coins), isCurrent: true });
+        else if (current) { current.isCurrent = true; current.coins = Math.floor(coins); }
+        players.sort((a,b) => b.coins - a.coins);
     }
-    if (hasMoon && !hasEarth) {
-        if (earthCard) earthCard.classList.remove('premium-locked');
-        if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
-        const cond = document.getElementById('earthCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasEarth) {
-        if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('earthCondition');
-        if (cond) cond.innerHTML = '✅ Земля куплена';
+    let html = '<h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>';
+    for (let i = 0; i < Math.min(players.length, 10); i++) {
+        const p = players[i];
+        let medal = i === 0 ? '👑 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `${i+1}. `;
+        const marker = p.isCurrent ? ' 👈' : '';
+        const name = p.name && p.name !== 'Вы' ? p.name : (p.isCurrent ? 'Вы' : `Игрок ${p.id}`);
+        html += `<div class="profile-row" style="${p.isCurrent ? 'color:#FFD60A; font-weight:bold;' : ''}">${medal}${name} — ${p.coins.toLocaleString()} 🪙${marker}</div>`;
     }
-    if (hasEarth && !hasSun) {
-        if (sunCard) sunCard.classList.remove('premium-locked');
-        if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
-        const cond = document.getElementById('sunCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasSun) {
-        if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('sunCondition');
-        if (cond) cond.innerHTML = '✅ Солнце куплено';
-    }
+    html += '<button class="close-btn" id="close-rating">Закрыть</button>';
+    const panel = document.createElement('div');
+    panel.className = 'floating-panel';
+    panel.innerHTML = html;
+    document.body.appendChild(panel);
+    document.getElementById('close-rating').onclick = () => panel.remove();
 }
 
-function buyPremium(type) {
-    if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
-        hasMoon = true;
-        showMessage('🌕 Луна куплена! +20 000 монет/мин');
-        updateUI(); saveGame();
-    } else if (type === 'earth' && hasMoon && !hasEarth) {
-        hasEarth = true;
-        showMessage('🌍 Земля куплена! +50 000 монет/мин');
-        updateUI(); saveGame();
-    } else if (type === 'sun' && hasEarth && !hasSun) {
-        hasSun = true;
-        showMessage('☀️ Солнце куплено! +100 000 монет/мин');
-        updateUI(); saveGame();
-    } else {
-        showMessage('❌ Условия не выполнены', true);
-    }
-}
-
-function saveGame() {
-    localStorage.setItem('starToPlanet', JSON.stringify({
-        coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
-        energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
-        dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
-        weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
-        hasMoon, hasEarth, hasSun, displayName
-    }));
-}
-function loadGame() {
-    const saved = localStorage.getItem('starToPlanet');
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            coins = data.coins || 0;
-            energy = data.energy ?? 100;
-            maxEnergy = data.maxEnergy ?? 100;
-            clickPower = data.clickPower || 1;
-            clickUpgradeCost = data.clickUpgradeCost || 100;
-            clickUpgradeLevel = data.clickUpgradeLevel || 1;
-            energyUpgradeCost = data.energyUpgradeCost || 200;
-            energyUpgradeLevel = data.energyUpgradeLevel || 1;
-            passiveIncomeLevel = data.passiveIncomeLevel || 0;
-            passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
-            dailyClickCount = data.dailyClickCount || 0;
-            dailyCoinsEarned = data.dailyCoinsEarned || 0;
-            dailyTasksClaimed = data.dailyTasksClaimed || { click: false, coins: false };
-            weeklyClickCount = data.weeklyClickCount || 0;
-            weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
-            weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false };
-            hasMoon = data.hasMoon || false;
-            hasEarth = data.hasEarth || false;
-            hasSun = data.hasSun || false;
-            if (data.displayName) displayName = data.displayName;
-        } catch(e) {}
-    }
-    if (referrerId && referrerId !== userId && !localStorage.getItem(`ref_bonus_${referrerId}_${userId}`)) {
-        localStorage.setItem(`ref_bonus_${referrerId}_${userId}`, 'claimed');
-        coins += 500;
-        showMessage('🎉 +500 монет за приглашение!');
-        saveGame(); syncToServer();
-    }
-    updateUI();
-}
-
-function updateTaskButtons() {
-    const dailyClickBtn = document.getElementById('dailyClickClaim');
-    const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
-    const weeklyClickBtn = document.getElementById('weeklyClickClaim');
-    const weeklyCoinsBtn = document.getElementById('weeklyCoinsClaim');
-    if (dailyClickBtn) { if (dailyClickCount >= 100 && !dailyTasksClaimed.click) dailyClickBtn.classList.remove('disabled'); else dailyClickBtn.classList.add('disabled'); }
-    if (dailyCoinsBtn) { if (dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins) dailyCoinsBtn.classList.remove('disabled'); else dailyCoinsBtn.classList.add('disabled'); }
-    if (weeklyClickBtn) { if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled'); else weeklyClickBtn.classList.add('disabled'); }
-    if (weeklyCoinsBtn) { if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled'); else weeklyCoinsBtn.classList.add('disabled'); }
-}
-async function claimTask(taskId, reward, type) {
-    if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { dailyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { dailyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { weeklyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { weeklyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else { showMessage('❌ Условия не выполнены', true); return; }
-    updateUI(); saveGame(); syncToServer(); updateTaskButtons();
-}
-function upgradeClick() {
-    if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
-        coins -= clickUpgradeCost; clickPower++; clickUpgradeLevel++;
-        clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
-        updateUI(); saveGame(); syncToServer();
-        showMessage('✅ Сила клика +1');
-    } else if (clickUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
-}
-function upgradeEnergy() {
-    if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
-        coins -= energyUpgradeCost; maxEnergy += 50; energy += 50; energyUpgradeLevel++;
-        energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
-        updateUI(); saveGame(); syncToServer();
-        showMessage('✅ Энергия +50');
-    } else if (energyUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
-}
-function upgradePassive() {
-    if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
-        coins -= passiveIncomeUpgradeCost; passiveIncomeLevel++;
-        passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
-        updateUI(); saveGame(); syncToServer();
-        showMessage('✅ Пассивный доход +5/мин');
-    } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
-}
-function applyPassiveIncome() { if (passiveIncomeRate > 0) { coins += passiveIncomeRate; updateUI(); saveGame(); syncToServer(); } }
-function rechargeEnergy() { if (energy < maxEnergy) { energy = Math.min(energy + 3, maxEnergy); updateUI(); } }
-function showMessage(text, isError = false) { const msg = document.getElementById('message'); msg.textContent = text; msg.style.color = isError ? '#ff6b6b' : '#ffd700'; msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
-
-// ==================== РЕЙТИНГ И ДРУЗЬЯ ====================
-function loadLeaderboardFromAPI() {
-    const container = document.getElementById('leaderboardList');
-    if (!container) return;
-    const demoPlayers = [
-        { name: displayName, coins: coins, level: getLevel(), isCurrent: true },
-        { name: "⭐ Александр", coins: 1250000, level: 5 },
-        { name: "🌙 Екатерина", coins: 850000, level: 4 },
-        { name: "🚀 Дмитрий", coins: 420000, level: 3 },
-        { name: "🪐 Сергей", coins: 210000, level: 2 }
-    ];
-    const sorted = demoPlayers.sort((a,b) => b.coins - a.coins);
-    container.innerHTML = sorted.map((p, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-        const isCurrent = p.isCurrent;
-        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div><div class="leaderboard-level">Ур.${p.level}</div></div>`;
-    }).join('');
-}
-
-function loadFriendsFromAPI() {
-    const container = document.getElementById('level1List');
-    if (!container) return;
-    container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
-    document.getElementById('referralCount').textContent = '0';
-    document.getElementById('referralBonus').textContent = '0';
-    document.getElementById('profileReferrals').textContent = '0';
-}
-
-function setupTabs() {
-    const panels = { game: document.getElementById('gameArea'), tasks: document.getElementById('tasksPanel'), friends: document.getElementById('friendsPanel'), profile: document.getElementById('profilePanel'), leaderboard: document.getElementById('leaderboardPanel'), airdrop: document.getElementById('airdropPanel') };
+function showTab(tab) {
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
-            if (panels[tab]) panels[tab].style.display = 'block';
-            if (tab === 'game') panels.game.style.display = 'flex';
-            if (tab === 'leaderboard') loadLeaderboardFromAPI();
-            if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
-        });
+        if (btn.dataset.tab === tab) btn.classList.add('active');
+        else btn.classList.remove('active');
     });
+    closePanel();
+    if (tab === 'boost') showBoostPanel();
+    else if (tab === 'profile') showProfilePanel();
+    else if (tab === 'rating') showRatingPanel();
 }
 
-function setupTasksTabs() {
-    const tabs = document.querySelectorAll('.tasks-tab');
-    const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
-    tabs.forEach(t => {
-        t.addEventListener('click', () => {
-            const target = t.dataset.tasksTab;
-            tabs.forEach(tt => tt.classList.remove('active'));
-            t.classList.add('active');
-            Object.values(contents).forEach(c => c?.classList.remove('active'));
-            if (contents[target]) contents[target].classList.add('active');
-        });
-    });
-}
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
 
-function updateReferralLink() { 
-    const linkInput = document.getElementById('referralLink'); 
-    if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
-}
-function copyReferralLink() { 
-    const input = document.getElementById('referralLink'); 
-    if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
-}
-function shareReferralLink() {
-    const input = document.getElementById('referralLink');
-    if(input && tg.openTelegramLink) {
-        tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
-    } else if(input) {
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
+// ========== ЗВУК TOGGLE ==========
+const soundToggle = document.getElementById('soundToggle');
+soundToggle.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+    showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
+});
+
+// ========== ЭНЕРГИЯ 5/СЕК ==========
+setInterval(async () => {
+    if (energy < maxEnergy) {
+        energy = Math.min(energy + 5, maxEnergy);
+        updateUI();
+        await saveToServer();
     }
-}
+}, 1000);
 
-function init() {
-    loadGame();
-    setupTabs();
-    setupTasksTabs();
-    updateReferralLink();
-    document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
-    document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
-    document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
-    document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
-    document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
-    document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
-    document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
-    document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
-    document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
-    document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
-    document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
-    document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
-    const boostBtn = document.getElementById('boostBtn'); const boostModal = document.getElementById('boostModal'); const closeBoost = document.getElementById('closeBoostModal');
-    if(boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
-    if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
-    if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
-    setInterval(applyPassiveIncome, 60000);
-    setInterval(rechargeEnergy, 1000);
-    const raysContainer = document.getElementById('raysContainer');
-    if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
-    document.getElementById('gameArea').style.display = 'flex';
-    console.log('✅ Игра загружена! Белая звезда активна');
-    if(!document.querySelector('#popup-animation')) { const style = document.createElement('style'); style.id = 'popup-animation'; style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`; document.head.appendChild(style); }
-    setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
-}
-init();
+// ========== ПАССИВНЫЙ ДОХОД ==========
+setInterval(async () => {
+    const rate = getPassiveRate();
+    if (rate > 0) {
+        coins += rate;
+        updateUI();
+        await saveToServer();
+    }
+}, 60000);
+
+// ========== ЗАПУСК ==========
+await loadFromServer();
+console.log('✅ Игра загружена, данные с сервера');
