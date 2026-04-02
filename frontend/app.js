@@ -1,28 +1,28 @@
 import * as THREE from 'three';
 
 // ========== АДРЕС БОТА (RENDER) ==========
-// Игра и бот находятся на одном сервере, поэтому используем относительные пути.
-// Это проще и надежнее.
-const API_BASE = ''; // Пустая строка означает "текущий сервер"
+const API_BASE = 'https://startoplanet.onrender.com';
 
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
-let initData = null;
+
+console.log('🔵 [1] Скрипт app.js начал загрузку');
 
 if (window.Telegram && window.Telegram.WebApp) {
+    console.log('🔵 [2] Telegram WebApp найден');
     tg = window.Telegram.WebApp;
     tg.expand();
     tg.ready();
-    initData = tg.initDataUnsafe;
-    if (initData && initData.user) {
-        userId = initData.user.id;
-        console.log('✅ Пользователь авторизован в Telegram, ID:', userId);
+    
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        userId = tg.initDataUnsafe.user.id;
+        console.log('✅ [3] Пользователь авторизован в Telegram, ID:', userId);
     } else {
-        console.log('⚠️ Запущено вне Telegram или данные пользователя не получены.');
+        console.log('⚠️ [3] Telegram WebApp есть, но нет данных пользователя');
     }
 } else {
-    console.log('⚠️ Telegram WebApp не обнаружен.');
+    console.log('⚠️ [2] Telegram WebApp НЕ найден (игра запущена не в Telegram)');
 }
 
 // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
@@ -70,7 +70,11 @@ function initAudio() {
 }
 
 // ========== 3D СЦЕНА ==========
+console.log('🔵 [4] Создаю 3D сцену...');
 const container = document.getElementById('canvas-container');
+if (!container) {
+    console.error('❌ [4] Контейнер canvas-container не найден!');
+}
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x030318);
 scene.fog = new THREE.FogExp2(0x030318, 0.003);
@@ -124,20 +128,26 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+console.log('✅ [4] 3D сцена создана');
 
 // ========== ЗАГРУЗКА С СЕРВЕРА ==========
 async function loadFromServer() {
+    console.log('🔵 [5] loadFromServer вызвана, userId:', userId);
     if (!userId) {
-        console.log('❌ Нет userId, загружаем демо-данные');
-        updateUI(); // Показываем интерфейс с 0
+        console.log('⚠️ [5] Нет userId, загружаем демо-данные');
+        updateUI();
         return;
     }
-    console.log(`🔄 Загружаем данные для пользователя ${userId}...`);
+    
     try {
-        const response = await fetch(`${API_BASE}/api/user/${userId}`);
+        const url = `${API_BASE}/api/user/${userId}`;
+        console.log('🔵 [5] Загружаю:', url);
+        const response = await fetch(url);
+        console.log('🔵 [5] Ответ сервера:', response.status);
+        
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ Данные получены:', data);
+            console.log('✅ [5] Данные получены:', data);
             coins = data.coins || 0;
             energy = data.energy ?? 100;
             maxEnergy = data.maxEnergy ?? 100;
@@ -148,19 +158,28 @@ async function loadFromServer() {
             hasSun = data.hasSun || false;
             if (energy > maxEnergy) energy = maxEnergy;
             updateUI();
-            console.log('✅ Интерфейс обновлён загруженными данными');
+            console.log('✅ [5] Интерфейс обновлён, coins:', coins);
         } else {
-            console.error('❌ Ошибка загрузки с сервера:', response.status);
+            console.error('❌ [5] Ошибка загрузки:', response.status);
         }
     } catch(e) { 
-        console.error('❌ Ошибка сети при загрузке:', e);
+        console.error('❌ [5] Ошибка сети при загрузке:', e);
     }
 }
 
 // ========== СОХРАНЕНИЕ НА СЕРВЕР ==========
 async function saveToServer() {
-    if (!userId || isSaving) return;
+    console.log('🔵 [6] saveToServer вызвана, userId:', userId, 'isSaving:', isSaving);
+    if (!userId) {
+        console.log('⚠️ [6] Нет userId, сохранение пропущено');
+        return;
+    }
+    if (isSaving) {
+        console.log('⚠️ [6] Уже идёт сохранение, пропускаем');
+        return;
+    }
     isSaving = true;
+    
     const gameData = {
         coins: Math.floor(coins),
         energy: energy,
@@ -171,39 +190,48 @@ async function saveToServer() {
         hasEarth: hasEarth,
         hasSun: hasSun
     };
-    console.log(`🔄 Сохраняем данные для пользователя ${userId}:`, gameData);
+    console.log('🔵 [6] Сохраняем данные:', gameData);
+    
     try {
-        const response = await fetch(`${API_BASE}/api/save`, {
+        const url = `${API_BASE}/api/save`;
+        console.log('🔵 [6] Отправляем на:', url);
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: userId, gameData: gameData })
         });
+        console.log('🔵 [6] Ответ сервера:', response.status);
+        
         if (response.ok) {
             const result = await response.json();
-            console.log('✅ Данные сохранены на сервере. Ранг:', result.rank);
+            console.log('✅ [6] Данные сохранены, ранг:', result.rank);
         } else {
-            console.error('❌ Ошибка сохранения на сервере:', response.status);
+            console.error('❌ [6] Ошибка сохранения:', response.status);
         }
     } catch(e) { 
-        console.error('❌ Ошибка сети при сохранении:', e);
+        console.error('❌ [6] Ошибка сети при сохранении:', e);
     }
     finally { isSaving = false; }
 }
 
 // ========== МУЛЬТИТАП ==========
 async function handleTap(clientX, clientY) {
+    console.log('🔵 [7] handleTap вызван, энергия:', energy, 'сила клика:', clickPower);
     const now = Date.now();
     if (now - lastClickTime < clickCooldown) return;
     lastClickTime = now;
+    
     if (energy < clickPower) {
         showMessage('❌ Нет энергии!', true);
         return;
     }
+    
     if (!audioContext) initAudio();
     if (playTapSound) playTapSound();
 
     energy -= clickPower;
     coins += clickPower;
+    console.log('✅ [7] Тап обработан, монет:', coins, 'энергия:', energy);
 
     planet.scale.set(0.96, 0.96, 0.96);
     setTimeout(() => planet.scale.set(1, 1, 1), 100);
@@ -223,11 +251,17 @@ async function handleTap(clientX, clientY) {
     await saveToServer();
 }
 
+// Добавляем обработчики
+console.log('🔵 [8] Добавляю обработчики касаний');
 renderer.domElement.addEventListener('touchstart', (e) => {
+    console.log('🔵 [8] touchstart событие, пальцев:', e.touches.length);
     e.preventDefault();
-    for (let i = 0; i < e.touches.length; i++) handleTap(e.touches[i].clientX, e.touches[i].clientY);
+    for (let i = 0; i < e.touches.length; i++) {
+        handleTap(e.touches[i].clientX, e.touches[i].clientY);
+    }
 });
 renderer.domElement.addEventListener('mousedown', (e) => {
+    console.log('🔵 [8] mousedown событие');
     e.preventDefault();
     handleTap(e.clientX, e.clientY);
 });
@@ -257,6 +291,8 @@ function updateUI() {
     if (energyFillElement) energyFillElement.style.width = (energy / maxEnergy) * 100 + '%';
     if (clickPowerElement) clickPowerElement.textContent = clickPower;
     if (passiveRateElement) passiveRateElement.textContent = getPassiveRate();
+    
+    console.log('🔵 [9] UI обновлён, монеты на экране:', document.getElementById('coins')?.textContent);
 }
 
 function showMessage(text, isError = false) {
@@ -376,7 +412,6 @@ async function showRatingPanel() {
     if (!players || players.length === 0) {
         players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
     } else {
-        // Обновляем данные текущего игрока в списке лидеров
         const currentPlayerIndex = players.findIndex(p => p.id == userId);
         if (currentPlayerIndex !== -1) {
             players[currentPlayerIndex].coins = Math.floor(coins);
@@ -426,8 +461,9 @@ if (soundToggle) {
         soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
         showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
     });
+    console.log('✅ [10] Кнопка звука настроена');
 } else {
-    console.error('❌ Кнопка звука (#soundToggle) не найдена в DOM!');
+    console.error('❌ [10] Кнопка звука (#soundToggle) не найдена!');
 }
 
 // ========== ЭНЕРГИЯ 5/СЕК ==========
@@ -450,9 +486,10 @@ setInterval(async () => {
 }, 60000);
 
 // ========== ЗАПУСК ==========
-// Загружаем данные с сервера и запускаем игру
+console.log('🔵 [11] Запуск игры...');
 loadFromServer().then(() => {
-    console.log('✅ Игра загружена и синхронизирована с сервером');
+    console.log('✅ [11] Игра загружена и синхронизирована с сервером');
+    console.log('🔵 [11] Финальные значения: монеты=' + coins + ', энергия=' + energy);
 }).catch(err => {
-    console.error('❌ Критическая ошибка при загрузке игры:', err);
+    console.error('❌ [11] Критическая ошибка при загрузке игры:', err);
 });
