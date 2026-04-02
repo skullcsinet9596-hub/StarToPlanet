@@ -42,7 +42,6 @@
             pointer-events: none;
         }
 
-        /* Верхняя панель */
         .top-bar {
             position: fixed;
             top: 0;
@@ -93,7 +92,6 @@
             color: #FFD60A;
         }
 
-        /* Энергия */
         .energy-bar {
             background: rgba(0,0,0,0.6);
             backdrop-filter: blur(20px);
@@ -125,7 +123,6 @@
             transition: width 0.2s;
         }
 
-        /* Статистика */
         .stats {
             display: flex;
             justify-content: space-between;
@@ -138,7 +135,6 @@
             pointer-events: auto;
         }
 
-        /* Нижняя навигация */
         .nav-bar {
             position: fixed;
             bottom: 0;
@@ -182,7 +178,6 @@
             font-weight: 500;
         }
 
-        /* Всплывающие панели */
         .floating-panel {
             position: fixed;
             top: 50%;
@@ -229,7 +224,6 @@
             text-align: left;
         }
 
-        /* Сообщение */
         .message {
             position: fixed;
             bottom: 100px;
@@ -314,6 +308,19 @@
 <script type="module">
     import * as THREE from 'three';
 
+    // ========== Telegram WebApp ==========
+    let tg = null;
+    let userId = null;
+    
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        }
+    }
+    
     // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
     let coins = 0;
     let energy = 100;
@@ -326,14 +333,6 @@
     
     let lastClickTime = 0;
     let clickCooldown = 30;
-    
-    // Telegram WebApp
-    let tg = null;
-    if (window.Telegram && window.Telegram.WebApp) {
-        tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
-    }
     
     // ========== ЗВУК ==========
     let soundEnabled = true;
@@ -383,7 +382,6 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
     
-    // Освещение
     const ambientLight = new THREE.AmbientLight(0x404060);
     scene.add(ambientLight);
     
@@ -395,7 +393,6 @@
     fillLight.position.set(-2, 1, 2);
     scene.add(fillLight);
     
-    // Планета
     const geometry = new THREE.SphereGeometry(1, 128, 128);
     const textureLoader = new THREE.TextureLoader();
     const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
@@ -407,7 +404,6 @@
     const planet = new THREE.Mesh(geometry, material);
     scene.add(planet);
     
-    // Звёзды
     const starCount = 1500;
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
@@ -435,21 +431,21 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
     
-    // ========== ОТПРАВКА ДАННЫХ В БОТА ==========
-    function syncWithBot() {
-        if (tg) {
-            const gameData = {
-                coins: Math.floor(coins),
-                energy: energy,
-                maxEnergy: maxEnergy,
-                clickPower: clickPower,
-                passiveIncomeLevel: passiveIncomeLevel,
-                hasMoon: hasMoon,
-                hasEarth: hasEarth,
-                hasSun: hasSun
-            };
-            tg.sendData(JSON.stringify(gameData));
-        }
+    // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
+    async function syncWithBot() {
+        if (!tg) return;
+        
+        const gameData = {
+            coins: Math.floor(coins),
+            energy: energy,
+            maxEnergy: maxEnergy,
+            clickPower: clickPower,
+            passiveIncomeLevel: passiveIncomeLevel,
+            hasMoon: hasMoon,
+            hasEarth: hasEarth,
+            hasSun: hasSun
+        };
+        tg.sendData(JSON.stringify(gameData));
     }
     
     // ========== МУЛЬТИТАП ==========
@@ -690,15 +686,21 @@
         document.getElementById('close-profile').onclick = () => panel.remove();
     }
     
-    function showRatingPanel() {
+    async function showRatingPanel() {
         closePanel();
         
-        // Получаем данные из localStorage или создаём демо
         let players = [];
-        const savedRating = localStorage.getItem('starToPlanetRating');
-        if (savedRating) {
-            players = JSON.parse(savedRating);
-        } else {
+        
+        if (userId) {
+            try {
+                const response = await fetch(`/api/leaderboard`);
+                players = await response.json();
+            } catch(e) {
+                console.log('Ошибка загрузки рейтинга', e);
+            }
+        }
+        
+        if (players.length === 0) {
             players = [
                 { name: 'Вы', coins: Math.floor(coins), isCurrent: true },
                 { name: 'Александр', coins: 1250000 },
@@ -706,17 +708,10 @@
                 { name: 'Дмитрий', coins: 420000 },
                 { name: 'Сергей', coins: 210000 }
             ];
+            const currentPlayer = players.find(p => p.isCurrent);
+            if (currentPlayer) currentPlayer.coins = Math.floor(coins);
+            players.sort((a,b) => b.coins - a.coins);
         }
-        
-        // Обновляем текущего игрока
-        const currentPlayer = players.find(p => p.isCurrent);
-        if (currentPlayer) {
-            currentPlayer.coins = Math.floor(coins);
-        } else {
-            players.unshift({ name: 'Вы', coins: Math.floor(coins), isCurrent: true });
-        }
-        players.sort((a,b) => b.coins - a.coins);
-        localStorage.setItem('starToPlanetRating', JSON.stringify(players));
         
         let html = '<h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>';
         for (let i = 0; i < Math.min(players.length, 10); i++) {
@@ -771,7 +766,7 @@
         }
     }, 1000);
     
-    // Пассивный доход каждую минуту
+    // Пассивный доход
     setInterval(() => {
         const rate = getPassiveRate();
         if (rate > 0) {
@@ -782,10 +777,8 @@
         }
     }, 60000);
     
-    // Загрузка сохранённой игры
     loadGame();
-    
-    console.log('✅ Игра загружена: мультитап, звук, энергия 5/сек, вкладки с названиями, рейтинг, синхронизация с ботом');
+    console.log('✅ Игра загружена!');
 </script>
 </body>
 </html>
