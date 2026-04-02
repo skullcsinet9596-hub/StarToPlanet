@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 
 // ========== АДРЕС БОТА (RENDER) ==========
+// ✅ ВАЖНО: игра на Vercel, бот на Render — указываем полный адрес!
 const API_BASE = 'https://startoplanet.onrender.com';
 
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
 
-console.log('🔵 [1] Скрипт app.js начал загрузку');
+console.log('🔵 [1] Скрипт app.js начал загрузку, API_BASE:', API_BASE);
 
 if (window.Telegram && window.Telegram.WebApp) {
     console.log('🔵 [2] Telegram WebApp найден');
@@ -406,6 +407,9 @@ async function showRatingPanel() {
         const response = await fetch(`${API_BASE}/api/leaderboard`);
         if (response.ok) {
             players = await response.json();
+            console.log('✅ Рейтинг загружен:', players);
+        } else {
+            console.error('❌ Ошибка загрузки рейтинга:', response.status);
         }
     } catch(e) { console.log('Ошибка рейтинга', e); }
 
