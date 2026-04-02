@@ -12,36 +12,54 @@
 
 <div class="ui-overlay">
     <div class="top-bar">
-        <div class="logo">⭐ STAR TO PLANET</div>
-        <div class="right-buttons">
-            <button class="sound-btn" id="soundToggle">🔊</button>
-            <div class="balance">🪙 <span id="coins">0</span></div>
+        <div class="user-info">
+            <img id="userAvatar" class="avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
+            <div class="user-details">
+                <span id="userName">Загрузка...</span>
+                <span id="userLevel">Уровень 0 · Белая звезда</span>
+            </div>
         </div>
+        <div class="balance">🪙 <span id="coins">0</span></div>
     </div>
 
-    <div class="energy-bar">
-        <div class="energy-header">
-            <span>⚡ Энергия</span>
-            <span id="energyValue">100/100</span>
+    <div class="game-area">
+        <div id="star-container" class="star-container">
+            <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+                <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
+                <defs>
+                    <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
+                        <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
+                    </radialGradient>
+                </defs>
+            </svg>
         </div>
-        <div class="energy-progress">
-            <div class="energy-fill" id="energyFill" style="width:100%"></div>
-        </div>
-    </div>
 
-    <div class="stats">
-        <span>💪 Сила клика: <span id="clickPower">1</span></span>
-        <span>🤖 Пассивный доход: <span id="passiveRate">0</span>/мин</span>
+        <button class="boost-btn" id="boostBtn">
+            <span class="boost-icon">⚡</span>
+            <span class="boost-text">BOOST</span>
+        </button>
+
+        <div class="stats-container">
+            <div class="energy-bar">
+                <div class="energy-label">
+                    <span>⚡ Энергия</span>
+                    <span id="energyValue">100/100</span>
+                </div>
+                <div class="energy-progress">
+                    <div class="energy-fill" id="energyFill" style="width:100%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
+        <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
     </div>
 
     <div class="nav-bar">
         <button class="nav-btn active" data-tab="game">
             <div class="nav-icon">🎮</div>
             <div class="nav-label">ИГРА</div>
-        </button>
-        <button class="nav-btn" data-tab="boost">
-            <div class="nav-icon">⚡</div>
-            <div class="nav-label">БУСТ</div>
         </button>
         <button class="nav-btn" data-tab="tasks">
             <div class="nav-icon">📋</div>
@@ -66,7 +84,152 @@
     </div>
 </div>
 
-<div id="message" class="message" style="display:none"></div>
+<!-- Модальное окно BOOST -->
+<div class="modal-overlay" id="boostModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>⚡ УЛУЧШЕНИЯ</h3>
+            <button class="modal-close" id="closeBoostModal">✕</button>
+        </div>
+        <div class="boost-list">
+            <div class="boost-card">
+                <div class="boost-info">
+                    <div class="boost-name">⭐ Сила клика</div>
+                    <div class="boost-desc">+1 монета/клик</div>
+                    <div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div>
+                    <div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div>
+                </div>
+                <button class="boost-buy-btn" id="buyClickUpgrade">Купить</button>
+            </div>
+            <div class="boost-card">
+                <div class="boost-info">
+                    <div class="boost-name">⚡ Энергия</div>
+                    <div class="boost-desc">+50 макс. энергии</div>
+                    <div class="boost-level">Уровень <span id="energyUpgradeLevel">1</span>/100</div>
+                    <div class="boost-cost" id="energyUpgradeCostDisplay">200 🪙</div>
+                </div>
+                <button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button>
+            </div>
+            <div class="boost-card">
+                <div class="boost-info">
+                    <div class="boost-name">🤖 Пассивный доход</div>
+                    <div class="boost-desc">+5 монет/мин</div>
+                    <div class="boost-level">Уровень <span id="passiveUpgradeLevel">0</span>/100</div>
+                    <div class="boost-cost" id="passiveUpgradeCostDisplay">500 🪙</div>
+                </div>
+                <button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-panel" id="tasksPanel">
+    <h2>📋 ЗАДАНИЯ</h2>
+    <div class="tasks-header">
+        <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
+        <button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button>
+        <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
+    </div>
+    <div class="tasks-content active" id="dailyTasks">
+        <div class="task-card"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
+        <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
+    </div>
+    <div class="tasks-content" id="weeklyTasks">
+        <div class="task-card"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
+        <div class="task-card"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
+    </div>
+    <div class="tasks-content" id="premiumTasks">
+        <div class="task-card premium-locked" id="premiumMoonCard">
+            <div class="task-info">
+                <div class="task-name">🌕 ЛУНА</div>
+                <div class="task-progress">+20 000 монет/мин</div>
+                <div class="task-progress">Цена: 50 ₽</div>
+                <div class="premium-condition" id="moonCondition">🔒 Требуется: достичь Юпитера (10 млрд монет)</div>
+            </div>
+            <button class="task-claim-btn disabled" id="buyMoon" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+        </div>
+        <div class="task-card premium-locked" id="premiumEarthCard">
+            <div class="task-info">
+                <div class="task-name">🌍 ЗЕМЛЯ</div>
+                <div class="task-progress">+50 000 монет/мин</div>
+                <div class="task-progress">Цена: 100 ₽</div>
+                <div class="premium-condition" id="earthCondition">🔒 Требуется: купить Луну</div>
+            </div>
+            <button class="task-claim-btn disabled" id="buyEarth" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+        </div>
+        <div class="task-card premium-locked" id="premiumSunCard">
+            <div class="task-info">
+                <div class="task-name">☀️ СОЛНЦЕ</div>
+                <div class="task-progress">+100 000 монет/мин</div>
+                <div class="task-progress">Цена: 200 ₽</div>
+                <div class="premium-condition" id="sunCondition">🔒 Требуется: купить Землю</div>
+            </div>
+            <button class="task-claim-btn disabled" id="buySun" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+        </div>
+    </div>
+</div>
+
+<div class="tab-panel" id="friendsPanel">
+    <h2>👥 Реферальная программа</h2>
+    <div class="referral-stats">
+        <div class="stat-card"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
+        <div class="stat-card"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
+        <div class="stat-card"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
+    </div>
+    <div class="level-card"><div class="level-title">⭐ 1 уровень (50%)</div><div id="level1List" class="level-list"><div class="level-item">👥 Пока нет друзей</div></div></div>
+    <div class="level-card"><div class="level-title">✨ 2 уровень (20%)</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
+    <div class="level-card"><div class="level-title">💫 3 уровень (10%)</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
+    <div class="referral-link-container">
+        <p>Ваша реферальная ссылка:</p>
+        <div class="link-box">
+            <input type="text" id="referralLink" readonly value="Загрузка...">
+            <button id="copyLinkBtn">📋 Копировать</button>
+        </div>
+        <button id="shareLinkBtn" class="share-btn">👥 Пригласить друга</button>
+    </div>
+</div>
+
+<div class="tab-panel" id="profilePanel">
+    <h2>👤 Профиль</h2>
+    <div class="profile-card">
+        <div class="profile-header">
+            <img id="profileAvatar" class="profile-avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
+            <div>
+                <div><strong id="profileName">Игрок</strong></div>
+                <div>ID: <span id="profileId">-</span></div>
+                <div>Регистрация: <span id="profileDate">-</span></div>
+            </div>
+        </div>
+        <div class="info-row"><span>📊 Всего монет</span><span id="profileCoins">0</span></div>
+        <div class="info-row"><span>⭐ Сила клика</span><span id="profileClickPower">1</span></div>
+        <div class="info-row"><span>⚡ Макс. энергия</span><span id="profileMaxEnergy">100</span></div>
+        <div class="info-row"><span>🤖 Пассивный доход</span><span id="profilePassiveIncome">0/мин</span></div>
+        <div class="info-row"><span>👥 Приглашено</span><span id="profileReferrals">0</span></div>
+        <div class="info-row"><span>🏆 Рейтинг</span><span id="profileRank">#—</span></div>
+    </div>
+    <div class="auth-section">
+        <div class="auth-title">🔐 Авторизация</div>
+        <div class="auth-buttons"><button class="boost-buy-btn" id="authTelegramBtn">Telegram ✅</button><button class="boost-buy-btn" id="authVkBtn">VK</button></div>
+    </div>
+</div>
+
+<div class="tab-panel" id="leaderboardPanel">
+    <h2>🏆 Топ игроков</h2>
+    <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item">🏆 Загрузка...</div></div>
+</div>
+
+<div class="tab-panel" id="airdropPanel">
+    <div class="airdrop-content">
+        <div class="golden-coin">
+            <div class="rays" id="raysContainer"></div>
+            <div class="coin-star-white">⭐</div>
+        </div>
+        <div class="airdrop-soon">СКОРО</div>
+        <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
+    </div>
+</div>
+
+<div id="message" class="message"></div>
 
 <script type="importmap">
     {
