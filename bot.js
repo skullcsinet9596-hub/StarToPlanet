@@ -27,16 +27,20 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/user/:userId', async (req, res) => {
     const user = await getUser(parseInt(req.params.userId));
-    res.json({
-        coins: user.coins,
-        energy: user.energy,
-        maxEnergy: user.max_energy,
-        clickPower: user.click_power,
-        passiveIncomeLevel: user.passive_income_level,
-        hasMoon: user.has_moon,
-        hasEarth: user.has_earth,
-        hasSun: user.has_sun
-    });
+    if (user) {
+        res.json({
+            coins: user.coins,
+            energy: user.energy,
+            maxEnergy: user.max_energy,
+            clickPower: user.click_power,
+            passiveIncomeLevel: user.passive_income_level,
+            hasMoon: user.has_moon,
+            hasEarth: user.has_earth,
+            hasSun: user.has_sun
+        });
+    } else {
+        res.json({ error: 'User not found' });
+    }
 });
 
 app.post('/api/save', async (req, res) => {
@@ -68,17 +72,21 @@ bot.start(async (ctx) => {
     await updateUser(userId, { name: userName });
     
     const user = await getUser(userId);
+    if (!user) {
+        await ctx.reply('❌ Ошибка загрузки данных');
+        return;
+    }
+    
     const rank = await getPlayerRank(userId);
     const totalPlayers = await getTotalPlayers();
-    
-    const passiveRate = user.passive_income_level * 5;
+    const passiveRate = (user.passive_income_level || 0) * 5;
     
     await ctx.replyWithHTML(`
 🌟 <b>Добро пожаловать в Star to Planet, ${userName}!</b> 🌟
 
-💰 <b>Баланс:</b> ${user.coins} монет
-⚡ <b>Энергия:</b> ${user.energy}/${user.max_energy}
-💪 <b>Сила клика:</b> ${user.click_power}
+💰 <b>Баланс:</b> ${user.coins || 0} монет
+⚡ <b>Энергия:</b> ${user.energy || 100}/${user.max_energy || 100}
+💪 <b>Сила клика:</b> ${user.click_power || 1}
 🤖 <b>Пассивный доход:</b> ${passiveRate} монет/мин
 🏆 <b>Место в рейтинге:</b> #${rank} из ${totalPlayers}
 
@@ -93,30 +101,15 @@ bot.start(async (ctx) => {
 bot.command('rating', async (ctx) => {
     const top = await getTopPlayers(10);
     let message = `🏆 <b>ТАБЛИЦА ЛИДЕРОВ</b> 🏆\n\n`;
-    for (let i = 0; i < top.length; i++) {
-        const p = top[i];
-        message += `${i+1}. ${p.name} — ${p.coins} 🪙\n`;
+    if (top.length === 0) {
+        message += 'Пока нет игроков. Будь первым!';
+    } else {
+        for (let i = 0; i < top.length; i++) {
+            const p = top[i];
+            message += `${i+1}. ${p.name} — ${p.coins} 🪙\n`;
+        }
     }
     await ctx.reply(message, { parse_mode: 'HTML' });
-});
-
-bot.command('stats', async (ctx) => {
-    const userId = ctx.from.id;
-    const user = await getUser(userId);
-    const rank = await getPlayerRank(userId);
-    const totalPlayers = await getTotalPlayers();
-    
-    await ctx.reply(`
-📊 <b>ВАША СТАТИСТИКА</b>
-
-👤 <b>Игрок:</b> ${user.name}
-🏆 <b>Место в рейтинге:</b> #${rank} из ${totalPlayers}
-
-💰 <b>Монет:</b> ${user.coins}
-💪 <b>Сила клика:</b> ${user.click_power}
-⚡ <b>Энергия:</b> ${user.energy}/${user.max_energy}
-🤖 <b>Пассивный доход:</b> ${user.passive_income_level * 5} монет/мин
-    `, { parse_mode: 'HTML' });
 });
 
 bot.on('web_app_data', async (ctx) => {
@@ -142,7 +135,13 @@ bot.on('web_app_data', async (ctx) => {
     }
 });
 
-// Инициализация БД и запуск
-await initDB();
+// Запуск без проверки подключения
+try {
+    await initDB();
+    console.log('✅ База данных инициализирована');
+} catch (err) {
+    console.error('❌ Ошибка инициализации БД:', err.message);
+}
+
 bot.launch();
-console.log('🤖 Star to Planet Bot запущен с Supabase!');
+console.log('🤖 Star to Planet Bot запущен!');
