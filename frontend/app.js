@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+// ========== АДРЕС БОТА (RENDER) ==========
+const API_BASE = 'https://startoplanet.onrender.com';
+
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
@@ -15,6 +18,7 @@ if (window.Telegram && window.Telegram.WebApp) {
         if (tg.initDataUnsafe.user.username) displayName = `@${tg.initDataUnsafe.user.username}`;
         else if (tg.initDataUnsafe.user.first_name) displayName = tg.initDataUnsafe.user.first_name;
         userAvatar = tg.initDataUnsafe.user.photo_url || userAvatar;
+        console.log('✅ Пользователь авторизован, ID:', userId);
     }
 }
 
@@ -50,7 +54,6 @@ let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: f
 
 let lastClickTime = 0;
 let clickCooldown = 30;
-let isSaving = false;
 
 // ========== ЗВУК ==========
 let soundEnabled = true;
@@ -89,7 +92,7 @@ scene.background = new THREE.Color(0x030318);
 scene.fog = new THREE.FogExp2(0x030318, 0.003);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 4);
+camera.position.set(0, 0, 3.5);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -122,7 +125,6 @@ function createStar() {
     planetMesh = new THREE.Mesh(geometry, material);
     scene.add(planetMesh);
     
-    // Лучи звезды
     const rayCount = 12;
     for (let i = 0; i < rayCount; i++) {
         const angle = (i / rayCount) * Math.PI * 2;
@@ -143,7 +145,6 @@ function createPlanet(level) {
         5: 0xb0e0e6, 6: 0xe8cfaa, 7: 0xd8a27a,
         8: 0xc0c0c0, 9: 0x2e6b8f, 10: 0xffaa44
     };
-    // Размер увеличивается с уровнем (от 0.9 до 1.3)
     const sizes = { 1: 0.9, 2: 0.95, 3: 1.0, 4: 1.05, 5: 1.1, 6: 1.15, 7: 1.2, 8: 1.0, 9: 1.05, 10: 1.3 };
     
     const geometry = new THREE.SphereGeometry(sizes[level] || 1.0, 128, 128);
@@ -155,7 +156,7 @@ function createPlanet(level) {
     planetMesh = new THREE.Mesh(geometry, material);
     scene.add(planetMesh);
     
-    if (level === 6) { // Кольца Сатурна
+    if (level === 6) {
         const ringGeo = new THREE.TorusGeometry(sizes[level] * 1.2, 0.1, 64, 200);
         const ringMat = new THREE.MeshStandardMaterial({ color: 0xc9b37c, roughness: 0.4 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -374,6 +375,27 @@ async function syncWithBot() {
     tg.sendData(JSON.stringify(gameData));
 }
 
+async function loadFromServer() {
+    if (!userId) return;
+    try {
+        const response = await fetch(`${API_BASE}/api/user/${userId}`);
+        if (response.ok) {
+            const data = await response.json();
+            coins = data.coins || 0;
+            energy = data.energy ?? 100;
+            maxEnergy = data.maxEnergy ?? 100;
+            clickPower = data.clickPower || 1;
+            passiveIncomeLevel = data.passiveIncomeLevel || 0;
+            hasMoon = data.hasMoon || false;
+            hasEarth = data.hasEarth || false;
+            hasSun = data.hasSun || false;
+            if (energy > maxEnergy) energy = maxEnergy;
+            updateUI();
+            console.log('✅ Данные загружены с сервера');
+        }
+    } catch(e) { console.log('Ошибка загрузки', e); }
+}
+
 // ========== ОБРАБОТКА КЛИКОВ ==========
 function handleClick(event) {
     const now = Date.now();
@@ -394,7 +416,7 @@ function handleClick(event) {
     dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
     updateUI(); saveGame(); syncWithBot();
     
-    const target = document.querySelector('.star-container, .planet-emoji');
+    const target = document.getElementById('star-container');
     if (target) {
         target.style.transform = 'scale(0.95)';
         setTimeout(() => { if (target) target.style.transform = 'scale(1)'; }, 100);
@@ -423,33 +445,43 @@ if (starContainerElem) {
 
 // ========== БУСТЫ ==========
 function upgradeClick() {
-    if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
-        coins -= clickUpgradeCost; clickPower++; clickUpgradeLevel++;
+    const cost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
+    if (coins >= cost && clickPower < 100) {
+        coins -= cost;
+        clickPower++;
+        clickUpgradeLevel++;
         clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
         updateUI(); saveGame(); syncWithBot();
-        showMessage('✅ Сила клика +1');
-    } else if (clickUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
+        showMessage(`✅ Сила клика +1 (${clickPower})`);
+    } else if (clickPower >= 100) showMessage('⚠️ Максимальный уровень!', true);
+    else showMessage(`❌ Нужно ${cost} монет`, true);
 }
 
 function upgradeEnergy() {
-    if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
-        coins -= energyUpgradeCost; maxEnergy += 50; energy += 50; energyUpgradeLevel++;
+    const level = (maxEnergy - 100) / 50;
+    const cost = Math.floor(200 * Math.pow(1.25, level));
+    if (coins >= cost && maxEnergy < 500) {
+        coins -= cost;
+        maxEnergy += 50;
+        energy += 50;
+        energyUpgradeLevel++;
         energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
         updateUI(); saveGame(); syncWithBot();
-        showMessage('✅ Энергия +50');
-    } else if (energyUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
+        showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
+    } else if (maxEnergy >= 500) showMessage('⚠️ Максимальный уровень!', true);
+    else showMessage(`❌ Нужно ${cost} монет`, true);
 }
 
 function upgradePassive() {
-    if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
-        coins -= passiveIncomeUpgradeCost; passiveIncomeLevel++;
+    const cost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
+    if (coins >= cost && passiveIncomeLevel < 100) {
+        coins -= cost;
+        passiveIncomeLevel++;
         passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
         updateUI(); saveGame(); syncWithBot();
-        showMessage('✅ Пассивный доход +5/мин');
+        showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
     } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage('❌ Не хватает монет!', true);
+    else showMessage(`❌ Нужно ${cost} монет`, true);
 }
 
 // ========== ЗАДАНИЯ ==========
@@ -585,11 +617,13 @@ function rechargeEnergy() {
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-function init() {
+async function init() {
+    await loadFromServer();
     loadGame();
     setupTabs();
     setupTasksTabs();
     updateReferralLink();
+    
     document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
     document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
     document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
@@ -628,7 +662,6 @@ function init() {
     
     setTimeout(() => { loadLeaderboard(); loadFriends(); }, 1000);
     
-    // Кнопка звука
     const soundToggleBtn = document.getElementById('soundToggle');
     if (soundToggleBtn) {
         soundToggleBtn.addEventListener('click', () => {
