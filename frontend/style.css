@@ -179,7 +179,6 @@ body {
     display: block !important;
 }
 
-/* Мобильная адаптация — НЕ СКРЫВАЕМ ПОДПИСИ */
 @media (max-width: 480px) {
     .nav-btn {
         padding: 6px 8px;
