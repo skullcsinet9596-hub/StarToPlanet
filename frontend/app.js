@@ -115,22 +115,31 @@ window.addEventListener('resize', () => {
 
 // ========== ЗАГРУЗКА С СЕРВЕРА ==========
 async function loadFromServer() {
-    if (!userId) return;
+    if (!userId) {
+        console.log('Нет userId, загружаем демо-данные');
+        return;
+    }
     try {
         const response = await fetch(`/api/user/${userId}`);
-        const data = await response.json();
-        coins = data.coins || 0;
-        energy = data.energy ?? 100;
-        maxEnergy = data.maxEnergy ?? 100;
-        clickPower = data.clickPower || 1;
-        passiveIncomeLevel = data.passiveIncomeLevel || 0;
-        hasMoon = data.hasMoon || false;
-        hasEarth = data.hasEarth || false;
-        hasSun = data.hasSun || false;
-        if (energy > maxEnergy) energy = maxEnergy;
-        updateUI();
-        console.log('✅ Данные загружены с сервера');
-    } catch(e) { console.log('Ошибка загрузки', e); }
+        if (response.ok) {
+            const data = await response.json();
+            coins = data.coins || 0;
+            energy = data.energy ?? 100;
+            maxEnergy = data.maxEnergy ?? 100;
+            clickPower = data.clickPower || 1;
+            passiveIncomeLevel = data.passiveIncomeLevel || 0;
+            hasMoon = data.hasMoon || false;
+            hasEarth = data.hasEarth || false;
+            hasSun = data.hasSun || false;
+            if (energy > maxEnergy) energy = maxEnergy;
+            updateUI();
+            console.log('✅ Данные загружены с сервера');
+        } else {
+            console.log('Сервер вернул ошибку, используем локальные данные');
+        }
+    } catch(e) { 
+        console.log('Ошибка загрузки с сервера', e);
+    }
 }
 
 // ========== СОХРАНЕНИЕ НА СЕРВЕР ==========
@@ -138,7 +147,7 @@ async function saveToServer() {
     if (!userId || isSaving) return;
     isSaving = true;
     try {
-        await fetch('/api/save', {
+        const response = await fetch('/api/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -155,8 +164,12 @@ async function saveToServer() {
                 }
             })
         });
-        console.log('✅ Данные сохранены');
-    } catch(e) { console.log('Ошибка сохранения', e); }
+        if (response.ok) {
+            console.log('✅ Данные сохранены на сервере');
+        }
+    } catch(e) { 
+        console.log('Ошибка сохранения', e);
+    }
     finally { isSaving = false; }
 }
 
@@ -331,21 +344,31 @@ async function showRatingPanel() {
     let players = [];
     try {
         const response = await fetch('/api/leaderboard');
-        players = await response.json();
+        if (response.ok) {
+            players = await response.json();
+        }
     } catch(e) { console.log('Ошибка рейтинга', e); }
-    if (players.length === 0) players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
-    else {
-        const current = players.find(p => p.id == userId);
-        if (!current && userId) players.push({ id: userId, name: 'Вы', coins: Math.floor(coins), isCurrent: true });
-        else if (current) { current.isCurrent = true; current.coins = Math.floor(coins); }
-        players.sort((a,b) => b.coins - a.coins);
+    
+    if (!players || players.length === 0) {
+        players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
     }
+    
+    // Обновляем текущего игрока в списке
+    const existingIndex = players.findIndex(p => p.id == userId);
+    if (existingIndex !== -1) {
+        players[existingIndex].coins = Math.floor(coins);
+        players[existingIndex].isCurrent = true;
+    } else if (userId) {
+        players.push({ id: userId, name: 'Вы', coins: Math.floor(coins), isCurrent: true });
+    }
+    players.sort((a,b) => b.coins - a.coins);
+    
     let html = '<h3>🏆 ТАБЛИЦА ЛИДЕРОВ</h3>';
     for (let i = 0; i < Math.min(players.length, 10); i++) {
         const p = players[i];
         let medal = i === 0 ? '👑 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `${i+1}. `;
         const marker = p.isCurrent ? ' 👈' : '';
-        const name = p.name && p.name !== 'Вы' ? p.name : (p.isCurrent ? 'Вы' : `Игрок ${p.id}`);
+        const name = p.name && p.name !== 'Вы' ? p.name : (p.isCurrent ? 'Вы' : `Игрок ${p.id || '?'}`);
         html += `<div class="profile-row" style="${p.isCurrent ? 'color:#FFD60A; font-weight:bold;' : ''}">${medal}${name} — ${p.coins.toLocaleString()} 🪙${marker}</div>`;
     }
     html += '<button class="close-btn" id="close-rating">Закрыть</button>';
@@ -373,11 +396,13 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 
 // ========== ЗВУК TOGGLE ==========
 const soundToggle = document.getElementById('soundToggle');
-soundToggle.addEventListener('click', () => {
-    soundEnabled = !soundEnabled;
-    soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
-    showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
-});
+if (soundToggle) {
+    soundToggle.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+        showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
+    });
+}
 
 // ========== ЭНЕРГИЯ 5/СЕК ==========
 setInterval(async () => {

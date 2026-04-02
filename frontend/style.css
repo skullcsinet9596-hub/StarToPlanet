@@ -158,7 +158,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: 32px;
     cursor: pointer;
     transition: all 0.2s;
@@ -170,13 +170,27 @@ body {
 }
 
 .nav-icon {
-    font-size: 24px;
+    font-size: 22px;
 }
 
 .nav-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     display: block !important;
+}
+
+/* Мобильная адаптация — НЕ СКРЫВАЕМ ПОДПИСИ */
+@media (max-width: 480px) {
+    .nav-btn {
+        padding: 6px 8px;
+    }
+    .nav-icon {
+        font-size: 20px;
+    }
+    .nav-label {
+        font-size: 9px;
+        display: block !important;
+    }
 }
 
 .floating-panel {
