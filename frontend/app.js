@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+// ========== АДРЕС БОТА (RENDER) ==========
+const API_BASE = 'https://startoplanet.onrender.com';
+
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
@@ -116,11 +119,11 @@ window.addEventListener('resize', () => {
 // ========== ЗАГРУЗКА С СЕРВЕРА ==========
 async function loadFromServer() {
     if (!userId) {
-        console.log('Нет userId, загружаем демо-данные');
+        console.log('Нет userId');
         return;
     }
     try {
-        const response = await fetch(`/api/user/${userId}`);
+        const response = await fetch(`${API_BASE}/api/user/${userId}`);
         if (response.ok) {
             const data = await response.json();
             coins = data.coins || 0;
@@ -134,8 +137,6 @@ async function loadFromServer() {
             if (energy > maxEnergy) energy = maxEnergy;
             updateUI();
             console.log('✅ Данные загружены с сервера');
-        } else {
-            console.log('Сервер вернул ошибку, используем локальные данные');
         }
     } catch(e) { 
         console.log('Ошибка загрузки с сервера', e);
@@ -147,7 +148,7 @@ async function saveToServer() {
     if (!userId || isSaving) return;
     isSaving = true;
     try {
-        const response = await fetch('/api/save', {
+        const response = await fetch(`${API_BASE}/api/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -343,7 +344,7 @@ async function showRatingPanel() {
     closePanel();
     let players = [];
     try {
-        const response = await fetch('/api/leaderboard');
+        const response = await fetch(`${API_BASE}/api/leaderboard`);
         if (response.ok) {
             players = await response.json();
         }
@@ -353,7 +354,6 @@ async function showRatingPanel() {
         players = [{ name: 'Вы', coins: Math.floor(coins), isCurrent: true }];
     }
     
-    // Обновляем текущего игрока в списке
     const existingIndex = players.findIndex(p => p.id == userId);
     if (existingIndex !== -1) {
         players[existingIndex].coins = Math.floor(coins);
