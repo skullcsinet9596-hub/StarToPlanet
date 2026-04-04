@@ -20,6 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('frontend'));
 
+// ========== API ==========
 app.get('/api/leaderboard', async (req, res) => {
     const top = await getTopPlayers(20);
     res.json(top);
@@ -62,9 +63,13 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Веб-сервер на порту ${PORT}`);
 });
 
+// ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
-    const userName = ctx.from.first_name || 'игрок';
+    // Сохраняем никнейм из Telegram
+    let userName = ctx.from.username || ctx.from.first_name || 'игрок';
+    if (ctx.from.username) userName = `@${ctx.from.username}`;
+    
     await updateUser(userId, { name: userName });
     const user = await getUser(userId);
     const rank = await getPlayerRank(userId);
@@ -99,25 +104,41 @@ bot.command('rating', async (ctx) => {
     await ctx.reply(msg);
 });
 
+// ========== ОБРАБОТКА ДАННЫХ ИЗ ИГРЫ ==========
 bot.on('web_app_data', async (ctx) => {
     try {
         const data = JSON.parse(ctx.webAppData.data);
-        await updateUser(ctx.from.id, data);
-        await ctx.reply('✅ Данные сохранены!');
+        const userId = ctx.from.id;
+        
+        console.log('📥 Получены данные из игры:', data);
+        
+        await updateUser(userId, {
+            coins: data.coins,
+            energy: data.energy,
+            max_energy: data.maxEnergy,
+            click_power: data.clickPower,
+            passive_income_level: data.passiveIncomeLevel,
+            has_moon: data.hasMoon,
+            has_earth: data.hasEarth,
+            has_sun: data.hasSun
+        });
+        
+        const rank = await getPlayerRank(userId);
+        await ctx.reply(`✅ Данные сохранены!\n💰 Баланс: ${data.coins} монет\n🏆 Место в рейтинге: #${rank}`);
+        
     } catch (e) {
-        console.error(e);
-        await ctx.reply('❌ Ошибка сохранения');
+        console.error('Ошибка обработки web_app_data:', e);
+        await ctx.reply('❌ Ошибка сохранения данных');
     }
 });
 
-// ========== ЗАПУСК С ПРОВЕРКОЙ ==========
+// ========== ЗАПУСК ==========
 const isConnected = await checkConnection();
 if (!isConnected) {
     console.error('❌ Критическая ошибка: не удалось подключиться к базе данных');
-    console.error('❌ Бот остановлен из соображений безопасности');
     process.exit(1);
 }
 
 await initDB();
 bot.launch();
-console.log('🤖 Star to Planet Bot запущен с безопасным SSL подключением!');
+console.log('🤖 Star to Planet Bot запущен!');
