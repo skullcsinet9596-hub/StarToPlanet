@@ -4,758 +4,1862 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet — 3D игра</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass-panel {
+            background: rgba(20, 20, 24, 0.75);
+            backdrop-filter: blur(28px);
+            border-radius: 32px;
+            border: 0.5px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 12px 16px 0 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8E8E93, #636366);
+            object-fit: cover;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userName {
+            font-weight: 590;
+            font-size: 15px;
+            letter-spacing: -0.2px;
+        }
+
+        #userLevel {
+            font-size: 11px;
+            opacity: 0.7;
+            color: #98989E;
+        }
+
+        .balance {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: 590;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 0.5px solid rgba(255, 214, 10, 0.3);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* Кнопка звука */
+        .sound-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 0.5px solid rgba(255, 214, 10, 0.3);
+            border-radius: 40px;
+            padding: 6px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #FFD60A;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s;
+        }
+        .sound-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 214, 10, 0.2);
+        }
+
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            min-height: 450px;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s ease;
+        }
+        
+        #canvas-container:active {
+            transform: scale(0.96);
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            border-radius: 50%;
+        }
+
+        .boost-btn {
+            background: rgba(44, 44, 48, 0.85);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 214, 10, 0.4);
+            border-radius: 44px;
+            padding: 10px 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 104px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            margin: 15px auto;
+        }
+
+        .boost-btn:active { transform: scale(0.96); }
+        .boost-icon { font-size: 18px; }
+        .boost-text { font-weight: 590; font-size: 15px; color: #FFD60A; }
+
+        .stats-container {
+            width: 100%;
+            max-width: 280px;
+            margin-top: 5px;
+        }
+
+        .energy-bar {
+            background: rgba(28, 28, 32, 0.75);
+            backdrop-filter: blur(16px);
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 0.5px solid rgba(255,255,255,0.1);
+        }
+
+        .energy-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #98989E;
+        }
+
+        .energy-progress {
+            background: rgba(255,255,255,0.12);
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            background: linear-gradient(90deg, #FFD60A, #FF9F0A);
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.2s;
+        }
+
+        .click-power, .passive-income {
+            text-align: center;
+            font-size: 12px;
+            color: #98989E;
+            margin-top: 8px;
+        }
+
+        .passive-income span { color: #FFD60A; }
+
+        .nav-bar {
+            position: sticky;
+            bottom: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 12px;
+            margin: 0 16px 12px 16px;
+            background: rgba(20, 20, 24, 0.94);
+            backdrop-filter: blur(28px);
+            border-radius: 32px;
+            border: 0.5px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: #8E8E93;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .nav-btn.active { color: #FFD60A; background: rgba(255, 214, 10, 0.12); }
+        .nav-icon { font-size: 22px; }
+        .nav-btn span:last-child { font-size: 10px; }
+
+        .tab-panel {
+            display: none;
+            padding: 16px;
+            padding-bottom: 80px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+        .tab-panel.active { display: block; }
+        .tab-panel h2 { font-size: 18px; margin-bottom: 16px; text-align: center; color: #FFD60A; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #1C1C1E;
+            border-radius: 32px 32px 0 0;
+            width: 100%;
+            max-width: 500px;
+            max-height: 75vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            padding-bottom: 20px;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            border-bottom: 0.5px solid rgba(255,255,255,0.1);
+        }
+        .modal-header h3 { font-size: 18px; font-weight: 590; color: #FFD60A; }
+        .modal-close { background: none; border: none; color: #FFD60A; font-size: 24px; cursor: pointer; }
+        .boost-list { padding: 12px 18px; display: flex; flex-direction: column; gap: 12px; }
+        .boost-card {
+            background: rgba(44, 44, 48, 0.7);
+            border-radius: 24px;
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 0.5px solid rgba(255,255,255,0.08);
+        }
+        .boost-info { flex: 1; }
+        .boost-name { font-weight: 590; font-size: 15px; }
+        .boost-desc { font-size: 11px; opacity: 0.7; color: #98989E; }
+        .boost-level, .boost-cost { font-size: 12px; color: #FFD60A; margin-top: 4px; }
+        .boost-buy-btn {
+            background: #FFD60A;
+            border: none;
+            padding: 8px 22px;
+            border-radius: 44px;
+            color: #1C1C1E;
+            font-weight: 590;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .tasks-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            background: rgba(44,44,48,0.5);
+            border-radius: 44px;
+            padding: 4px;
+        }
+        .tasks-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 40px;
+            color: #98989E;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .tasks-tab.active { background: #FFD60A; color: #1C1C1E; }
+        .tasks-content { display: none; }
+        .tasks-content.active { display: block; }
+        .task-card {
+            background: rgba(44,44,48,0.6);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 0.5px solid rgba(255,255,255,0.08);
+        }
+        .task-claim-btn {
+            background: #FFD60A;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 590;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .task-claim-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+        .task-completed {
+            background: rgba(76, 175, 80, 0.3);
+            text-align: center;
+            padding: 14px;
+            border-radius: 24px;
+            color: #4CAF50;
+            font-weight: 500;
+        }
+
+        .premium-locked { opacity: 0.8; background: rgba(50,50,60,0.5); }
+        .premium-condition { font-size: 10px; color: #ffaa66; margin-top: 5px; }
+
+        .referral-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(44,44,48,0.6);
+            border-radius: 24px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 22px; font-weight: 700; color: #FFD60A; }
+        .level-card {
+            background: rgba(44,44,48,0.5);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .level-title { font-weight: 590; margin-bottom: 8px; color: #FFD60A; }
+        .level-list { font-size: 12px; }
+        .level-item {
+            padding: 6px 0;
+            border-bottom: 0.5px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .referral-link-container {
+            background: rgba(44,44,48,0.5);
+            border-radius: 24px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .referral-link-container p {
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #98989E;
+        }
+        .link-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .link-box input {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 0.5px solid rgba(255,215,0,0.3);
+            border-radius: 36px;
+            padding: 12px;
+            color: white;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        .link-box button {
+            background: #FFD60A;
+            border: none;
+            border-radius: 36px;
+            padding: 0 20px;
+            font-weight: 590;
+            cursor: pointer;
+        }
+        .share-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #FFD60A, #FF9F0A);
+            border: none;
+            border-radius: 40px;
+            padding: 12px;
+            font-weight: 590;
+            font-size: 16px;
+            color: #1C1C1E;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .share-btn:active { transform: scale(0.96); }
+
+        .profile-card, .auth-section {
+            background: rgba(44,44,48,0.6);
+            border-radius: 28px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .profile-avatar-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 0.5px solid rgba(255,255,255,0.08);
+            font-size: 14px;
+        }
+        .auth-buttons { display: flex; gap: 12px; justify-content: center; }
+
+        .leaderboard-list { padding: 8px; }
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(44,44,48,0.5);
+            border-radius: 24px;
+            margin-bottom: 8px;
+        }
+        .leaderboard-rank { width: 48px; font-size: 18px; font-weight: 600; }
+        .leaderboard-rank.top-1 { color: #ffd700; }
+        .leaderboard-rank.top-2 { color: #c0c0c0; }
+        .leaderboard-rank.top-3 { color: #cd7f32; }
+        .leaderboard-name { flex: 1; }
+        .leaderboard-coins { font-weight: 600; color: #FFD60A; }
+
+        .airdrop-content { text-align: center; padding: 30px 16px; }
+        .golden-coin {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 20px auto;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #FFE55C, #E5A800);
+            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.4), inset 10px 10px 20px rgba(255,255,200,0.5), 0 15px 25px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: coinFloat 2s ease-in-out infinite;
+        }
+        .golden-coin .rays {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        .ray {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 50px;
+            background: linear-gradient(180deg, #FFD966, transparent);
+            transform-origin: center;
+            opacity: 0.6;
+            animation: rayShine 1.2s ease-in-out infinite alternate;
+        }
+        .coin-star-white { font-size: 60px; color: white; text-shadow: 0 0 10px rgba(255,255,240,0.8); }
+        @keyframes coinFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes rayShine { 0% { opacity: 0.3; height: 45px; } 100% { opacity: 0.8; height: 60px; } }
+        .airdrop-soon { font-size: 24px; font-weight: bold; color: #FFD60A; margin: 20px 0 12px; }
+        .airdrop-subscribe {
+            background: #FFD60A;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .message {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1C1C1E;
+            color: #FFD60A;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-size: 13px;
+            display: none;
+            white-space: nowrap;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255,255,255,0.2);
+        }
+        .message.show { display: block; animation: fadeOut 2s forwards; }
+        @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+        @keyframes explosionAnim {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        
+        .explosion-particle {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #ffaa66, #ff4422);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            animation: explosionAnim 0.6s ease-out forwards;
+        }
+
+        @keyframes popupAnim {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1); }
+        }
+
+        @media (max-width: 480px) {
+            .golden-coin { width: 130px; height: 130px; }
+            .coin-star-white { font-size: 48px; }
+            .task-card { flex-direction: column; text-align: center; }
+            .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
+            #canvas-container { width: 160px; height: 160px; }
+            .avatar-img { width: 38px; height: 38px; }
+            .profile-avatar-img { width: 45px; height: 45px; }
+            .link-box { flex-direction: column; }
+            .link-box button { padding: 10px; }
+            .nav-bar { margin: 0 12px 12px 12px; }
+            .sound-btn { padding: 4px 8px; font-size: 14px; }
+        }
+    </style>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
 </head>
 <body>
-
-<div id="canvas-container"></div>
-
-<div class="ui-overlay">
-    <div class="top-bar">
-        <div class="user-info">
-            <img id="userAvatar" class="avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
-            <div class="user-details">
-                <span id="userName">Загрузка...</span>
-                <span id="userLevel">Уровень 0 · Белая звезда</span>
-            </div>
-        </div>
-        <div class="balance">🪙 <span id="coins">0</span></div>
-    </div>
-
-    <div class="game-area" id="game-area">
-        <div id="star-container" class="star-container">
-            <svg class="star-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="50,5 61,35 95,35 68,55 79,85 50,65 21,85 32,55 5,35 39,35" fill="white" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
-                <polygon points="50,12 58,36 84,36 63,52 72,76 50,60 28,76 37,52 16,36 42,36" fill="url(#starGlow)"/>
-                <defs>
-                    <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
-                        <stop offset="100%" stop-color="rgba(200,220,255,0.6)"/>
-                    </radialGradient>
-                </defs>
-            </svg>
-        </div>
-
-        <button class="boost-btn" id="boostBtn">
-            <span class="boost-icon">⚡</span>
-            <span class="boost-text">BOOST</span>
-        </button>
-
-        <div class="stats-container">
-            <div class="energy-bar">
-                <div class="energy-label">
-                    <span>⚡ Энергия</span>
-                    <span id="energyValue">100/100</span>
-                </div>
-                <div class="energy-progress">
-                    <div class="energy-fill" id="energyFill" style="width:100%"></div>
+    <div class="app-container">
+        <div class="top-bar glass-panel">
+            <div class="user-info">
+                <img id="userAvatar" class="avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
+                <div class="user-details">
+                    <span id="userName">Загрузка...</span>
+                    <span id="userLevel">Уровень 0 · Белая звезда</span>
                 </div>
             </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="sound-btn" id="soundToggle">🔊</button>
+                <div class="balance">🪙 <span id="coins">0</span></div>
+            </div>
         </div>
-        <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
-        <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
+
+        <div class="game-area" id="gameArea">
+            <div id="canvas-container"></div>
+
+            <button class="boost-btn" id="boostBtn">
+                <span class="boost-icon">⚡</span>
+                <span class="boost-text">BOOST</span>
+            </button>
+            <div class="stats-container">
+                <div class="energy-bar glass-panel">
+                    <div class="energy-label">
+                        <span>⚡ Энергия</span>
+                        <span id="energyValue">100/100</span>
+                    </div>
+                    <div class="energy-progress">
+                        <div class="energy-fill" id="energyFill" style="width:100%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="click-power">💪 Сила клика: <span id="clickPower">1</span> монет | ⚡ Затраты: <span id="energyCost">1</span></div>
+            <div class="passive-income">🤖 Пассивный доход: <span id="passiveIncomeRate">0</span> монет/мин</div>
+        </div>
+
+        <div class="nav-bar glass-panel">
+            <button class="nav-btn active" data-tab="game"><span class="nav-icon">🚀</span><span>Игра</span></button>
+            <button class="nav-btn" data-tab="tasks"><span class="nav-icon">📋</span><span>Задания</span></button>
+            <button class="nav-btn" data-tab="friends"><span class="nav-icon">👥</span><span>Друзья</span></button>
+            <button class="nav-btn" data-tab="profile"><span class="nav-icon">👤</span><span>Профиль</span></button>
+            <button class="nav-btn" data-tab="leaderboard"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
+            <button class="nav-btn" data-tab="airdrop"><span class="nav-icon">📊</span><span>Airdrop</span></button>
+        </div>
+
+        <div class="modal-overlay" id="boostModal">
+            <div class="modal-content glass-panel">
+                <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
+                <div class="boost-list">
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div><div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div></div><button class="boost-buy-btn" id="buyClickUpgrade">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень <span id="energyUpgradeLevel">1</span>/100</div><div class="boost-cost" id="energyUpgradeCostDisplay">200 🪙</div></div><button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button></div>
+                    <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень <span id="passiveUpgradeLevel">0</span>/100</div><div class="boost-cost" id="passiveUpgradeCostDisplay">500 🪙</div></div><button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="tasksPanel">
+            <div class="tasks-header">
+                <button class="tasks-tab active" data-tasks-tab="daily">📅 Ежедневные</button>
+                <button class="tasks-tab" data-tasks-tab="weekly">📆 Еженедельные</button>
+                <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
+            </div>
+            <div class="tasks-content active" id="dailyTasks">
+                <div class="task-card glass-panel" data-daily-task="1"><div class="task-info"><div class="task-name">🎯 100 кликов</div><div class="task-progress" id="dailyClickProgress">0/100</div></div><button class="task-claim-btn" id="dailyClickClaim">100 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="2"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="3"><div class="task-info"><div class="task-name">⚡ Потратить 200 энергии</div><div class="task-progress" id="dailyEnergyProgress">0/200</div></div><button class="task-claim-btn" id="dailyEnergyClaim">300 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="4"><div class="task-info"><div class="task-name">🔧 Купить улучшение</div><div class="task-progress" id="dailyUpgradeProgress">0/1</div></div><button class="task-claim-btn" id="dailyUpgradeClaim">200 🪙</button></div>
+            </div>
+            <div class="tasks-content" id="weeklyTasks">
+                <div class="task-card glass-panel" data-weekly-task="1"><div class="task-info"><div class="task-name">🎯 1000 кликов</div><div class="task-progress" id="weeklyClickProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyClickClaim">1000 🪙</button></div>
+                <div class="task-card glass-panel" data-weekly-task="2"><div class="task-info"><div class="task-name">💰 Заработать 5000 монет</div><div class="task-progress" id="weeklyCoinsProgress">0/5000</div></div><button class="task-claim-btn" id="weeklyCoinsClaim">2500 🪙</button></div>
+                <div class="task-card glass-panel" data-weekly-task="3"><div class="task-info"><div class="task-name">⚡ Потратить 1000 энергии</div><div class="task-progress" id="weeklyEnergyProgress">0/1000</div></div><button class="task-claim-btn" id="weeklyEnergyClaim">1500 🪙</button></div>
+                <div class="task-card glass-panel" data-weekly-task="4"><div class="task-info"><div class="task-name">🔧 Купить 5 улучшений</div><div class="task-progress" id="weeklyUpgradeProgress">0/5</div></div><button class="task-claim-btn" id="weeklyUpgradeClaim">2000 🪙</button></div>
+            </div>
+            <div class="tasks-content" id="premiumTasks">
+                <div class="task-card premium-locked glass-panel" id="premiumMoonCard">
+                    <div class="task-info">
+                        <div class="task-name">🌕 ЛУНА</div>
+                        <div class="task-progress">+20 000 монет/мин</div>
+                        <div class="task-progress">Цена: 50 ₽</div>
+                        <div class="premium-condition" id="moonCondition">🔒 Требуется: достичь Юпитера (10 млрд монет)</div>
+                    </div>
+                    <button class="task-claim-btn disabled" id="buyMoon" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+                </div>
+                <div class="task-card premium-locked glass-panel" id="premiumEarthCard">
+                    <div class="task-info">
+                        <div class="task-name">🌍 ЗЕМЛЯ</div>
+                        <div class="task-progress">+50 000 монет/мин</div>
+                        <div class="task-progress">Цена: 100 ₽</div>
+                        <div class="premium-condition" id="earthCondition">🔒 Требуется: купить Луну</div>
+                    </div>
+                    <button class="task-claim-btn disabled" id="buyEarth" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+                </div>
+                <div class="task-card premium-locked glass-panel" id="premiumSunCard">
+                    <div class="task-info">
+                        <div class="task-name">☀️ СОЛНЦЕ</div>
+                        <div class="task-progress">+100 000 монет/мин</div>
+                        <div class="task-progress">Цена: 200 ₽</div>
+                        <div class="premium-condition" id="sunCondition">🔒 Требуется: купить Землю</div>
+                    </div>
+                    <button class="task-claim-btn disabled" id="buySun" disabled>🔒 ЗАБЛОКИРОВАНО</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="friendsPanel">
+            <h2>👥 Реферальная программа</h2>
+            <div class="referral-stats">
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
+            </div>
+            <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%) — до 5 рефералов</div><div id="level1List" class="level-list"><div class="level-item">👥 Пригласите друзей</div></div></div>
+            <div class="level-card glass-panel"><div class="level-title">✨ 2 уровень (20%) — до 15 рефералов</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
+            <div class="level-card glass-panel"><div class="level-title">💫 3 уровень (10%) — до 25 рефералов</div><div id="level3List" class="level-list"><div class="level-item">💫 Третья линия</div></div></div>
+            <div class="level-card glass-panel"><div class="level-title">💎 4 уровень — до 500 рефералов (без бонуса)</div><div id="level4List" class="level-list"><div class="level-item">💎 Почётный статус</div></div></div>
+            <div class="referral-link-container glass-panel">
+                <p>Ваша реферальная ссылка:</p>
+                <div class="link-box">
+                    <input type="text" id="referralLink" readonly value="Загрузка...">
+                    <button id="copyLinkBtn">📋 Копировать</button>
+                </div>
+                <button id="shareLinkBtn" class="share-btn">👥 Пригласить друга</button>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="profilePanel">
+            <h2>👤 Профиль</h2>
+            <div class="profile-card glass-panel">
+                <div class="profile-header">
+                    <img id="profileAvatar" class="profile-avatar-img" src="https://telegram.org/img/tg_icon_light.png" alt="avatar">
+                    <div>
+                        <div><strong id="profileName">Игрок</strong></div>
+                        <div>ID: <span id="profileId">-</span></div>
+                        <div>Регистрация: <span id="profileDate">-</span></div>
+                    </div>
+                </div>
+                <div class="info-row"><span>📊 Всего монет</span><span id="profileCoins">0</span></div>
+                <div class="info-row"><span>⭐ Сила клика</span><span id="profileClickPower">1</span></div>
+                <div class="info-row"><span>⚡ Макс. энергия</span><span id="profileMaxEnergy">100</span></div>
+                <div class="info-row"><span>🤖 Пассивный доход</span><span id="profilePassiveIncome">0/мин</span></div>
+                <div class="info-row"><span>👥 Приглашено</span><span id="profileReferrals">0</span></div>
+                <div class="info-row"><span>🏆 Рейтинг</span><span id="profileRank">#—</span></div>
+            </div>
+            <div class="auth-section glass-panel">
+                <div class="auth-title">🔐 Авторизация</div>
+                <div class="auth-buttons"><button class="boost-buy-btn" id="authTelegramBtn">Telegram ✅</button><button class="boost-buy-btn" id="authVkBtn">VK</button></div>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="leaderboardPanel">
+            <h2>🏆 Топ игроков</h2>
+            <div class="leaderboard-list" id="leaderboardList"><div class="leaderboard-item glass-panel">🏆 Загрузка...</div></div>
+        </div>
+
+        <div class="tab-panel" id="airdropPanel">
+            <div class="airdrop-content">
+                <div class="golden-coin">
+                    <div class="rays" id="raysContainer"></div>
+                    <div class="coin-star-white">⭐</div>
+                </div>
+                <div class="airdrop-soon">СКОРО</div>
+                <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
+            </div>
+        </div>
     </div>
+    <div class="message" id="message"></div>
 
-    <div class="nav-bar">
-        <button class="nav-btn active" data-tab="game">
-            <div class="nav-icon">🎮</div>
-            <div class="nav-label">ИГРА</div>
-        </button>
-        <button class="nav-btn" data-tab="tasks">
-            <div class="nav-icon">📋</div>
-            <div class="nav-label">ЗАДАНИЯ</div>
-        </button>
-        <button class="nav-btn" data-tab="friends">
-            <div class="nav-icon">👥</div>
-            <div class="nav-label">ДРУЗЬЯ</div>
-        </button>
-        <button class="nav-btn" data-tab="profile">
-            <div class="nav-icon">👤</div>
-            <div class="nav-label">ПРОФИЛЬ</div>
-        </button>
-        <button class="nav-btn" data-tab="leaderboard">
-            <div class="nav-icon">🏆</div>
-            <div class="nav-label">РЕЙТИНГ</div>
-        </button>
-        <button class="nav-btn" data-tab="airdrop">
-            <div class="nav-icon">📊</div>
-            <div class="nav-label">AIRDROP</div>
-        </button>
-    </div>
-</div>
+    <script type="module">
+        import * as THREE from 'three';
 
-<div id="message" class="message" style="display:none"></div>
-
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-        }
-    }
-</script>
-<script type="module">
-    import * as THREE from 'three';
-
-    // ========== Telegram WebApp ==========
-    let tg = null;
-    let userId = null;
-    let displayName = "Игрок";
-    let userAvatar = 'https://telegram.org/img/tg_icon_light.png';
-
-    if (window.Telegram && window.Telegram.WebApp) {
-        tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.ready();
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            userId = tg.initDataUnsafe.user.id;
-            if (tg.initDataUnsafe.user.username) displayName = `@${tg.initDataUnsafe.user.username}`;
-            else if (tg.initDataUnsafe.user.first_name) displayName = tg.initDataUnsafe.user.first_name;
-            userAvatar = tg.initDataUnsafe.user.photo_url || userAvatar;
-            console.log('✅ Пользователь авторизован, ID:', userId);
-        }
-    }
-
-    // Элементы профиля
-    const userNameElem = document.getElementById('userName');
-    const profileNameElem = document.getElementById('profileName');
-    const userAvatarElem = document.getElementById('userAvatar');
-    const profileAvatarElem = document.getElementById('profileAvatar');
-    if (userNameElem) userNameElem.textContent = displayName;
-    if (profileNameElem) profileNameElem.textContent = displayName;
-    if (userAvatarElem) userAvatarElem.src = userAvatar;
-    if (profileAvatarElem) profileAvatarElem.src = userAvatar;
-
-    // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
-    let coins = 0;
-    let energy = 100;
-    let maxEnergy = 100;
-    let clickPower = 1;
-    let clickUpgradeCost = 100;
-    let clickUpgradeLevel = 1;
-    let energyUpgradeCost = 200;
-    let energyUpgradeLevel = 1;
-    let passiveIncomeLevel = 0;
-    let passiveIncomeUpgradeCost = 500;
-    let passiveIncomeRate = 0;
-
-    let hasMoon = false;
-    let hasEarth = false;
-    let hasSun = false;
-
-    let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
-    let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
-
-    let lastClickTime = 0;
-    let clickCooldown = 30;
-
-    // ========== ЗВУК ==========
-    let soundEnabled = true;
-    let playTapSound = null;
-    let audioContext = null;
-
-    function initAudio() {
-        if (audioContext) return;
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 0.25;
-            gainNode.connect(audioContext.destination);
-            
-            playTapSound = () => {
-                if (!soundEnabled) return;
-                if (audioContext.state === 'suspended') audioContext.resume();
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.connect(gain);
-                gain.connect(gainNode);
-                osc.frequency.value = 880;
-                gain.gain.value = 0.15;
-                osc.type = 'sine';
-                osc.start();
-                gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
-                osc.stop(audioContext.currentTime + 0.2);
-            };
-        } catch(e) { console.log('Web Audio не поддерживается'); }
-    }
-
-    // ========== 3D СЦЕНА ==========
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x030318);
-    scene.fog = new THREE.FogExp2(0x030318, 0.003);
-
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 3.5);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0x404060);
-    scene.add(ambientLight);
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-    mainLight.position.set(2, 3, 4);
-    scene.add(mainLight);
-    const fillLight = new THREE.PointLight(0x4466aa, 0.5);
-    fillLight.position.set(-2, 1, 2);
-    scene.add(fillLight);
-
-    // Планета/звезда
-    let planetMesh = null;
-    let starsField = null;
-
-    function createStar() {
-        if (planetMesh) scene.remove(planetMesh);
-        const geometry = new THREE.SphereGeometry(0.85, 128, 128);
-        const material = new THREE.MeshStandardMaterial({
-            color: 0xffdd99,
-            emissive: 0xffaa66,
-            emissiveIntensity: 0.7,
-            roughness: 0.2,
-            metalness: 0.0
-        });
-        planetMesh = new THREE.Mesh(geometry, material);
-        scene.add(planetMesh);
+        // ==================== ЗВУК ====================
+        let soundEnabled = true;
+        let audioContext = null;
+        let playTapSound = null;
         
-        const rayCount = 12;
-        for (let i = 0; i < rayCount; i++) {
-            const angle = (i / rayCount) * Math.PI * 2;
-            const rayGeo = new THREE.CylinderGeometry(0.05, 0.12, 0.9, 6);
-            const rayMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xff4422, emissiveIntensity: 0.5 });
-            const ray = new THREE.Mesh(rayGeo, rayMat);
-            ray.position.set(Math.cos(angle) * 1.15, Math.sin(angle) * 1.15, 0);
-            ray.rotation.z = angle;
-            scene.add(ray);
-        }
-    }
-
-    function createPlanet(level) {
-        if (planetMesh) scene.remove(planetMesh);
-        
-        const colors = {
-            1: 0xb0a790, 2: 0xc46d5e, 3: 0xe6b856, 4: 0x4169e1,
-            5: 0xb0e0e6, 6: 0xe8cfaa, 7: 0xd8a27a,
-            8: 0xc0c0c0, 9: 0x2e6b8f, 10: 0xffaa44
-        };
-        const sizes = { 1: 0.9, 2: 0.95, 3: 1.0, 4: 1.05, 5: 1.1, 6: 1.15, 7: 1.2, 8: 1.0, 9: 1.05, 10: 1.3 };
-        
-        const geometry = new THREE.SphereGeometry(sizes[level] || 1.0, 128, 128);
-        const material = new THREE.MeshStandardMaterial({
-            color: colors[level] || 0xffffff,
-            roughness: 0.5,
-            metalness: 0.1
-        });
-        planetMesh = new THREE.Mesh(geometry, material);
-        scene.add(planetMesh);
-        
-        if (level === 6) {
-            const ringGeo = new THREE.TorusGeometry(sizes[level] * 1.2, 0.1, 64, 200);
-            const ringMat = new THREE.MeshStandardMaterial({ color: 0xc9b37c, roughness: 0.4 });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = Math.PI / 2.2;
-            scene.add(ring);
-        }
-    }
-
-    function updatePlanetByLevel() {
-        const level = getLevel();
-        if (level === 0) createStar();
-        else createPlanet(level);
-    }
-
-    // Звёздный фон
-    const starCount = 2000;
-    const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-        starPositions[i*3] = (Math.random() - 0.5) * 200;
-        starPositions[i*3+1] = (Math.random() - 0.5) * 200;
-        starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
-    }
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 }));
-    scene.add(starsField);
-
-    function animate() {
-        requestAnimationFrame(animate);
-        if (planetMesh) planetMesh.rotation.y += 0.005;
-        if (starsField) starsField.rotation.y += 0.0005;
-        renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // ========== ИГРОВАЯ ЛОГИКА ==========
-    function getLevel() {
-        if (hasSun) return 10;
-        if (hasEarth) return 9;
-        if (hasMoon) return 8;
-        if (coins >= 10000000000) return 7;
-        if (coins >= 1000000000) return 6;
-        if (coins >= 100000000) return 5;
-        if (coins >= 10000000) return 4;
-        if (coins >= 1000000) return 3;
-        if (coins >= 100000) return 2;
-        if (coins >= 10000) return 1;
-        return 0;
-    }
-
-    function getPassiveRate() {
-        let rate = passiveIncomeLevel * 5;
-        if (hasSun) rate += 100000;
-        else if (hasEarth) rate += 50000;
-        else if (hasMoon) rate += 20000;
-        return rate;
-    }
-
-    function updateUI() {
-        const level = getLevel();
-        const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
-        const userLevelElem = document.getElementById('userLevel');
-        if (userLevelElem) userLevelElem.textContent = `Уровень ${level} · ${levelNames[level]}`;
-        
-        document.getElementById('coins').textContent = Math.floor(coins);
-        document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
-        document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
-        document.getElementById('clickPower').textContent = clickPower;
-        document.getElementById('energyCost').textContent = clickPower;
-        document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
-        document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
-        document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
-        document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
-        document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
-        document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
-        
-        let rate = getPassiveRate();
-        passiveIncomeRate = rate;
-        document.getElementById('passiveIncomeRate').textContent = rate;
-        
-        updatePlanetByLevel();
-        
-        document.getElementById('profileCoins').textContent = Math.floor(coins);
-        document.getElementById('profileClickPower').textContent = clickPower;
-        document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-        document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
-        document.getElementById('profileId').textContent = userId || 'Гость';
-        document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
-        document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
-        document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
-        document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
-        document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
-        updateTaskButtons();
-        updatePremiumUI();
-    }
-
-    function updatePremiumUI() {
-        const hasJupiter = coins >= 10000000000;
-        const moonBtn = document.getElementById('buyMoon');
-        const earthBtn = document.getElementById('buyEarth');
-        const sunBtn = document.getElementById('buySun');
-        const moonCard = document.getElementById('premiumMoonCard');
-        const earthCard = document.getElementById('premiumEarthCard');
-        const sunCard = document.getElementById('premiumSunCard');
-        
-        if (hasJupiter && !hasMoon) {
-            if (moonCard) moonCard.classList.remove('premium-locked');
-            if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
-            const cond = document.getElementById('moonCondition');
-            if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-        } else if (hasMoon) {
-            if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
-            const cond = document.getElementById('moonCondition');
-            if (cond) cond.innerHTML = '✅ Луна куплена';
-        }
-        if (hasMoon && !hasEarth) {
-            if (earthCard) earthCard.classList.remove('premium-locked');
-            if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
-            const cond = document.getElementById('earthCondition');
-            if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-        } else if (hasEarth) {
-            if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
-            const cond = document.getElementById('earthCondition');
-            if (cond) cond.innerHTML = '✅ Земля куплена';
-        }
-        if (hasEarth && !hasSun) {
-            if (sunCard) sunCard.classList.remove('premium-locked');
-            if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
-            const cond = document.getElementById('sunCondition');
-            if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-        } else if (hasSun) {
-            if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
-            const cond = document.getElementById('sunCondition');
-            if (cond) cond.innerHTML = '✅ Солнце куплено';
-        }
-    }
-
-    function buyPremium(type) {
-        if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
-            hasMoon = true;
-            showMessage('🌕 Луна куплена! +20 000 монет/мин');
-            updateUI(); saveGame(); syncWithBot();
-        } else if (type === 'earth' && hasMoon && !hasEarth) {
-            hasEarth = true;
-            showMessage('🌍 Земля куплена! +50 000 монет/мин');
-            updateUI(); saveGame(); syncWithBot();
-        } else if (type === 'sun' && hasEarth && !hasSun) {
-            hasSun = true;
-            showMessage('☀️ Солнце куплено! +100 000 монет/мин');
-            updateUI(); saveGame(); syncWithBot();
-        } else {
-            showMessage('❌ Условия не выполнены', true);
-        }
-    }
-
-    function saveGame() {
-        const gameData = {
-            coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
-            energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
-            dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
-            weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
-            hasMoon, hasEarth, hasSun
-        };
-        localStorage.setItem('starToPlanet', JSON.stringify(gameData));
-    }
-
-    function loadGame() {
-        const saved = localStorage.getItem('starToPlanet');
-        if (saved) {
+        function initAudio() {
+            if (audioContext) return;
             try {
-                const data = JSON.parse(saved);
-                coins = data.coins || 0;
-                energy = data.energy ?? 100;
-                maxEnergy = data.maxEnergy ?? 100;
-                clickPower = data.clickPower || 1;
-                clickUpgradeCost = data.clickUpgradeCost || 100;
-                clickUpgradeLevel = data.clickUpgradeLevel || 1;
-                energyUpgradeCost = data.energyUpgradeCost || 200;
-                energyUpgradeLevel = data.energyUpgradeLevel || 1;
-                passiveIncomeLevel = data.passiveIncomeLevel || 0;
-                passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
-                dailyClickCount = data.dailyClickCount || 0;
-                dailyCoinsEarned = data.dailyCoinsEarned || 0;
-                dailyTasksClaimed = data.dailyTasksClaimed || { click: false, coins: false };
-                weeklyClickCount = data.weeklyClickCount || 0;
-                weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
-                weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false };
-                hasMoon = data.hasMoon || false;
-                hasEarth = data.hasEarth || false;
-                hasSun = data.hasSun || false;
-                if (energy > maxEnergy) energy = maxEnergy;
-            } catch(e) { console.log(e); }
-        }
-        updateUI();
-    }
-
-    // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
-    async function syncWithBot() {
-        if (!tg) return;
-        const gameData = {
-            coins: Math.floor(coins),
-            energy: energy,
-            maxEnergy: maxEnergy,
-            clickPower: clickPower,
-            passiveIncomeLevel: passiveIncomeLevel,
-            hasMoon: hasMoon,
-            hasEarth: hasEarth,
-            hasSun: hasSun
-        };
-        tg.sendData(JSON.stringify(gameData));
-    }
-
-    async function loadFromServer() {
-        if (!userId) return;
-        try {
-            const response = await fetch(`/api/user/${userId}`);
-            if (response.ok) {
-                const data = await response.json();
-                coins = data.coins || 0;
-                energy = data.energy ?? 100;
-                maxEnergy = data.maxEnergy ?? 100;
-                clickPower = data.clickPower || 1;
-                passiveIncomeLevel = data.passiveIncomeLevel || 0;
-                hasMoon = data.hasMoon || false;
-                hasEarth = data.hasEarth || false;
-                hasSun = data.hasSun || false;
-                if (energy > maxEnergy) energy = maxEnergy;
-                updateUI();
-                console.log('✅ Данные загружены с сервера');
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 0.2;
+                gainNode.connect(audioContext.destination);
+                
+                playTapSound = () => {
+                    if (!soundEnabled) return;
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(gainNode);
+                    osc.frequency.value = 880;
+                    gain.gain.value = 0.1;
+                    osc.type = 'sine';
+                    osc.start();
+                    gain.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
+                    osc.stop(audioContext.currentTime + 0.2);
+                };
+            } catch(e) {
+                console.log('Web Audio не поддерживается');
             }
-        } catch(e) { console.log('Ошибка загрузки', e); }
-    }
-
-    // ========== ОБРАБОТКА КЛИКОВ ==========
-    function handleClick(event) {
-        const now = Date.now();
-        if (now - lastClickTime < clickCooldown) return;
-        lastClickTime = now;
-        
-        if (energy < clickPower) {
-            showMessage('❌ Нет энергии!', true);
-            return;
         }
-        
-        if (!audioContext) initAudio();
-        if (playTapSound) playTapSound();
-        
-        energy -= clickPower;
-        coins += clickPower;
-        dailyClickCount++; weeklyClickCount++;
-        dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
-        updateUI(); saveGame(); syncWithBot();
-        
-        const target = document.getElementById('star-container');
-        if (target) {
-            target.style.transform = 'scale(0.95)';
-            setTimeout(() => { if (target) target.style.transform = 'scale(1)'; }, 100);
+
+        // ==================== TELEGRAM ====================
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        const tgUser = tg.initDataUnsafe?.user;
+        let userId = tgUser?.id || 'guest_' + Math.floor(Math.random() * 1000000000);
+        let displayName = "Игрок";
+        let userAvatar = tgUser?.photo_url || 'https://telegram.org/img/tg_icon_light.png';
+        if (tgUser) {
+            if (tgUser.username) displayName = `@${tgUser.username}`;
+            else if (tgUser.first_name) displayName = tgUser.first_name;
         }
+        document.getElementById('userName').textContent = displayName;
+        document.getElementById('profileName').textContent = displayName;
+        document.getElementById('userAvatar')?.setAttribute('src', userAvatar);
+        document.getElementById('profileAvatar')?.setAttribute('src', userAvatar);
+
+        function getReferrerId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const startapp = urlParams.get('startapp');
+            if (startapp && startapp.startsWith('ref_')) return startapp.replace('ref_', '');
+            return null;
+        }
+        const referrerId = getReferrerId();
+
+        // ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
+        let coins = 0;
+        let energy = 100;
+        let maxEnergy = 100;
+        let clickPower = 1;
+        let clickUpgradeCost = 100;
+        let clickUpgradeLevel = 1;
+        let energyUpgradeCost = 200;
+        let energyUpgradeLevel = 1;
+        let passiveIncomeLevel = 0;
+        let passiveIncomeUpgradeCost = 500;
+        let passiveIncomeRate = 0;
+        let totalEnergySpent = 0;
+        let totalUpgradesBought = 0;
+
+        let hasMoon = false;
+        let hasEarth = false;
+        let hasSun = false;
+
+        let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgradesBought = 0;
+        let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
         
-        const popup = document.createElement('div');
-        popup.textContent = `+${clickPower}`;
-        popup.style.position = 'fixed';
-        popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
-        popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
-        popup.style.color = '#ffd700';
-        popup.style.fontSize = '24px';
-        popup.style.fontWeight = 'bold';
-        popup.style.pointerEvents = 'none';
-        popup.style.zIndex = '1000';
-        popup.style.textShadow = '0 0 5px #000';
-        popup.style.animation = 'popup 0.5s ease-out forwards';
-        document.body.appendChild(popup);
-        setTimeout(() => popup.remove(), 500);
-    }
+        let dailyTasksClaimed = { click: false, coins: false, energy: false, upgrade: false };
+        let weeklyTasksClaimed = { click: false, coins: false, energy: false, upgrade: false };
 
-    const starContainerElem = document.getElementById('star-container');
-    if (starContainerElem) {
-        starContainerElem.addEventListener('click', handleClick);
-    }
+        let lastClickTime = 0;
+        let clickCooldown = 50;
+        let previousLevel = 0;
 
-    // ========== БУСТЫ ==========
-    function upgradeClick() {
-        if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
-            coins -= clickUpgradeCost; clickPower++; clickUpgradeLevel++;
-            clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
-            updateUI(); saveGame(); syncWithBot();
-            showMessage('✅ Сила клика +1');
-        } else if (clickUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-        else showMessage('❌ Не хватает монет!', true);
-    }
+        // ==================== 3D ПЛАНЕТЫ ====================
+        function createCraterTexture(baseColor, spotColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = 5 + Math.random() * 15;
+                const grad = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius);
+                grad.addColorStop(0, spotColor);
+                grad.addColorStop(0.7, baseColor);
+                ctx.globalCompositeOperation = 'overlay';
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
 
-    function upgradeEnergy() {
-        if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
-            coins -= energyUpgradeCost; maxEnergy += 50; energy += 50; energyUpgradeLevel++;
-            energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
-            updateUI(); saveGame(); syncWithBot();
-            showMessage('✅ Энергия +50');
-        } else if (energyUpgradeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-        else showMessage('❌ Не хватает монет!', true);
-    }
+        function createJupiterTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#d8a27a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const bands = [
+                { y: 0.2, color: '#b87a4a', width: 0.08 },
+                { y: 0.35, color: '#c28a5a', width: 0.1 },
+                { y: 0.5, color: '#a56a3a', width: 0.12 },
+                { y: 0.65, color: '#c28a5a', width: 0.1 },
+                { y: 0.8, color: '#b87a4a', width: 0.08 }
+            ];
+            bands.forEach(band => {
+                ctx.fillStyle = band.color;
+                ctx.fillRect(0, (band.y - band.width/2) * canvas.height, canvas.width, band.width * canvas.height);
+            });
+            ctx.fillStyle = '#aa5533';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.65, canvas.height * 0.55, canvas.width * 0.12, canvas.height * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#cc6644';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width * 0.64, canvas.height * 0.54, canvas.width * 0.08, canvas.height * 0.05, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1.5, 1);
+            return texture;
+        }
 
-    function upgradePassive() {
-        if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
-            coins -= passiveIncomeUpgradeCost; passiveIncomeLevel++;
-            passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
-            updateUI(); saveGame(); syncWithBot();
-            showMessage('✅ Пассивный доход +5/мин');
-        } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-        else showMessage('❌ Не хватает монет!', true);
-    }
+        const planetConfigs = {
+            0: { type: 'star', size: 0.85, color: '#fff5e0', emissive: '#ffaa66', desc: 'Белая звезда' },
+            1: { type: 'mercury', size: 0.88, color: '#b0a790', desc: 'Меркурий' },
+            2: { type: 'mars', size: 0.91, color: '#c46d5e', desc: 'Марс' },
+            3: { type: 'venus', size: 0.94, color: '#e6b856', desc: 'Венера' },
+            4: { type: 'neptune', size: 0.97, color: '#4169e1', desc: 'Нептун' },
+            5: { type: 'uranus', size: 1.0, color: '#b0e0e6', desc: 'Уран' },
+            6: { type: 'saturn', size: 1.05, color: '#e8cfaa', desc: 'Сатурн' },
+            7: { type: 'jupiter', size: 1.1, color: '#d8a27a', desc: 'Юпитер' },
+            8: { type: 'moon', size: 0.95, color: '#c0c0c0', desc: 'Луна', premium: true },
+            9: { type: 'earth', size: 1.0, color: '#2e6b8f', desc: 'Земля', premium: true },
+            10: { type: 'sun', size: 1.15, color: '#ffaa44', emissive: '#ff6600', desc: 'Солнце', premium: true }
+        };
 
-    // ========== ЗАДАНИЯ ==========
-    function updateTaskButtons() {
-        const dailyClickBtn = document.getElementById('dailyClickClaim');
-        const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
-        const weeklyClickBtn = document.getElementById('weeklyClickClaim');
-        const weeklyCoinsBtn = document.getElementById('weeklyCoinsClaim');
-        if (dailyClickBtn) { if (dailyClickCount >= 100 && !dailyTasksClaimed.click) dailyClickBtn.classList.remove('disabled'); else dailyClickBtn.classList.add('disabled'); }
-        if (dailyCoinsBtn) { if (dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins) dailyCoinsBtn.classList.remove('disabled'); else dailyCoinsBtn.classList.add('disabled'); }
-        if (weeklyClickBtn) { if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled'); else weeklyClickBtn.classList.add('disabled'); }
-        if (weeklyCoinsBtn) { if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled'); else weeklyCoinsBtn.classList.add('disabled'); }
-    }
+        let scene, camera, renderer, planetMesh, starsField, ringMesh = null, rayMeshes = [];
+        let currentPlanetType = null;
 
-    async function claimTask(taskId, reward, type) {
-        if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { dailyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-        else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { dailyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-        else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { weeklyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-        else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { weeklyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-        else { showMessage('❌ Условия не выполнены', true); return; }
-        updateUI(); saveGame(); syncWithBot(); updateTaskButtons();
-    }
-
-    // ========== РЕЙТИНГ ==========
-    async function loadLeaderboard() {
-        const container = document.getElementById('leaderboardList');
-        if (!container) return;
-        try {
-            const response = await fetch(`/api/leaderboard`);
-            if (response.ok) {
-                const players = await response.json();
-                if (players.length > 0) {
-                    container.innerHTML = players.map((p, i) => {
-                        let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-                        const isCurrent = p.id == userId;
-                        return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div></div>`;
-                    }).join('');
-                    return;
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = null;
+            camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+            camera.position.set(0, 0, 3.5);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            const ambientLight = new THREE.AmbientLight(0x404060);
+            scene.add(ambientLight);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            mainLight.position.set(5, 3, 4);
+            scene.add(mainLight);
+            const fillLight = new THREE.PointLight(0x4466aa, 0.5);
+            fillLight.position.set(-2, 1, 2);
+            scene.add(fillLight);
+            const backLight = new THREE.PointLight(0xffaa66, 0.4);
+            backLight.position.set(1, -1, -2);
+            scene.add(backLight);
+            
+            const starCount = 800;
+            const starGeometry = new THREE.BufferGeometry();
+            const starPositions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                starPositions[i*3] = (Math.random() - 0.5) * 100;
+                starPositions[i*3+1] = (Math.random() - 0.5) * 80;
+                starPositions[i*3+2] = (Math.random() - 0.5) * 50 - 25;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.6 }));
+            scene.add(starsField);
+            
+            updatePlanet3D(0);
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                if (planetMesh) {
+                    planetMesh.rotation.y += 0.006;
+                    if (currentPlanetType === 'star' || currentPlanetType === 'sun') {
+                        const time = Date.now() * 0.004;
+                        const scale = 1 + Math.sin(time) * 0.02;
+                        planetMesh.scale.set(scale, scale, scale);
+                        if (planetMesh.userData?.glowMesh) {
+                            const glowScale = 1 + Math.sin(time * 1.2) * 0.03;
+                            planetMesh.userData.glowMesh.scale.set(glowScale, glowScale, glowScale);
+                        }
+                        if (planetMesh.userData?.rays) {
+                            planetMesh.userData.rays.forEach((ray, idx) => {
+                                const rayScale = 1 + Math.sin(time * 1.5 + idx) * 0.1;
+                                ray.scale.set(1, rayScale, 1);
+                            });
+                        }
+                    }
+                    if (planetMesh.userData?.clouds) {
+                        planetMesh.userData.clouds.rotation.y += 0.008;
+                    }
+                }
+                if (ringMesh) {
+                    if (ringMesh.ring) {
+                        ringMesh.ring.rotation.y += 0.003;
+                        ringMesh.ring2.rotation.y += 0.002;
+                    } else if (ringMesh.rotation) {
+                        ringMesh.rotation.y += 0.003;
+                    }
+                }
+                if (starsField) {
+                    starsField.rotation.y += 0.0005;
+                    starsField.rotation.x += 0.0003;
+                }
+                if (renderer && scene && camera) {
+                    renderer.render(scene, camera);
                 }
             }
-        } catch(e) { console.log(e); }
-        container.innerHTML = '<div class="leaderboard-item">🏆 Загрузка...</div>';
-    }
-
-    function loadFriends() {
-        const container = document.getElementById('level1List');
-        if (container) container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
-        document.getElementById('referralCount').textContent = '0';
-        document.getElementById('referralBonus').textContent = '0';
-        document.getElementById('profileReferrals').textContent = '0';
-    }
-
-    function updateReferralLink() { 
-        const linkInput = document.getElementById('referralLink'); 
-        if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
-    }
-
-    function copyReferralLink() { 
-        const input = document.getElementById('referralLink'); 
-        if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
-    }
-
-    function shareReferralLink() {
-        const input = document.getElementById('referralLink');
-        if(input && tg && tg.openTelegramLink) {
-            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
-        } else if(input) {
-            window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
-        }
-    }
-
-    // ========== ПАНЕЛИ ==========
-    function setupTabs() {
-        const panels = {
-            game: document.getElementById('game-area'),
-            tasks: document.getElementById('tasksPanel'),
-            friends: document.getElementById('friendsPanel'),
-            profile: document.getElementById('profilePanel'),
-            leaderboard: document.getElementById('leaderboardPanel'),
-            airdrop: document.getElementById('airdropPanel')
-        };
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
-                if (panels[tab]) panels[tab].style.display = 'block';
-                if (tab === 'game') panels.game.style.display = 'flex';
-                if (tab === 'leaderboard') loadLeaderboard();
-                if (tab === 'friends') { loadFriends(); updateReferralLink(); }
-            });
-        });
-    }
-
-    function setupTasksTabs() {
-        const tabs = document.querySelectorAll('.tasks-tab');
-        const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
-        tabs.forEach(t => {
-            t.addEventListener('click', () => {
-                const target = t.dataset.tasksTab;
-                tabs.forEach(tt => tt.classList.remove('active'));
-                t.classList.add('active');
-                Object.values(contents).forEach(c => c?.classList.remove('active'));
-                if (contents[target]) contents[target].classList.add('active');
-            });
-        });
-    }
-
-    function showMessage(text, isError = false) {
-        const msg = document.getElementById('message');
-        if (!msg) return;
-        msg.textContent = text;
-        msg.style.color = isError ? '#ff6b6b' : '#FFD60A';
-        msg.classList.add('show');
-        setTimeout(() => msg.classList.remove('show'), 2000);
-    }
-
-    function applyPassiveIncome() { 
-        if (passiveIncomeRate > 0) { 
-            coins += passiveIncomeRate; 
-            updateUI(); 
-            saveGame(); 
-            syncWithBot(); 
-        } 
-    }
-
-    function rechargeEnergy() { 
-        if (energy < maxEnergy) { 
-            energy = Math.min(energy + 5, maxEnergy); 
-            updateUI(); 
-        } 
-    }
-
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
-    async function init() {
-        await loadFromServer();
-        loadGame();
-        setupTabs();
-        setupTasksTabs();
-        updateReferralLink();
-        
-        document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
-        document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
-        document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
-        document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
-        document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
-        document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
-        document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
-        document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
-        document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
-        document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
-        document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
-        document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
-        
-        const boostBtn = document.getElementById('boostBtn');
-        const boostModal = document.getElementById('boostModal');
-        const closeBoost = document.getElementById('closeBoostModal');
-        if(boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
-        if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
-        if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
-        
-        setInterval(applyPassiveIncome, 60000);
-        setInterval(rechargeEnergy, 1000);
-        
-        const raysContainer = document.getElementById('raysContainer');
-        if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
-        
-        const gameArea = document.getElementById('game-area');
-        if (gameArea) gameArea.style.display = 'flex';
-        
-        if(!document.querySelector('#popup-animation')) {
-            const style = document.createElement('style');
-            style.id = 'popup-animation';
-            style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`;
-            document.head.appendChild(style);
-        }
-        
-        setTimeout(() => { loadLeaderboard(); loadFriends(); }, 1000);
-        
-        const soundToggleBtn = document.getElementById('soundToggle');
-        if (soundToggleBtn) {
-            soundToggleBtn.addEventListener('click', () => {
-                soundEnabled = !soundEnabled;
-                soundToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
-                showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
+            animate();
+            
+            window.addEventListener('resize', () => {
+                if (container && renderer) {
+                    const width = container.clientWidth;
+                    const height = container.clientHeight;
+                    renderer.setSize(width, height);
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                }
             });
         }
-    }
 
-    init();
-</script>
+        function updatePlanet3D(level) {
+            const config = planetConfigs[level] || planetConfigs[0];
+            if (planetMesh) scene.remove(planetMesh);
+            if (rayMeshes.length) {
+                rayMeshes.forEach(ray => scene.remove(ray));
+                rayMeshes = [];
+            }
+            if (ringMesh) {
+                if (ringMesh.ring) {
+                    scene.remove(ringMesh.ring);
+                    scene.remove(ringMesh.ring2);
+                } else {
+                    scene.remove(ringMesh);
+                }
+                ringMesh = null;
+            }
+            
+            const geometry = new THREE.SphereGeometry(config.size, 128, 128);
+            let material;
+            
+            if (config.type === 'star') {
+                material = new THREE.MeshStandardMaterial({
+                    color: config.color,
+                    emissive: config.emissive,
+                    emissiveIntensity: 0.9,
+                    roughness: 0.2,
+                    metalness: 0.0
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                
+                const rayCount = 12;
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = (i / rayCount) * Math.PI * 2;
+                    const rayGeo = new THREE.ConeGeometry(0.12, 1.2, 8);
+                    const rayMat = new THREE.MeshStandardMaterial({ color: 0xffdd99, emissive: 0xffaa66, emissiveIntensity: 0.6 });
+                    const ray = new THREE.Mesh(rayGeo, rayMat);
+                    ray.position.set(Math.cos(angle) * (config.size + 0.45), Math.sin(angle) * (config.size + 0.45), 0);
+                    ray.rotation.z = angle;
+                    scene.add(ray);
+                    rayMeshes.push(ray);
+                }
+                const glowGeometry = new THREE.SphereGeometry(config.size + 0.12, 32, 32);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffaa77,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.BackSide
+                });
+                const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                scene.add(glowMesh);
+                planetMesh.userData = { glowMesh, rays: rayMeshes };
+                currentPlanetType = 'star';
+            } else if (config.type === 'sun') {
+                material = new THREE.MeshStandardMaterial({
+                    color: config.color,
+                    emissive: config.emissive,
+                    emissiveIntensity: 1.3,
+                    roughness: 0.1,
+                    metalness: 0.0
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                
+                const rayCount = 16;
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = (i / rayCount) * Math.PI * 2;
+                    const rayGeo = new THREE.CylinderGeometry(0.08, 0.18, 0.9, 6);
+                    const rayMat = new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff4422, emissiveIntensity: 0.8 });
+                    const ray = new THREE.Mesh(rayGeo, rayMat);
+                    ray.position.set(Math.cos(angle) * (config.size + 0.55), Math.sin(angle) * (config.size + 0.55), 0);
+                    ray.rotation.z = angle;
+                    scene.add(ray);
+                    rayMeshes.push(ray);
+                }
+                const glowGeometry = new THREE.SphereGeometry(config.size + 0.15, 32, 32);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff8844,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.BackSide
+                });
+                const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                scene.add(glowMesh);
+                planetMesh.userData = { glowMesh, rays: rayMeshes };
+                currentPlanetType = 'sun';
+            } else if (config.type === 'saturn') {
+                material = new THREE.MeshStandardMaterial({
+                    color: config.color,
+                    roughness: 0.5,
+                    metalness: 0.15
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                
+                const ringGeometry = new THREE.TorusGeometry(config.size * 1.35, 0.12, 128, 200);
+                const ringMaterial = new THREE.MeshStandardMaterial({ color: 0xc9b37c, roughness: 0.4, metalness: 0.2 });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = Math.PI / 2.2;
+                ring.rotation.z = 0.3;
+                scene.add(ring);
+                const ring2Geometry = new THREE.TorusGeometry(config.size * 1.55, 0.08, 128, 200);
+                const ring2Material = new THREE.MeshStandardMaterial({ color: 0xb89a6a, roughness: 0.5, transparent: true, opacity: 0.7 });
+                const ring2 = new THREE.Mesh(ring2Geometry, ring2Material);
+                ring2.rotation.x = Math.PI / 2.2;
+                ring2.rotation.z = 0.25;
+                scene.add(ring2);
+                ringMesh = { ring, ring2 };
+                currentPlanetType = 'saturn';
+            } else if (config.type === 'earth') {
+                const textureLoader = new THREE.TextureLoader();
+                const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+                const cloudMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+                material = new THREE.MeshStandardMaterial({
+                    map: earthMap,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                const cloudGeometry = new THREE.SphereGeometry(config.size + 0.01, 128, 128);
+                const cloudMaterial = new THREE.MeshPhongMaterial({
+                    map: cloudMap,
+                    transparent: true,
+                    opacity: 0.12,
+                    blending: THREE.AdditiveBlending
+                });
+                const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                scene.add(clouds);
+                planetMesh.userData = { clouds };
+                currentPlanetType = 'earth';
+            } else if (config.type === 'jupiter') {
+                const texture = createJupiterTexture();
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'jupiter';
+            } else if (config.type === 'uranus') {
+                material = new THREE.MeshStandardMaterial({
+                    color: config.color,
+                    roughness: 0.45,
+                    metalness: 0.08
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                const ringGeometry = new THREE.TorusGeometry(config.size * 1.2, 0.05, 64, 200);
+                const ringMaterial = new THREE.MeshStandardMaterial({ color: 0xaaccdd, transparent: true, opacity: 0.6 });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = Math.PI / 2;
+                ring.rotation.z = 0.5;
+                scene.add(ring);
+                ringMesh = ring;
+                currentPlanetType = 'uranus';
+            } else if (config.type === 'moon') {
+                const texture = createCraterTexture('#c0c0c0', '#8a8a8a');
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.8,
+                    metalness: 0.05
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'moon';
+            } else if (config.type === 'mars') {
+                const texture = createCraterTexture('#c46d5e', '#9a4a3a');
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.7,
+                    metalness: 0.1
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'mars';
+            } else if (config.type === 'mercury') {
+                const texture = createCraterTexture('#b0a790', '#6a6a6a');
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.8,
+                    metalness: 0.05
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'mercury';
+            } else if (config.type === 'venus') {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#e6b856';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < 300; i++) {
+                    ctx.fillStyle = `rgba(180, 100, 50, ${Math.random() * 0.5})`;
+                    ctx.beginPath();
+                    ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 3 + Math.random() * 12, 2 + Math.random() * 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                const texture = new THREE.CanvasTexture(canvas);
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.5,
+                    metalness: 0.2
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'venus';
+            } else if (config.type === 'neptune') {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#4169e1';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < 50; i++) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.random() * 0.4})`;
+                    ctx.beginPath();
+                    ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 15 + Math.random() * 40, 5 + Math.random() * 15, Math.random() * Math.PI, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                const texture = new THREE.CanvasTexture(canvas);
+                material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = 'neptune';
+            } else {
+                material = new THREE.MeshStandardMaterial({
+                    color: config.color,
+                    roughness: 0.6,
+                    metalness: 0.1
+                });
+                planetMesh = new THREE.Mesh(geometry, material);
+                scene.add(planetMesh);
+                currentPlanetType = config.type;
+            }
+        }
+
+        function createExplosionEffect(x, y) {
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'explosion-particle';
+                particle.style.left = (x + (Math.random() - 0.5) * 40) + 'px';
+                particle.style.top = (y + (Math.random() - 0.5) * 40) + 'px';
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        // ==================== ИГРОВАЯ ЛОГИКА ====================
+        function getLevel() {
+            if (hasSun) return 10;
+            if (hasEarth) return 9;
+            if (hasMoon) return 8;
+            if (coins >= 10000000000) return 7;
+            if (coins >= 1000000000) return 6;
+            if (coins >= 100000000) return 5;
+            if (coins >= 10000000) return 4;
+            if (coins >= 1000000) return 3;
+            if (coins >= 100000) return 2;
+            if (coins >= 10000) return 1;
+            return 0;
+        }
+
+        function getPassiveRate() {
+            let rate = passiveIncomeLevel * 5;
+            if (hasSun) rate += 100000;
+            else if (hasEarth) rate += 50000;
+            else if (hasMoon) rate += 20000;
+            return rate;
+        }
+
+        function checkLevelUp() {
+            const currentLevel = getLevel();
+            if (currentLevel > previousLevel) {
+                const container = document.getElementById('canvas-container');
+                const rect = container.getBoundingClientRect();
+                createExplosionEffect(rect.left + rect.width/2, rect.top + rect.height/2);
+                showMessage(`✨ ПОЗДРАВЛЯЕМ! Достигнут уровень ${currentLevel}: ${planetConfigs[currentLevel].desc} ✨`);
+                const newSize = planetConfigs[currentLevel].size;
+                const baseSize = 200;
+                const newContainerSize = baseSize * (0.8 + newSize * 0.2);
+                container.style.transition = 'width 0.5s ease, height 0.5s ease';
+                container.style.width = newContainerSize + 'px';
+                container.style.height = newContainerSize + 'px';
+                setTimeout(() => {
+                    container.style.transition = '';
+                }, 500);
+                previousLevel = currentLevel;
+            }
+        }
+
+        function updateUI() {
+            const level = getLevel();
+            const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
+            document.getElementById('userLevel').textContent = `Уровень ${level} · ${levelNames[level]}`;
+            document.getElementById('coins').textContent = Math.floor(coins);
+            document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
+            document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
+            document.getElementById('clickPower').textContent = clickPower;
+            document.getElementById('energyCost').textContent = clickPower;
+            document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
+            document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
+            document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
+            document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
+            document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
+            document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
+            
+            let rate = getPassiveRate();
+            passiveIncomeRate = rate;
+            document.getElementById('passiveIncomeRate').textContent = rate;
+            
+            updatePlanet3D(level);
+            
+            document.getElementById('profileCoins').textContent = Math.floor(coins);
+            document.getElementById('profileClickPower').textContent = clickPower;
+            document.getElementById('profileMaxEnergy').textContent = maxEnergy;
+            document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
+            document.getElementById('profileId').textContent = userId;
+            document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
+            
+            document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
+            document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
+            document.getElementById('dailyEnergyProgress').textContent = `${dailyEnergySpent}/200`;
+            document.getElementById('dailyUpgradeProgress').textContent = `${dailyUpgradesBought}/1`;
+            document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
+            document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
+            document.getElementById('weeklyEnergyProgress').textContent = `${weeklyEnergySpent}/1000`;
+            document.getElementById('weeklyUpgradeProgress').textContent = `${weeklyUpgradesBought}/5`;
+            
+            updateTaskButtons();
+            updatePremiumUI();
+            checkLevelUp();
+        }
+
+        function updateTaskButtons() {
+            const dailyClickBtn = document.getElementById('dailyClickClaim');
+            const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
+            const dailyEnergyBtn = document.getElementById('dailyEnergyClaim');
+            const dailyUpgradeBtn = document.getElementById('dailyUpgradeClaim');
+            if (dailyClickBtn) {
+                if (dailyClickCount >= 100 && !dailyTasksClaimed.click) dailyClickBtn.classList.remove('disabled');
+                else dailyClickBtn.classList.add('disabled');
+            }
+            if (dailyCoinsBtn) {
+                if (dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins) dailyCoinsBtn.classList.remove('disabled');
+                else dailyCoinsBtn.classList.add('disabled');
+            }
+            if (dailyEnergyBtn) {
+                if (dailyEnergySpent >= 200 && !dailyTasksClaimed.energy) dailyEnergyBtn.classList.remove('disabled');
+                else dailyEnergyBtn.classList.add('disabled');
+            }
+            if (dailyUpgradeBtn) {
+                if (dailyUpgradesBought >= 1 && !dailyTasksClaimed.upgrade) dailyUpgradeBtn.classList.remove('disabled');
+                else dailyUpgradeBtn.classList.add('disabled');
+            }
+            
+            const weeklyClickBtn = document.getElementById('weeklyClickClaim');
+            const weeklyCoinsBtn = document.getElementById('weeklyCoinsClaim');
+            const weeklyEnergyBtn = document.getElementById('weeklyEnergyClaim');
+            const weeklyUpgradeBtn = document.getElementById('weeklyUpgradeClaim');
+            if (weeklyClickBtn) {
+                if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled');
+                else weeklyClickBtn.classList.add('disabled');
+            }
+            if (weeklyCoinsBtn) {
+                if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled');
+                else weeklyCoinsBtn.classList.add('disabled');
+            }
+            if (weeklyEnergyBtn) {
+                if (weeklyEnergySpent >= 1000 && !weeklyTasksClaimed.energy) weeklyEnergyBtn.classList.remove('disabled');
+                else weeklyEnergyBtn.classList.add('disabled');
+            }
+            if (weeklyUpgradeBtn) {
+                if (weeklyUpgradesBought >= 5 && !weeklyTasksClaimed.upgrade) weeklyUpgradeBtn.classList.remove('disabled');
+                else weeklyUpgradeBtn.classList.add('disabled');
+            }
+        }
+
+        async function claimTask(taskId, reward, type) {
+            if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) {
+                dailyTasksClaimed.click = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-daily-task="1"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) {
+                dailyTasksClaimed.coins = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-daily-task="2"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= 200) {
+                dailyTasksClaimed.energy = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-daily-task="3"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= 1) {
+                dailyTasksClaimed.upgrade = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-daily-task="4"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) {
+                weeklyTasksClaimed.click = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-weekly-task="1"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) {
+                weeklyTasksClaimed.coins = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-weekly-task="2"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= 1000) {
+                weeklyTasksClaimed.energy = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-weekly-task="3"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= 5) {
+                weeklyTasksClaimed.upgrade = true;
+                coins += reward;
+                showMessage(`🎉 +${reward} монет!`);
+                document.querySelector('[data-weekly-task="4"]').innerHTML = '<div class="task-completed">✅ Задание выполнено!</div>';
+            } else {
+                showMessage('❌ Условия не выполнены', true);
+                return;
+            }
+            updateUI();
+            saveGame();
+            syncToServer();
+            updateTaskButtons();
+        }
+
+        function updatePremiumUI() {
+            const hasJupiter = coins >= 10000000000;
+            const moonBtn = document.getElementById('buyMoon');
+            const earthBtn = document.getElementById('buyEarth');
+            const sunBtn = document.getElementById('buySun');
+            const moonCard = document.getElementById('premiumMoonCard');
+            const earthCard = document.getElementById('premiumEarthCard');
+            const sunCard = document.getElementById('premiumSunCard');
+            if (hasJupiter && !hasMoon) {
+                if (moonCard) moonCard.classList.remove('premium-locked');
+                if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
+                const cond = document.getElementById('moonCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasMoon) {
+                if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('moonCondition');
+                if (cond) cond.innerHTML = '✅ Луна куплена';
+            }
+            if (hasMoon && !hasEarth) {
+                if (earthCard) earthCard.classList.remove('premium-locked');
+                if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
+                const cond = document.getElementById('earthCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasEarth) {
+                if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('earthCondition');
+                if (cond) cond.innerHTML = '✅ Земля куплена';
+            }
+            if (hasEarth && !hasSun) {
+                if (sunCard) sunCard.classList.remove('premium-locked');
+                if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
+                const cond = document.getElementById('sunCondition');
+                if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
+            } else if (hasSun) {
+                if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
+                const cond = document.getElementById('sunCondition');
+                if (cond) cond.innerHTML = '✅ Солнце куплено';
+            }
+        }
+
+        function buyPremium(type) {
+            if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
+                hasMoon = true;
+                showMessage('🌕 Луна куплена! +20 000 монет/мин');
+                updateUI();
+                saveGame();
+                syncToServer();
+            } else if (type === 'earth' && hasMoon && !hasEarth) {
+                hasEarth = true;
+                showMessage('🌍 Земля куплена! +50 000 монет/мин');
+                updateUI();
+                saveGame();
+                syncToServer();
+            } else if (type === 'sun' && hasEarth && !hasSun) {
+                hasSun = true;
+                showMessage('☀️ Солнце куплено! +100 000 монет/мин');
+                updateUI();
+                saveGame();
+                syncToServer();
+            } else {
+                showMessage('❌ Условия не выполнены', true);
+            }
+        }
+
+        function upgradeClick() {
+            if (coins >= clickUpgradeCost && clickUpgradeLevel < 100) {
+                coins -= clickUpgradeCost;
+                clickPower++;
+                clickUpgradeLevel++;
+                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
+                dailyUpgradesBought++;
+                weeklyUpgradesBought++;
+                updateUI();
+                saveGame();
+                syncToServer();
+                showMessage('✅ Сила клика +1');
+            } else if (clickUpgradeLevel >= 100) {
+                showMessage('⚠️ Максимальный уровень!', true);
+            } else {
+                showMessage('❌ Не хватает монет!', true);
+            }
+        }
+
+        function upgradeEnergy() {
+            if (coins >= energyUpgradeCost && energyUpgradeLevel < 100) {
+                coins -= energyUpgradeCost;
+                maxEnergy += 50;
+                energy += 50;
+                energyUpgradeLevel++;
+                energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
+                dailyUpgradesBought++;
+                weeklyUpgradesBought++;
+                updateUI();
+                saveGame();
+                syncToServer();
+                showMessage('✅ Энергия +50');
+            } else if (energyUpgradeLevel >= 100) {
+                showMessage('⚠️ Максимальный уровень!', true);
+            } else {
+                showMessage('❌ Не хватает монет!', true);
+            }
+        }
+
+        function upgradePassive() {
+            if (coins >= passiveIncomeUpgradeCost && passiveIncomeLevel < 100) {
+                coins -= passiveIncomeUpgradeCost;
+                passiveIncomeLevel++;
+                passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
+                dailyUpgradesBought++;
+                weeklyUpgradesBought++;
+                updateUI();
+                saveGame();
+                syncToServer();
+                showMessage('✅ Пассивный доход +5/мин');
+            } else if (passiveIncomeLevel >= 100) {
+                showMessage('⚠️ Максимальный уровень!', true);
+            } else {
+                showMessage('❌ Не хватает монет!', true);
+            }
+        }
+
+        function handleTap(event) {
+            const now = Date.now();
+            if (now - lastClickTime < clickCooldown) return;
+            lastClickTime = now;
+            
+            if (energy < clickPower) {
+                showMessage('❌ Нет энергии!', true);
+                return;
+            }
+            
+            // Инициализируем звук при первом тапе
+            if (!audioContext) initAudio();
+            if (playTapSound) playTapSound();
+            
+            let clientX, clientY;
+            if (event.touches) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            
+            energy -= clickPower;
+            coins += clickPower;
+            dailyClickCount++;
+            weeklyClickCount++;
+            dailyCoinsEarned += clickPower;
+            weeklyCoinsEarned += clickPower;
+            dailyEnergySpent += clickPower;
+            weeklyEnergySpent += clickPower;
+            
+            updateUI();
+            saveGame();
+            syncToServer();
+            
+            const container = document.getElementById('canvas-container');
+            if (container) {
+                container.style.transform = 'scale(0.96)';
+                setTimeout(() => {
+                    if (container) container.style.transform = 'scale(1)';
+                }, 100);
+            }
+            
+            const popup = document.createElement('div');
+            popup.textContent = `+${clickPower}`;
+            popup.style.position = 'fixed';
+            popup.style.left = (clientX || window.innerWidth/2) + 'px';
+            popup.style.top = (clientY || window.innerHeight/2 - 100) + 'px';
+            popup.style.color = '#ffd700';
+            popup.style.fontSize = '24px';
+            popup.style.fontWeight = 'bold';
+            popup.style.pointerEvents = 'none';
+            popup.style.zIndex = '1000';
+            popup.style.textShadow = '0 0 5px #000';
+            popup.style.animation = 'popupAnim 0.5s ease-out forwards';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 500);
+        }
+
+        const canvasContainer = document.getElementById('canvas-container');
+        if (canvasContainer) {
+            canvasContainer.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.touches.length; i++) {
+                    handleTap(e.touches[i]);
+                }
+            });
+            canvasContainer.addEventListener('mousedown', handleTap);
+        }
+
+        function saveGame() {
+            const gameData = {
+                coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
+                energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
+                dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
+                weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
+                hasMoon, hasEarth, hasSun, totalEnergySpent, totalUpgradesBought, displayName
+            };
+            localStorage.setItem('starToPlanet', JSON.stringify(gameData));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('starToPlanet');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    coins = data.coins || 0;
+                    energy = data.energy ?? 100;
+                    maxEnergy = data.maxEnergy ?? 100;
+                    clickPower = data.clickPower || 1;
+                    clickUpgradeCost = data.clickUpgradeCost || 100;
+                    clickUpgradeLevel = data.clickUpgradeLevel || 1;
+                    energyUpgradeCost = data.energyUpgradeCost || 200;
+                    energyUpgradeLevel = data.energyUpgradeLevel || 1;
+                    passiveIncomeLevel = data.passiveIncomeLevel || 0;
+                    passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+                    dailyClickCount = data.dailyClickCount || 0;
+                    dailyCoinsEarned = data.dailyCoinsEarned || 0;
+                    dailyEnergySpent = data.dailyEnergySpent || 0;
+                    dailyUpgradesBought = data.dailyUpgradesBought || 0;
+                    dailyTasksClaimed = data.dailyTasksClaimed || { click: false, coins: false, energy: false, upgrade: false };
+                    weeklyClickCount = data.weeklyClickCount || 0;
+                    weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
+                    weeklyEnergySpent = data.weeklyEnergySpent || 0;
+                    weeklyUpgradesBought = data.weeklyUpgradesBought || 0;
+                    weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false, energy: false, upgrade: false };
+                    hasMoon = data.hasMoon || false;
+                    hasEarth = data.hasEarth || false;
+                    hasSun = data.hasSun || false;
+                    totalEnergySpent = data.totalEnergySpent || 0;
+                    totalUpgradesBought = data.totalUpgradesBought || 0;
+                    if (data.displayName) displayName = data.displayName;
+                    if (energy > maxEnergy) energy = maxEnergy;
+                } catch(e) {}
+            }
+            if (referrerId && referrerId !== userId && !localStorage.getItem(`ref_bonus_${referrerId}_${userId}`)) {
+                localStorage.setItem(`ref_bonus_${referrerId}_${userId}`, 'claimed');
+                coins += 500;
+                showMessage('🎉 +500 монет за приглашение!');
+                saveGame();
+                syncToServer();
+            }
+            updateUI();
+        }
+
+        async function syncToServer() {
+            if (!userId || userId.toString().startsWith('guest')) return;
+            try {
+                await fetch(`https://startoplanet.onrender.com/api/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegramId: userId, coins: Math.floor(coins), clickPower, maxEnergy })
+                });
+            } catch(e) {}
+        }
+
+        function applyPassiveIncome() {
+            if (passiveIncomeRate > 0) {
+                coins += passiveIncomeRate;
+                updateUI();
+                saveGame();
+                syncToServer();
+            }
+        }
+
+        function rechargeEnergy() {
+            if (energy < maxEnergy) {
+                energy = Math.min(energy + 5, maxEnergy);
+                updateUI();
+            }
+        }
+
+        function showMessage(text, isError = false) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.color = isError ? '#ff6b6b' : '#ffd700';
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 2000);
+        }
+
+        async function loadLeaderboardFromAPI() {
+            const container = document.getElementById('leaderboardList');
+            if (!container) return;
+            try {
+                const response = await fetch(`https://startoplanet.onrender.com/api/leaderboard`);
+                if (response.ok) {
+                    const players = await response.json();
+                    if (players.length > 0) {
+                        container.innerHTML = players.map((p, i) => {
+                            let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+                            const isCurrent = p.id == userId;
+                            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div></div>`;
+                        }).join('');
+                        return;
+                    }
+                }
+            } catch(e) { console.log(e); }
+            container.innerHTML = '<div class="leaderboard-item glass-panel">🏆 Загрузка...</div>';
+        }
+
+        function loadFriendsFromAPI() {
+            const container = document.getElementById('level1List');
+            if (!container) return;
+            container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+            document.getElementById('referralCount').textContent = '0';
+            document.getElementById('referralBonus').textContent = '0';
+            document.getElementById('profileReferrals').textContent = '0';
+        }
+
+        function setupTabs() {
+            const panels = { game: document.getElementById('gameArea'), tasks: document.getElementById('tasksPanel'), friends: document.getElementById('friendsPanel'), profile: document.getElementById('profilePanel'), leaderboard: document.getElementById('leaderboardPanel'), airdrop: document.getElementById('airdropPanel') };
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
+                    if (panels[tab]) panels[tab].style.display = 'block';
+                    if (tab === 'game') panels.game.style.display = 'flex';
+                    if (tab === 'leaderboard') loadLeaderboardFromAPI();
+                    if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
+                });
+            });
+        }
+
+        function setupTasksTabs() {
+            const tabs = document.querySelectorAll('.tasks-tab');
+            const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
+            tabs.forEach(t => {
+                t.addEventListener('click', () => {
+                    const target = t.dataset.tasksTab;
+                    tabs.forEach(tt => tt.classList.remove('active'));
+                    t.classList.add('active');
+                    Object.values(contents).forEach(c => c?.classList.remove('active'));
+                    if (contents[target]) contents[target].classList.add('active');
+                });
+            });
+        }
+
+        function updateReferralLink() { 
+            const linkInput = document.getElementById('referralLink'); 
+            if(linkInput && userId) linkInput.value = `https://t.me/startoplanet_bot?start=ref_${userId}`; 
+        }
+
+        function copyReferralLink() { 
+            const input = document.getElementById('referralLink'); 
+            if(input) { input.select(); document.execCommand('copy'); showMessage('✅ Ссылка скопирована'); } 
+        }
+
+        function shareReferralLink() {
+            const input = document.getElementById('referralLink');
+            if(input && tg.openTelegramLink) {
+                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`);
+            } else if(input) {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(input.value)}&text=⭐ Star to Planet ⭐ Присоединяйся и получай бонусы!`, '_blank');
+            }
+        }
+
+        function init() {
+            init3D();
+            loadGame();
+            setupTabs();
+            setupTasksTabs();
+            updateReferralLink();
+            document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
+            document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
+            document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
+            document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
+            document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
+            document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
+            document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
+            document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', 300, 'daily_energy'));
+            document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', 200, 'daily_upgrade'));
+            document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
+            document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
+            document.getElementById('weeklyEnergyClaim')?.addEventListener('click', () => claimTask('weeklyEnergyClaim', 1500, 'weekly_energy'));
+            document.getElementById('weeklyUpgradeClaim')?.addEventListener('click', () => claimTask('weeklyUpgradeClaim', 2000, 'weekly_upgrade'));
+            document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
+            document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
+            document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
+            const boostBtn = document.getElementById('boostBtn');
+            const boostModal = document.getElementById('boostModal');
+            const closeBoost = document.getElementById('closeBoostModal');
+            if(boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
+            if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
+            if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
+            setInterval(applyPassiveIncome, 60000);
+            setInterval(rechargeEnergy, 1000);
+            const raysContainer = document.getElementById('raysContainer');
+            if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
+            document.getElementById('gameArea').style.display = 'flex';
+            console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
+            setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
+            
+            const soundToggleBtn = document.getElementById('soundToggle');
+            if (soundToggleBtn) {
+                soundToggleBtn.addEventListener('click', () => {
+                    soundEnabled = !soundEnabled;
+                    soundToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
+                    showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
+                });
+            }
+        }
+        
+        init();
+    </script>
 </body>
 </html>
