@@ -7,7 +7,7 @@ const { Pool } = pkg;
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;  // ← ИСПРАВЛЕНО: порт 10000
 const APP_URL = 'https://startoplanet.onrender.com';
 
 if (!BOT_TOKEN) {
@@ -22,7 +22,7 @@ const app = express();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 5000
+    connectionTimeoutMillis: 10000
 });
 
 async function initDB() {
@@ -43,8 +43,10 @@ async function initDB() {
             )
         `);
         console.log('✅ Таблица users создана');
+        return true;
     } catch (err) {
         console.error('❌ Ошибка БД:', err.message);
+        return false;
     }
 }
 
@@ -167,7 +169,10 @@ app.post('/api/save', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`✅ Веб-сервер на порту ${PORT}`));
+// ========== ЗАПУСК СЕРВЕРА ==========
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Веб-сервер на порту ${PORT}`);
+});
 
 // ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
@@ -214,7 +219,23 @@ bot.on('web_app_data', async (ctx) => {
     }
 });
 
-// ========== ЗАПУСК ==========
-await initDB();
+// ========== ЗАПУСК БОТА ==========
+try {
+    const dbOk = await initDB();
+    if (!dbOk) {
+        console.warn('⚠️ БД не подключена, но бот продолжает работу');
+    }
+} catch (err) {
+    console.error('❌ Критическая ошибка БД:', err.message);
+}
+
 bot.launch();
 console.log('🤖 Бот запущен!');
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('Получен SIGTERM, закрываем сервер...');
+    server.close(() => {
+        bot.stop('SIGTERM');
+    });
+});
