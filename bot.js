@@ -17,7 +17,6 @@ if (!BOT_TOKEN) {
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 
-// ========== ВЕБ-СЕРВЕР ==========
 app.use(express.json());
 app.use(express.static('frontend'));
 
@@ -63,7 +62,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Веб-сервер на порту ${PORT}`);
 });
 
-// ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
     const userName = ctx.from.first_name || 'игрок';
@@ -112,7 +110,7 @@ bot.on('web_app_data', async (ctx) => {
     }
 });
 
-// ========== ЗАПУСК С ПРОВЕРКОЙ ПОДКЛЮЧЕНИЯ ==========
+// ========== ЗАПУСК С ПРОВЕРКОЙ ==========
 const isConnected = await checkConnection();
 if (!isConnected) {
     console.error('❌ Критическая ошибка: не удалось подключиться к базе данных');
