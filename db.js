@@ -1,43 +1,26 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-// Путь к сертификату Supabase
-const certPath = path.join(__dirname, 'prod-ca-2021.crt');
-
-// Проверяем наличие сертификата
-if (!fs.existsSync(certPath)) {
-    console.error('❌ Сертификат не найден по пути:', certPath);
-    console.error('❌ Убедись, что файл prod-ca-2021.crt находится в корне проекта');
-    process.exit(1);
-}
-
-console.log('✅ SSL сертификат Supabase загружен');
-
+// Безопасное подключение с проверкой сертификата через стандартный механизм
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        ca: fs.readFileSync(certPath).toString(),
-        rejectUnauthorized: true  // Безопасное подключение
+        rejectUnauthorized: true,
+        // Добавляем явное требование SSL
+        sslmode: 'require'
     },
     connectionTimeoutMillis: 10000
 });
 
-// Проверка подключения
 export async function checkConnection() {
     try {
         const client = await pool.connect();
         await client.query('SELECT 1');
         client.release();
-        console.log('✅ Безопасное SSL подключение к Supabase установлено');
+        console.log('✅ Подключение к Supabase установлено');
         return true;
     } catch (err) {
         console.error('❌ Ошибка подключения к Supabase:', err.message);
@@ -45,7 +28,6 @@ export async function checkConnection() {
     }
 }
 
-// Создание таблицы
 export async function initDB() {
     const query = `
         CREATE TABLE IF NOT EXISTS users (
@@ -70,7 +52,6 @@ export async function initDB() {
     }
 }
 
-// Получить пользователя
 export async function getUser(userId) {
     try {
         let res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -96,7 +77,6 @@ export async function getUser(userId) {
     }
 }
 
-// Обновить пользователя
 export async function updateUser(userId, data) {
     try {
         const user = await getUser(userId);
@@ -116,7 +96,6 @@ export async function updateUser(userId, data) {
     }
 }
 
-// Топ игроков
 export async function getTopPlayers(limit = 10) {
     try {
         const res = await pool.query(
@@ -129,7 +108,6 @@ export async function getTopPlayers(limit = 10) {
     }
 }
 
-// Место в рейтинге
 export async function getPlayerRank(userId) {
     try {
         const res = await pool.query(
@@ -142,7 +120,6 @@ export async function getPlayerRank(userId) {
     }
 }
 
-// Всего игроков
 export async function getTotalPlayers() {
     try {
         const res = await pool.query('SELECT COUNT(*) FROM users');
