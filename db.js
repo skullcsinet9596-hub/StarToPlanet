@@ -4,13 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Безопасное подключение с проверкой сертификата через стандартный механизм
+// Neon.tech работает с SSL без дополнительных сертификатов
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: true,
-        // Добавляем явное требование SSL
-        sslmode: 'require'
+        rejectUnauthorized: true  // Безопасное подключение
     },
     connectionTimeoutMillis: 10000
 });
@@ -20,10 +18,10 @@ export async function checkConnection() {
         const client = await pool.connect();
         await client.query('SELECT 1');
         client.release();
-        console.log('✅ Подключение к Supabase установлено');
+        console.log('✅ Подключение к Neon.tech установлено');
         return true;
     } catch (err) {
-        console.error('❌ Ошибка подключения к Supabase:', err.message);
+        console.error('❌ Ошибка подключения к Neon.tech:', err.message);
         return false;
     }
 }
