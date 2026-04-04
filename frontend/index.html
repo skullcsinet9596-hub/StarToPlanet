@@ -1722,7 +1722,7 @@
 
         function rechargeEnergy() {
             if (energy < maxEnergy) {
-                energy = Math.min(energy + 5, maxEnergy);
+                energy = Math.min(energy + 1, maxEnergy);
                 updateUI();
             }
         }
@@ -1842,7 +1842,7 @@
             if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
             if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
             setInterval(applyPassiveIncome, 60000);
-            setInterval(rechargeEnergy, 1000);
+            setInterval(rechargeEnergy, 10000);
             const raysContainer = document.getElementById('raysContainer');
             if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
             document.getElementById('gameArea').style.display = 'flex';
