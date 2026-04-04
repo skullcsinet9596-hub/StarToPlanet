@@ -7,7 +7,7 @@ const { Pool } = pkg;
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const PORT = process.env.PORT || 10000;  // ← ИСПРАВЛЕНО: порт 10000
+const PORT = process.env.PORT || 3000;
 const APP_URL = 'https://startoplanet.onrender.com';
 
 if (!BOT_TOKEN) {
@@ -18,10 +18,12 @@ if (!BOT_TOKEN) {
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 
-// ========== БАЗА ДАННЫХ ==========
+// ========== БАЗА ДАННЫХ С БЕЗОПАСНЫМ SSL ==========
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ssl: {
+        rejectUnauthorized: true  // ← БЕЗОПАСНО: проверка сертификата ВКЛЮЧЕНА
+    },
     connectionTimeoutMillis: 10000
 });
 
@@ -46,6 +48,19 @@ async function initDB() {
         return true;
     } catch (err) {
         console.error('❌ Ошибка БД:', err.message);
+        return false;
+    }
+}
+
+async function checkConnection() {
+    try {
+        const client = await pool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        console.log('✅ Безопасное SSL подключение к Supabase установлено');
+        return true;
+    } catch (err) {
+        console.error('❌ Ошибка подключения к Supabase:', err.message);
         return false;
     }
 }
@@ -169,8 +184,7 @@ app.post('/api/save', async (req, res) => {
     }
 });
 
-// ========== ЗАПУСК СЕРВЕРА ==========
-const server = app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Веб-сервер на порту ${PORT}`);
 });
 
@@ -202,10 +216,56 @@ bot.start(async (ctx) => {
 bot.command('rating', async (ctx) => {
     const top = await getTopPlayers(10);
     let msg = '🏆 ТОП ИГРОКОВ 🏆\n\n';
-    for (let i = 0; i < top.length; i++) {
-        msg += `${i+1}. ${top[i].name} — ${top[i].coins} 🪙\n`;
+    if (top.length === 0) {
+        msg += 'Пока нет игроков. Будь первым!';
+    } else {
+        for (let i = 0; i < top.length; i++) {
+            msg += `${i+1}. ${top[i].name} — ${top[i].coins} 🪙\n`;
+        }
     }
     await ctx.reply(msg);
+});
+
+bot.command('stats', async (ctx) => {
+    const userId = ctx.from.id;
+    const user = await getUser(userId);
+    const rank = await getPlayerRank(userId);
+    const total = await getTotalPlayers();
+    
+    await ctx.reply(`
+📊 <b>ВАША СТАТИСТИКА</b>
+
+👤 <b>Игрок:</b> ${user.name}
+🏆 <b>Место в рейтинге:</b> #${rank} из ${total}
+
+💰 <b>Монет:</b> ${user.coins}
+💪 <b>Сила клика:</b> ${user.click_power}
+⚡ <b>Энергия:</b> ${user.energy}/${user.max_energy}
+🤖 <b>Пассивный доход:</b> ${user.passive_income_level * 5} монет/мин
+    `, { parse_mode: 'HTML' });
+});
+
+bot.command('ping', async (ctx) => {
+    const total = await getTotalPlayers();
+    await ctx.reply(`🏓 Pong! Бот работает\n📊 Всего игроков: ${total}`);
+});
+
+bot.command('help', async (ctx) => {
+    await ctx.reply(`
+📖 <b>КОМАНДЫ БОТА</b>
+
+/start — Главное меню
+/rating — Таблица лидеров
+/stats — Моя статистика
+/ping — Проверить работу бота
+/help — Эта справка
+
+🎮 <b>Как играть:</b>
+1. Нажми "ЗАПУСТИТЬ ИГРУ"
+2. Тапай по звезде/планете
+3. Покупай улучшения в BOOST
+4. Поднимайся в рейтинге!
+    `, { parse_mode: 'HTML' });
 });
 
 bot.on('web_app_data', async (ctx) => {
@@ -215,27 +275,18 @@ bot.on('web_app_data', async (ctx) => {
         await ctx.reply('✅ Данные сохранены!');
     } catch (e) {
         console.error(e);
-        await ctx.reply('❌ Ошибка');
+        await ctx.reply('❌ Ошибка сохранения');
     }
 });
 
-// ========== ЗАПУСК БОТА ==========
-try {
-    const dbOk = await initDB();
-    if (!dbOk) {
-        console.warn('⚠️ БД не подключена, но бот продолжает работу');
-    }
-} catch (err) {
-    console.error('❌ Критическая ошибка БД:', err.message);
+// ========== ЗАПУСК С ПРОВЕРКОЙ ПОДКЛЮЧЕНИЯ ==========
+const isConnected = await checkConnection();
+if (!isConnected) {
+    console.error('❌ Критическая ошибка: не удалось подключиться к базе данных');
+    console.error('❌ Бот остановлен из соображений безопасности');
+    process.exit(1);
 }
 
+await initDB();
 bot.launch();
-console.log('🤖 Бот запущен!');
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('Получен SIGTERM, закрываем сервер...');
-    server.close(() => {
-        bot.stop('SIGTERM');
-    });
-});
+console.log('🤖 Star to Planet Bot запущен с безопасным SSL подключением!');
