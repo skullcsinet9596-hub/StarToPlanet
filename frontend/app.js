@@ -185,6 +185,7 @@ starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0x
 scene.add(starsField);
 
 function animate() {
+    if (!renderer || !scene || !camera) return;
     requestAnimationFrame(animate);
     if (planetMesh) planetMesh.rotation.y += 0.005;
     if (starsField) starsField.rotation.y += 0.0005;
@@ -431,6 +432,7 @@ async function loadFromServer() {
                 
                 if (energy > maxEnergy) energy = maxEnergy;
                 updateUI();
+                updateTaskButtons(); // Обновляем кнопки заданий
                 console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
             } else {
                 console.log('❌ Неверные данные с сервера:', data);
@@ -547,53 +549,61 @@ async function claimTask(taskId, reward, type) {
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { 
         dailyTasksClaimed.coins = true; 
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { 
         weeklyTasksClaimed.click = true; 
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { 
         weeklyTasksClaimed.coins = true; 
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_energy' && !dailyTasksClaimed.energy && energy >= 100) { 
         dailyTasksClaimed.energy = true; 
         energy -= 100; 
         showMessage(`🎉 Энергия восстановлена!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && clickUpgradeLevel >= 5) { 
         dailyTasksClaimed.upgrade = true; 
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && energy >= 100) { 
         weeklyTasksClaimed.energy = true; 
         energy -= 100; 
         showMessage(`🎉 Энергия восстановлена!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && clickUpgradeLevel >= 10) { 
         weeklyTasksClaimed.upgrade = true; 
         coins += reward; 
         showMessage(`🎉 +${reward} монет!`); 
         saveGame();
+        updateTaskButtons(); // Обновляем кнопки
     }
     else {
         showMessage('❌ Задание недоступно!', true);
     }
-    updateUI(); syncWithBot(); updateTaskButtons();
+}    updateUI(); syncWithBot(); updateTaskButtons();
 }
 
 // ========== РЕЙТИНГ ==========
