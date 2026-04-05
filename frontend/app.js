@@ -86,34 +86,84 @@ function initAudio() {
 }
 
 // ========== 3D СЦЕНА ==========
-const container = document.getElementById('canvas-container');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x030318);
-scene.fog = new THREE.FogExp2(0x030318, 0.003);
-
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 3.5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-if (container) container.appendChild(renderer.domElement);
-
-const ambientLight = new THREE.AmbientLight(0x404060);
-scene.add(ambientLight);
-const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-mainLight.position.set(2, 3, 4);
-scene.add(mainLight);
-const fillLight = new THREE.PointLight(0x4466aa, 0.5);
-fillLight.position.set(-2, 1, 2);
-scene.add(fillLight);
+function init3D() {
+    const container = document.getElementById('canvas-container');
+    if (!container) {
+        console.error('❌ canvas-container не найден');
+        return;
+    }
+    
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030318);
+    scene.fog = new THREE.FogExp2(0x030318, 0.003);
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 3.5);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+    
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+    mainLight.position.set(2, 3, 4);
+    scene.add(mainLight);
+    const fillLight = new THREE.PointLight(0x4466aa, 0.5);
+    fillLight.position.set(-2, 1, 2);
+    scene.add(fillLight);
+    
+    // Звёздный фон
+    const starCount = 2000;
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+        starPositions[i*3] = (Math.random() - 0.5) * 200;
+        starPositions[i*3+1] = (Math.random() - 0.5) * 200;
+        starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 }));
+    scene.add(starsField);
+    
+    // Сохраняем в глобальные переменные
+    window.scene = scene;
+    window.camera = camera;
+    window.renderer = renderer;
+    window.starsField = starsField;
+    
+    // Создаем планету
+    updatePlanetByLevel();
+    
+    // Запускаем анимацию
+    function animate() {
+        requestAnimationFrame(animate);
+        if (window.planetMesh) {
+            window.planetMesh.rotation.y += 0.005;
+        }
+        if (window.starsField) {
+            window.starsField.rotation.y += 0.0005;
+        }
+        renderer.render(scene, camera);
+    }
+    animate();
+    
+    // Обработка изменения размера окна
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    console.log('✅ 3D сцена инициализирована');
+}
 
 // Планета/звезда
 let planetMesh = null;
-let starsField = null;
 
 function createStar() {
-    if (planetMesh) scene.remove(planetMesh);
+    if (planetMesh) window.scene.remove(planetMesh);
     const geometry = new THREE.SphereGeometry(0.85, 128, 128);
     const material = new THREE.MeshStandardMaterial({
         color: 0xffdd99,
@@ -123,7 +173,7 @@ function createStar() {
         metalness: 0.0
     });
     planetMesh = new THREE.Mesh(geometry, material);
-    scene.add(planetMesh);
+    window.scene.add(planetMesh);
     
     const rayCount = 12;
     for (let i = 0; i < rayCount; i++) {
@@ -133,12 +183,12 @@ function createStar() {
         const ray = new THREE.Mesh(rayGeo, rayMat);
         ray.position.set(Math.cos(angle) * 1.15, Math.sin(angle) * 1.15, 0);
         ray.rotation.z = angle;
-        scene.add(ray);
+        window.scene.add(ray);
     }
 }
 
 function createPlanet(level) {
-    if (planetMesh) scene.remove(planetMesh);
+    if (planetMesh) window.scene.remove(planetMesh);
     
     const colors = {
         1: 0xb0a790, 2: 0xc46d5e, 3: 0xe6b856, 4: 0x4169e1,
@@ -154,14 +204,14 @@ function createPlanet(level) {
         metalness: 0.1
     });
     planetMesh = new THREE.Mesh(geometry, material);
-    scene.add(planetMesh);
+    window.scene.add(planetMesh);
     
     if (level === 6) {
         const ringGeo = new THREE.TorusGeometry(sizes[level] * 1.2, 0.1, 64, 200);
         const ringMat = new THREE.MeshStandardMaterial({ color: 0xc9b37c, roughness: 0.4 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 2.2;
-        scene.add(ring);
+        window.scene.add(ring);
     }
 }
 
@@ -170,38 +220,6 @@ function updatePlanetByLevel() {
     if (level === 0) createStar();
     else createPlanet(level);
 }
-
-// Звёздный фон
-const starCount = 2000;
-const starGeometry = new THREE.BufferGeometry();
-const starPositions = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount; i++) {
-    starPositions[i*3] = (Math.random() - 0.5) * 200;
-    starPositions[i*3+1] = (Math.random() - 0.5) * 200;
-    starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
-}
-starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 }));
-scene.add(starsField);
-
-function animate() {
-    if (!renderer || !scene || !camera) return;
-    requestAnimationFrame(animate);
-    if (planetMesh) {
-        planetMesh.rotation.y += 0.005;
-    }
-    if (starsField) {
-        starsField.rotation.y += 0.0005;
-    }
-    renderer.render(scene, camera);
-}
-animate();
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
 // ========== ИГРОВАЯ ЛОГИКА ==========
 function getLevel() {
