@@ -401,31 +401,41 @@ async function syncWithBot() {
 async function loadFromServer() {
     if (!userId) return;
     try {
+        console.log('🔄 Загрузка данных с сервера...');
         const response = await fetch(`${API_BASE}/api/user/${userId}`);
         if (response.ok) {
             const data = await response.json();
-            coins = data.coins || 0;
-            energy = data.energy ?? 100;
-            maxEnergy = data.maxEnergy ?? 100;
-            clickPower = data.clickPower || 1;
-            passiveIncomeLevel = data.passiveIncomeLevel || 0;
-            hasMoon = data.hasMoon || false;
-            hasEarth = data.hasEarth || false;
-            hasSun = data.hasSun || false;
+            console.log('📥 Полученные данные:', data);
             
-            // Новые поля
-            clickUpgradeLevel = data.clickUpgradeLevel || 1;
-            clickUpgradeCost = data.clickUpgradeCost || 100;
-            energyUpgradeLevel = data.energyUpgradeLevel || 1;
-            energyUpgradeCost = data.energyUpgradeCost || 200;
-            passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
-            soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
-            
-            if (energy > maxEnergy) energy = maxEnergy;
-            updateUI();
-            console.log('✅ Данные загружены с сервера:', data);
+            // Проверяем что данные валидны
+            if (data && typeof data.coins === 'number') {
+                coins = Math.floor(data.coins);
+                energy = data.energy ?? 100;
+                maxEnergy = data.maxEnergy ?? 100;
+                clickPower = data.clickPower || 1;
+                passiveIncomeLevel = data.passiveIncomeLevel || 0;
+                hasMoon = data.hasMoon || false;
+                hasEarth = data.hasEarth || false;
+                hasSun = data.hasSun || false;
+                
+                // Новые поля
+                clickUpgradeLevel = data.clickUpgradeLevel || 1;
+                clickUpgradeCost = data.clickUpgradeCost || 100;
+                energyUpgradeLevel = data.energyUpgradeLevel || 1;
+                energyUpgradeCost = data.energyUpgradeCost || 200;
+                passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+                soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
+                
+                if (energy > maxEnergy) energy = maxEnergy;
+                updateUI();
+                console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
+            } else {
+                console.log('❌ Неверные данные с сервера:', data);
+            }
         }
-    } catch(e) { console.log('Ошибка загрузки', e); }
+    } catch(e) { 
+        console.log('❌ Ошибка загрузки:', e); 
+    }
 }
 
 // ========== ОБРАБОТКА КЛИКОВ ==========

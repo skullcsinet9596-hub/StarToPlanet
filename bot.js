@@ -137,7 +137,8 @@ bot.command('rating', async (ctx) => {
     let msg = '🏆 <b>ТОП ИГРОКОВ</b> 🏆\n\n';
     for (let i = 0; i < top.length; i++) {
         const name = top[i].username || top[i].first_name || 'Аноним';
-        msg += `${i+1}. ${name} — ${Number(top[i].coins).toLocaleString()} 🪙\n`;
+        const level = top[i].level || 1;
+        msg += `${i+1}. ${name} — ${Number(top[i].coins).toLocaleString()} 🪙 (Уровень ${level})\n`;
     }
     await ctx.reply(msg, { parse_mode: 'HTML' });
 });

@@ -105,13 +105,17 @@
 
         .game-area {
             flex: 1;
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             padding: 20px;
             min-height: 450px;
             position: relative;
+        }
+        
+        .game-area.active {
+            display: flex;
         }
 
         #canvas-container {
@@ -1800,9 +1804,8 @@
                     const tab = btn.dataset.tab;
                     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
-                    if (panels[tab]) panels[tab].style.display = 'block';
-                    if (tab === 'game') panels.game.style.display = 'flex';
+                    Object.values(panels).forEach(p => { if(p) p.classList.remove('active'); });
+                    if (panels[tab]) panels[tab].classList.add('active');
                     if (tab === 'leaderboard') loadLeaderboardFromAPI();
                     if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
                 });
