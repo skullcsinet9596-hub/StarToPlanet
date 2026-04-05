@@ -756,6 +756,9 @@
     <script type="module">
         import * as THREE from 'three';
 
+        // ==================== АДРЕС БОТА ====================
+        const API_BASE = 'https://startoplanet.onrender.com';
+
         // ==================== ЗВУК ====================
         let soundEnabled = true;
         let audioContext = null;
@@ -796,13 +799,17 @@
         tg.enableClosingConfirmation();
 
         const tgUser = tg.initDataUnsafe?.user;
-        let userId = tgUser?.id || 'guest_' + Math.floor(Math.random() * 1000000000);
+        let userId = tgUser?.id || null;
         let displayName = "Игрок";
         let userAvatar = tgUser?.photo_url || 'https://telegram.org/img/tg_icon_light.png';
+        
         if (tgUser) {
             if (tgUser.username) displayName = `@${tgUser.username}`;
             else if (tgUser.first_name) displayName = tgUser.first_name;
         }
+        
+        console.log('🔵 Telegram WebApp инициализирован, userId:', userId);
+
         document.getElementById('userName').textContent = displayName;
         document.getElementById('profileName').textContent = displayName;
         document.getElementById('userAvatar')?.setAttribute('src', userAvatar);
@@ -1267,10 +1274,15 @@
         }
 
         // ==================== СИНХРОНИЗАЦИЯ С БОТОМ ====================
-        async function syncToBot() {
+        async function sendToBot() {
+            if (!userId) {
+                console.log('⚠️ Нет userId, отправка пропущена');
+                return;
+            }
+            
             const gameData = {
                 coins: Math.floor(coins),
-                energy: energy,
+                energy: Math.floor(energy),
                 maxEnergy: maxEnergy,
                 clickPower: clickPower,
                 passiveIncomeLevel: passiveIncomeLevel,
@@ -1278,14 +1290,32 @@
                 hasEarth: hasEarth,
                 hasSun: hasSun
             };
-            tg.sendData(JSON.stringify(gameData));
-            console.log('📤 Данные отправлены в бот:', gameData);
+            
+            console.log('📤 Отправка в бот:', gameData);
+            
+            // 1. Через Telegram WebApp
+            if (tg) {
+                tg.sendData(JSON.stringify(gameData));
+            }
+            
+            // 2. Через API напрямую
+            try {
+                const response = await fetch(`${API_BASE}/api/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId, gameData: gameData })
+                });
+                const result = await response.json();
+                console.log('📤 API ответ:', result);
+            } catch(e) {
+                console.error('❌ Ошибка API:', e);
+            }
         }
 
         async function loadFromBot() {
-            if (!userId || userId.toString().startsWith('guest')) return;
+            if (!userId) return;
             try {
-                const response = await fetch(`/api/user/${userId}`);
+                const response = await fetch(`${API_BASE}/api/user/${userId}`);
                 if (response.ok) {
                     const data = await response.json();
                     coins = data.coins || 0;
@@ -1299,9 +1329,11 @@
                     if (energy > maxEnergy) energy = maxEnergy;
                     updateUI();
                     console.log('✅ Данные загружены из бота:', data);
+                } else {
+                    console.log('⚠️ Ошибка загрузки из бота:', response.status);
                 }
             } catch(e) {
-                console.log('Ошибка загрузки из бота:', e);
+                console.log('❌ Ошибка загрузки:', e);
             }
         }
 
@@ -1482,7 +1514,7 @@
             }
             updateUI();
             saveGame();
-            await syncToBot();
+            await sendToBot();
             updateTaskButtons();
         }
 
@@ -1522,7 +1554,7 @@
             } else if (hasSun) {
                 if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
                 const cond = document.getElementById('sunCondition');
-                if (cond) cond.innerHTML = '✅ Солнце куплено';
+                if (cond) cond.innerHTML = '✅ Солнце куплена';
             }
         }
 
@@ -1532,19 +1564,19 @@
                 showMessage('🌕 Луна куплена! +20 000 монет/мин');
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
             } else if (type === 'earth' && hasMoon && !hasEarth) {
                 hasEarth = true;
                 showMessage('🌍 Земля куплена! +50 000 монет/мин');
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
             } else if (type === 'sun' && hasEarth && !hasSun) {
                 hasSun = true;
                 showMessage('☀️ Солнце куплено! +100 000 монет/мин');
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
             } else {
                 showMessage('❌ Условия не выполнены', true);
             }
@@ -1560,7 +1592,7 @@
                 weeklyUpgradesBought++;
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
                 showMessage('✅ Сила клика +1');
             } else if (clickUpgradeLevel >= 100) {
                 showMessage('⚠️ Максимальный уровень!', true);
@@ -1580,7 +1612,7 @@
                 weeklyUpgradesBought++;
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
                 showMessage('✅ Энергия +50');
             } else if (energyUpgradeLevel >= 100) {
                 showMessage('⚠️ Максимальный уровень!', true);
@@ -1598,7 +1630,7 @@
                 weeklyUpgradesBought++;
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
                 showMessage('✅ Пассивный доход +5/мин');
             } else if (passiveIncomeLevel >= 100) {
                 showMessage('⚠️ Максимальный уровень!', true);
@@ -1640,7 +1672,7 @@
             
             updateUI();
             saveGame();
-            syncToBot();
+            sendToBot();
             
             const container = document.getElementById('canvas-container');
             if (container) {
@@ -1727,7 +1759,7 @@
                 coins += 500;
                 showMessage('🎉 +500 монет за приглашение!');
                 saveGame();
-                syncToBot();
+                sendToBot();
             }
             updateUI();
         }
@@ -1737,7 +1769,7 @@
                 coins += passiveIncomeRate;
                 updateUI();
                 saveGame();
-                syncToBot();
+                sendToBot();
             }
         }
 
@@ -1760,7 +1792,7 @@
             const container = document.getElementById('leaderboardList');
             if (!container) return;
             try {
-                const response = await fetch(`/api/leaderboard`);
+                const response = await fetch(`${API_BASE}/api/leaderboard`);
                 if (response.ok) {
                     const players = await response.json();
                     if (players.length > 0) {
@@ -1836,7 +1868,7 @@
 
         async function init() {
             init3D();
-            await loadFromBot();  // ← ЗАГРУЖАЕМ ДАННЫЕ ИЗ БОТА
+            await loadFromBot();
             loadGame();
             setupTabs();
             setupTasksTabs();
@@ -1864,7 +1896,7 @@
             if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
             if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
             setInterval(applyPassiveIncome, 60000);
-            setInterval(rechargeEnergy, 10000); // 10 секунд
+            setInterval(rechargeEnergy, 3000); // 1 энергия в 3 секунды
             const raysContainer = document.getElementById('raysContainer');
             if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
             document.getElementById('gameArea').style.display = 'flex';
