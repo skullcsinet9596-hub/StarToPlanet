@@ -335,8 +335,8 @@ function loadGame() {
         try {
             const data = JSON.parse(saved);
             coins = data.coins || 0;
-            energy = data.energy ?? 1000;
-            maxEnergy = data.maxEnergy ?? 1000;
+            energy = data.energy ?? 100;
+            maxEnergy = data.maxEnergy ?? 100;
             clickPower = data.clickPower || 1;
             clickUpgradeCost = data.clickUpgradeCost || 100;
             clickUpgradeLevel = data.clickUpgradeLevel || 1;
@@ -396,6 +396,9 @@ async function syncWithBot() {
     } catch(e) {
         console.error('❌ Ошибка API:', e);
     }
+    
+    // Также обновляем локально
+    saveGame();
 }
 
 async function loadFromServer() {
@@ -410,8 +413,8 @@ async function loadFromServer() {
             // Проверяем что данные валидны
             if (data && typeof data.coins === 'number') {
                 coins = Math.floor(data.coins);
-                energy = data.energy ?? 1000;
-                maxEnergy = data.maxEnergy ?? 1000;
+                energy = data.energy ?? 100;
+                maxEnergy = data.maxEnergy ?? 100;
                 clickPower = data.clickPower || 1;
                 passiveIncomeLevel = data.passiveIncomeLevel || 0;
                 hasMoon = data.hasMoon || false;
@@ -539,12 +542,58 @@ function updateTaskButtons() {
 }
 
 async function claimTask(taskId, reward, type) {
-    if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { dailyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { dailyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { weeklyTasksClaimed.click = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { weeklyTasksClaimed.coins = true; coins += reward; showMessage(`🎉 +${reward} монет!`); }
-    else { showMessage('❌ Условия не выполнены', true); return; }
-    updateUI(); saveGame(); syncWithBot(); updateTaskButtons();
+    if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { 
+        dailyTasksClaimed.click = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { 
+        dailyTasksClaimed.coins = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { 
+        weeklyTasksClaimed.click = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { 
+        weeklyTasksClaimed.coins = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else if (type === 'daily_energy' && !dailyTasksClaimed.energy && energy >= 100) { 
+        dailyTasksClaimed.energy = true; 
+        energy -= 100; 
+        showMessage(`🎉 Энергия восстановлена!`); 
+        saveGame();
+    }
+    else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && clickUpgradeLevel >= 5) { 
+        dailyTasksClaimed.upgrade = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && energy >= 100) { 
+        weeklyTasksClaimed.energy = true; 
+        energy -= 100; 
+        showMessage(`🎉 Энергия восстановлена!`); 
+        saveGame();
+    }
+    else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && clickUpgradeLevel >= 10) { 
+        weeklyTasksClaimed.upgrade = true; 
+        coins += reward; 
+        showMessage(`🎉 +${reward} монет!`); 
+        saveGame();
+    }
+    else {
+        showMessage('❌ Задание недоступно!', true);
+    }
+    updateUI(); syncWithBot(); updateTaskButtons();
 }
 
 // ========== РЕЙТИНГ ==========
@@ -664,6 +713,7 @@ async function init() {
     loadGame();
     setupTabs();
     setupTasksTabs();
+    init3D(); // Добавляем инициализацию 3D сцены
     updateReferralLink();
     
     document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);

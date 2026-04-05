@@ -48,8 +48,8 @@ export async function initDB() {
                 username TEXT,
                 first_name TEXT,
                 coins BIGINT DEFAULT 0,
-                energy INTEGER DEFAULT 1000,
-                max_energy INTEGER DEFAULT 1000,
+                energy INTEGER DEFAULT 100,
+                max_energy INTEGER DEFAULT 100,
                 click_power INTEGER DEFAULT 1,
                 click_upgrade_level INTEGER DEFAULT 1,
                 click_upgrade_cost INTEGER DEFAULT 100,
@@ -146,7 +146,7 @@ export async function createUser(telegramId, username, firstName, referrerId = n
     try {
         await pool.query(`
             INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled)
-            VALUES ($1, $2, $3, $4, 1000, 1000, 1, 100, 1, 200, 0, 500, true)
+            VALUES ($1, $2, $3, $4, 100, 100, 1, 100, 1, 200, 0, 500, true)
         `, [telegramId, username, firstName, referrerId]);
 
         if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
