@@ -209,10 +209,15 @@ export async function updateUserGameData(telegramId, gameData) {
             gameData.passiveIncomeLevel, gameData.passiveIncomeUpgradeCost,
             gameData.hasMoon, gameData.hasEarth, gameData.hasSun,
             gameData.soundEnabled,
+            gameData.premiumLevel,
+            gameData.level,
             telegramId
         ]);
 
         await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [gameData.coins, telegramId]);
+    } catch (err) {
+        console.error('Ошибка updateUserGameData:', err.message);
+    }
 }
 
 export async function updateUserProgress(telegramId, coins, clickPower, maxEnergy, premiumLevel = 0, level = 1) {
