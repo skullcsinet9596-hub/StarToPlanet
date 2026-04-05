@@ -40,7 +40,7 @@ app.get('/api/user/:userId', async (req, res) => {
     try {
         const user = await getUser(parseInt(req.params.userId));
         if (!user) {
-            res.json({ coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
+            res.json({ coins: 0, energy: 1000, maxEnergy: 1000, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
         
@@ -61,7 +61,7 @@ app.get('/api/user/:userId', async (req, res) => {
             soundEnabled: user.sound_enabled
         });
     } catch (e) {
-        res.json({ coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
+        res.json({ coins: 0, energy: 1000, maxEnergy: 1000, clickPower: 1, passiveIncomeLevel: 0 });
     }
 });
 

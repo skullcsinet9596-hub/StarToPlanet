@@ -335,8 +335,8 @@ function loadGame() {
         try {
             const data = JSON.parse(saved);
             coins = data.coins || 0;
-            energy = data.energy ?? 100;
-            maxEnergy = data.maxEnergy ?? 100;
+            energy = data.energy ?? 1000;
+            maxEnergy = data.maxEnergy ?? 1000;
             clickPower = data.clickPower || 1;
             clickUpgradeCost = data.clickUpgradeCost || 100;
             clickUpgradeLevel = data.clickUpgradeLevel || 1;
@@ -410,8 +410,8 @@ async function loadFromServer() {
             // Проверяем что данные валидны
             if (data && typeof data.coins === 'number') {
                 coins = Math.floor(data.coins);
-                energy = data.energy ?? 100;
-                maxEnergy = data.maxEnergy ?? 100;
+                energy = data.energy ?? 1000;
+                maxEnergy = data.maxEnergy ?? 1000;
                 clickPower = data.clickPower || 1;
                 passiveIncomeLevel = data.passiveIncomeLevel || 0;
                 hasMoon = data.hasMoon || false;
