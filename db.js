@@ -26,103 +26,217 @@ export async function checkConnection() {
     }
 }
 
+// ========== ИНИЦИАЛИЗАЦИЯ ТАБЛИЦ ==========
+
 export async function initDB() {
-    const query = `
-        CREATE TABLE IF NOT EXISTS users (
-            id BIGINT PRIMARY KEY,
-            name VARCHAR(255) DEFAULT 'Игрок',
-            coins BIGINT DEFAULT 0,
-            energy INT DEFAULT 100,
-            max_energy INT DEFAULT 100,
-            click_power INT DEFAULT 1,
-            passive_income_level INT DEFAULT 0,
-            has_moon BOOLEAN DEFAULT FALSE,
-            has_earth BOOLEAN DEFAULT FALSE,
-            has_sun BOOLEAN DEFAULT FALSE,
-            last_active_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
-        )
-    `;
     try {
-        await pool.query(query);
-        console.log('✅ Таблица users создана/проверена');
+        // Таблица пользователей
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                telegram_id BIGINT PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                coins BIGINT DEFAULT 0,
+                energy INTEGER DEFAULT 1000,
+                max_energy INTEGER DEFAULT 1000,
+                click_power INTEGER DEFAULT 1,
+                click_upgrade_level INTEGER DEFAULT 1,
+                click_upgrade_cost INTEGER DEFAULT 100,
+                energy_upgrade_level INTEGER DEFAULT 1,
+                energy_upgrade_cost INTEGER DEFAULT 200,
+                passive_income_level INTEGER DEFAULT 0,
+                passive_income_cost INTEGER DEFAULT 500,
+                level INTEGER DEFAULT 1,
+                referrals_count INTEGER DEFAULT 0,
+                premium_level INTEGER DEFAULT 0,
+                has_moon BOOLEAN DEFAULT FALSE,
+                has_earth BOOLEAN DEFAULT FALSE,
+                has_sun BOOLEAN DEFAULT FALSE,
+                sound_enabled BOOLEAN DEFAULT TRUE,
+                referrer_id BIGINT,
+                last_daily_bonus DATE,
+                daily_streak INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица рефералов
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS referrals (
+                id SERIAL PRIMARY KEY,
+                referrer_id BIGINT,
+                referred_id BIGINT UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица лидерборда
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS leaderboard (
+                telegram_id BIGINT PRIMARY KEY,
+                coins BIGINT DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Таблица ежедневных заданий
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS daily_tasks (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT,
+                date DATE,
+                clicks INTEGER DEFAULT 0,
+                coins_earned INTEGER DEFAULT 0,
+                click_claimed BOOLEAN DEFAULT FALSE,
+                coins_claimed BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (telegram_id) REFERENCES users(telegram_id),
+                UNIQUE(telegram_id, date)
+            )
+        `);
+
+        // Таблица еженедельных заданий
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS weekly_tasks (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT,
+                week_start DATE,
+                clicks INTEGER DEFAULT 0,
+                coins_earned INTEGER DEFAULT 0,
+                click_claimed BOOLEAN DEFAULT FALSE,
+                coins_claimed BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (telegram_id) REFERENCES users(telegram_id),
+                UNIQUE(telegram_id, week_start)
+            )
+        `);
+
+        console.log('✅ Все таблицы созданы/проверены');
     } catch (err) {
-        console.error('❌ Ошибка создания таблицы:', err.message);
+        console.error('❌ Ошибка создания таблиц:', err.message);
     }
 }
 
-export async function getUser(userId) {
+export async function getUser(telegramId) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return null;
     try {
-        let res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        if (res.rows.length === 0) {
-            await pool.query('INSERT INTO users (id) VALUES ($1)', [userId]);
-            res = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        }
-        return res.rows[0];
+        const res = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
+        return res.rows[0] || null;
     } catch (err) {
         console.error('Ошибка getUser:', err.message);
-        return {
-            id: userId,
-            name: 'Игрок',
-            coins: 0,
-            energy: 100,
-            max_energy: 100,
-            click_power: 1,
-            passive_income_level: 0,
-            has_moon: false,
-            has_earth: false,
-            has_sun: false
-        };
+        return null;
     }
 }
 
-export async function updateUser(userId, data) {
+export async function createUser(telegramId, username, firstName, referrerId = null) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return null;
+    
+    const existing = await getUser(telegramId);
+    if (existing) return existing;
+
     try {
-        const user = await getUser(userId);
-        const updated = { ...user, ...data };
-        await pool.query(
-            `UPDATE users SET 
-                name=$2, coins=$3, energy=$4, max_energy=$5,
-                click_power=$6, passive_income_level=$7,
-                has_moon=$8, has_earth=$9, has_sun=$10, last_active_time=$11
-            WHERE id=$1`,
-            [userId, updated.name, updated.coins, updated.energy,
-             updated.max_energy, updated.click_power, updated.passive_income_level,
-             updated.has_moon, updated.has_earth, updated.has_sun, Date.now()]
-        );
+        await pool.query(`
+            INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled)
+            VALUES ($1, $2, $3, $4, 1000, 1000, 1, 100, 1, 200, 0, 500, true)
+        `, telegramId, username, firstName, referrerId);
+
+        if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
+            const referrer = await getUser(referrerId);
+            if (referrer) {
+                const existingReferral = await pool.query(
+                    'SELECT * FROM referrals WHERE referrer_id = $1 AND referred_id = $2',
+                    [referrerId, telegramId]
+                );
+                
+                if (existingReferral.rows.length === 0) {
+                    await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [referrerId, telegramId]);
+                    await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', referrerId);
+                    await addCoins(referrerId, 1000);
+                    await addCoins(telegramId, 500);
+                }
+            }
+        }
+
+        await pool.query('INSERT INTO leaderboard (telegram_id, coins) VALUES ($1, 0)', [telegramId]);
+        return await getUser(telegramId);
     } catch (err) {
-        console.error('Ошибка updateUser:', err.message);
+        console.error('Ошибка createUser:', err.message);
+        return null;
     }
 }
 
-export async function getTopPlayers(limit = 10) {
+export async function addCoins(telegramId, amount) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
     try {
-        const res = await pool.query(
-            'SELECT id, name, coins FROM users ORDER BY coins DESC LIMIT $1',
-            [limit]
-        );
-        return res.rows;
+        await pool.query('UPDATE users SET coins = coins + $1 WHERE telegram_id = $2', [amount, telegramId]);
+        await pool.query('UPDATE leaderboard SET coins = coins + $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [amount, telegramId]);
     } catch (err) {
-        return [];
+        console.error('Ошибка addCoins:', err.message);
+    }
+}
+
+export async function addEnergy(telegramId, amount) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        await pool.query('UPDATE users SET energy = LEAST(max_energy, energy + $1) WHERE telegram_id = $2', [amount, telegramId]);
+    } catch (err) {
+        console.error('Ошибка addEnergy:', err.message);
+    }
+}
+
+export async function updateUserGameData(telegramId, gameData) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        await pool.query(`
+            UPDATE users SET
+                coins = $1,
+                energy = $2,
+                max_energy = $3,
+                click_power = $4,
+                click_upgrade_level = $5,
+                click_upgrade_cost = $6,
+                energy_upgrade_level = $7,
+                energy_upgrade_cost = $8,
+                passive_income_level = $9,
+                passive_income_cost = $10,
+                has_moon = $11,
+                has_earth = $12,
+                has_sun = $13,
+                sound_enabled = $14
+            WHERE telegram_id = $15
+        `, [
+            gameData.coins, gameData.energy, gameData.maxEnergy,
+            gameData.clickPower, gameData.clickUpgradeLevel, gameData.clickUpgradeCost,
+            gameData.energyUpgradeLevel, gameData.energyUpgradeCost,
+            gameData.passiveIncomeLevel, gameData.passiveIncomeUpgradeCost,
+            gameData.hasMoon, gameData.hasEarth, gameData.hasSun,
+            gameData.soundEnabled,
+            telegramId
+        ]);
+
+        await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [gameData.coins, telegramId]);
+    } catch (err) {
+        console.error('Ошибка updateUserGameData:', err.message);
+    }
+}
+
+export async function updateUserProgress(telegramId, coins, clickPower, maxEnergy, premiumLevel = 0) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        await pool.query(`
+            UPDATE users SET coins = $1, click_power = $2, max_energy = $3, premium_level = $4
+            WHERE telegram_id = $5
+        `, [coins, clickPower, maxEnergy, premiumLevel, telegramId]);
+        await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [coins, telegramId]);
     }
 }
 
 export async function getPlayerRank(userId) {
     try {
         const res = await pool.query(
-            'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins,0) FROM users WHERE id=$1)',
+            'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins,0) FROM users WHERE telegram_id=$1)',
             [userId]
         );
         return parseInt(res.rows[0].count) + 1;
     } catch (err) {
         return 1;
-    }
-}
-
-export async function getTotalPlayers() {
-    try {
-        const res = await pool.query('SELECT COUNT(*) FROM users');
-        return parseInt(res.rows[0].count);
-    } catch (err) {
-        return 0;
     }
 }

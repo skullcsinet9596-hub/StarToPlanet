@@ -324,7 +324,7 @@ function saveGame() {
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
         dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
         weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
-        hasMoon, hasEarth, hasSun
+        hasMoon, hasEarth, hasSun, soundEnabled
     };
     localStorage.setItem('starToPlanet', JSON.stringify(gameData));
 }
@@ -353,6 +353,7 @@ function loadGame() {
             hasMoon = data.hasMoon || false;
             hasEarth = data.hasEarth || false;
             hasSun = data.hasSun || false;
+            soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
             if (energy > maxEnergy) energy = maxEnergy;
         } catch(e) { console.log(e); }
     }
@@ -362,6 +363,7 @@ function loadGame() {
 // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
 async function syncWithBot() {
     if (!tg) return;
+    
     const gameData = {
         coins: Math.floor(coins),
         energy: energy,
@@ -370,9 +372,30 @@ async function syncWithBot() {
         passiveIncomeLevel: passiveIncomeLevel,
         hasMoon: hasMoon,
         hasEarth: hasEarth,
-        hasSun: hasSun
+        hasSun: hasSun,
+        clickUpgradeLevel: clickUpgradeLevel,
+        clickUpgradeCost: clickUpgradeCost,
+        energyUpgradeLevel: energyUpgradeLevel,
+        energyUpgradeCost: energyUpgradeCost,
+        passiveIncomeUpgradeCost: passiveIncomeUpgradeCost,
+        soundEnabled: soundEnabled
     };
+    
+    // Отправка через Telegram WebApp
     tg.sendData(JSON.stringify(gameData));
+    
+    // Сохранение через API
+    try {
+        const response = await fetch(`${API_BASE}/api/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId, gameData: gameData })
+        });
+        const result = await response.json();
+        console.log('📤 API ответ:', result);
+    } catch(e) {
+        console.error('❌ Ошибка API:', e);
+    }
 }
 
 async function loadFromServer() {
@@ -389,9 +412,18 @@ async function loadFromServer() {
             hasMoon = data.hasMoon || false;
             hasEarth = data.hasEarth || false;
             hasSun = data.hasSun || false;
+            
+            // Новые поля
+            clickUpgradeLevel = data.clickUpgradeLevel || 1;
+            clickUpgradeCost = data.clickUpgradeCost || 100;
+            energyUpgradeLevel = data.energyUpgradeLevel || 1;
+            energyUpgradeCost = data.energyUpgradeCost || 200;
+            passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+            soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
+            
             if (energy > maxEnergy) energy = maxEnergy;
             updateUI();
-            console.log('✅ Данные загружены с сервера');
+            console.log('✅ Данные загружены с сервера:', data);
         }
     } catch(e) { console.log('Ошибка загрузки', e); }
 }
@@ -645,6 +677,26 @@ async function init() {
     if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
     
     setInterval(applyPassiveIncome, 60000);
+    
+    // Периодическая синхронизация с сервером каждые 30 секунд
+    setInterval(async () => {
+        await loadFromServer();
+        console.log('🔄 Данные синхронизированы с сервером');
+    }, 30000);
+    
+    // Синхронизация при фокусе окна (для компьютеров)
+    window.addEventListener('focus', async () => {
+        await loadFromServer();
+        console.log('🔄 Данные синхронизированы при фокусе окна');
+    });
+    
+    // Синхронизация при видимости страницы (для телефонов)
+    document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden) {
+            await loadFromServer();
+            console.log('🔄 Данные синхронизированы при возврате на страницу');
+        }
+    });
     setInterval(rechargeEnergy, 1000);
     
     const raysContainer = document.getElementById('raysContainer');

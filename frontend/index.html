@@ -582,6 +582,7 @@
             }
         }
     </script>
+    <script type="module" src="app.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -1312,31 +1313,6 @@
             }
         }
 
-        async function loadFromBot() {
-            if (!userId) return;
-            try {
-                const response = await fetch(`${API_BASE}/api/user/${userId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    coins = data.coins || 0;
-                    energy = data.energy ?? 100;
-                    maxEnergy = data.maxEnergy ?? 100;
-                    clickPower = data.clickPower || 1;
-                    passiveIncomeLevel = data.passiveIncomeLevel || 0;
-                    hasMoon = data.hasMoon || false;
-                    hasEarth = data.hasEarth || false;
-                    hasSun = data.hasSun || false;
-                    if (energy > maxEnergy) energy = maxEnergy;
-                    updateUI();
-                    console.log('✅ Данные загружены из бота:', data);
-                } else {
-                    console.log('⚠️ Ошибка загрузки из бота:', response.status);
-                }
-            } catch(e) {
-                console.log('❌ Ошибка загрузки:', e);
-            }
-        }
-
         // ==================== ИГРОВАЯ ЛОГИКА ====================
         function getLevel() {
             if (hasSun) return 10;
@@ -1868,7 +1844,7 @@
 
         async function init() {
             init3D();
-            await loadFromBot();
+            await loadFromServer();
             loadGame();
             setupTabs();
             setupTasksTabs();
