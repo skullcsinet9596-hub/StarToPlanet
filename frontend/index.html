@@ -1799,6 +1799,11 @@
 
         function setupTabs() {
             const panels = { game: document.getElementById('gameArea'), tasks: document.getElementById('tasksPanel'), friends: document.getElementById('friendsPanel'), profile: document.getElementById('profilePanel'), leaderboard: document.getElementById('leaderboardPanel'), airdrop: document.getElementById('airdropPanel') };
+            
+            // Изначально активна только игра
+            Object.values(panels).forEach(p => { if(p) p.classList.remove('active'); });
+            panels.game.classList.add('active');
+            
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const tab = btn.dataset.tab;
@@ -1878,7 +1883,7 @@
             setInterval(rechargeEnergy, 3000); // 1 энергия в 3 секунды
             const raysContainer = document.getElementById('raysContainer');
             if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
-            document.getElementById('gameArea').style.display = 'flex';
+            document.getElementById('gameArea').classList.add('active');
             console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
             setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
             
