@@ -30,9 +30,20 @@ export async function checkConnection() {
 
 export async function initDB() {
     try {
+        // Удаляем все таблицы и создаем заново
+        console.log('🔄 Пересоздание таблиц...');
+        
+        await pool.query('DROP TABLE IF EXISTS weekly_tasks CASCADE');
+        await pool.query('DROP TABLE IF EXISTS daily_tasks CASCADE');
+        await pool.query('DROP TABLE IF EXISTS leaderboard CASCADE');
+        await pool.query('DROP TABLE IF EXISTS referrals CASCADE');
+        await pool.query('DROP TABLE IF EXISTS users CASCADE');
+        
+        console.log('🗑️ Старые таблицы удалены');
+        
         // Таблица пользователей
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE users (
                 telegram_id BIGINT PRIMARY KEY,
                 username TEXT,
                 first_name TEXT,
@@ -62,7 +73,7 @@ export async function initDB() {
 
         // Таблица рефералов
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS referrals (
+            CREATE TABLE referrals (
                 id SERIAL PRIMARY KEY,
                 referrer_id BIGINT,
                 referred_id BIGINT UNIQUE,
@@ -72,7 +83,7 @@ export async function initDB() {
 
         // Таблица лидерборда
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS leaderboard (
+            CREATE TABLE leaderboard (
                 telegram_id BIGINT PRIMARY KEY,
                 coins BIGINT DEFAULT 0,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -81,7 +92,7 @@ export async function initDB() {
 
         // Таблица ежедневных заданий
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS daily_tasks (
+            CREATE TABLE daily_tasks (
                 id SERIAL PRIMARY KEY,
                 telegram_id BIGINT,
                 date DATE,
@@ -96,7 +107,7 @@ export async function initDB() {
 
         // Таблица еженедельных заданий
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS weekly_tasks (
+            CREATE TABLE weekly_tasks (
                 id SERIAL PRIMARY KEY,
                 telegram_id BIGINT,
                 week_start DATE,
