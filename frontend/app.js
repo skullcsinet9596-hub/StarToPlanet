@@ -424,6 +424,7 @@ async function syncWithBot() {
     saveGame();
 }
 
+// Загрузка данных с сервера
 async function loadFromServer() {
     if (!userId) return;
     try {
@@ -625,7 +626,7 @@ async function claimTask(taskId, reward, type) {
     else {
         showMessage('❌ Задание недоступно!', true);
     }
-}    updateUI(); syncWithBot(); updateTaskButtons();
+    updateUI(); syncWithBot(); updateTaskButtons();
 }
 
 // ========== РЕЙТИНГ ==========
