@@ -213,30 +213,141 @@ export async function updateUserGameData(telegramId, gameData) {
         ]);
 
         await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [gameData.coins, telegramId]);
-    } catch (err) {
-        console.error('Ошибка updateUserGameData:', err.message);
-    }
 }
 
-export async function updateUserProgress(telegramId, coins, clickPower, maxEnergy, premiumLevel = 0) {
-    if (!telegramId || isNaN(parseInt(telegramId))) return;
-    try {
-        await pool.query(`
-            UPDATE users SET coins = $1, click_power = $2, max_energy = $3, premium_level = $4
-            WHERE telegram_id = $5
-        `, [coins, clickPower, maxEnergy, premiumLevel, telegramId]);
-        await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [coins, telegramId]);
-    }
+export async function updateUserProgress(telegramId, coins, clickPower, maxEnergy, premiumLevel = 0, level = 1) {
+if (!telegramId || isNaN(parseInt(telegramId))) return;
+try {
+await pool.query(`
+UPDATE users SET coins = $1, click_power = $2, max_energy = $3, premium_level = $4, level = $5
+WHERE telegram_id = $6
+`, [coins, clickPower, maxEnergy, premiumLevel, level, telegramId]);
+await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [coins, telegramId]);
+} catch (err) {
+console.error('Ошибка updateUserProgress:', err.message);
+}
 }
 
 export async function getPlayerRank(userId) {
-    try {
-        const res = await pool.query(
-            'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins,0) FROM users WHERE telegram_id=$1)',
-            [userId]
-        );
-        return parseInt(res.rows[0].count) + 1;
-    } catch (err) {
-        return 1;
-    }
+try {
+const res = await pool.query(
+'SELECT COUNT(*) FROM users WHERE coins > (SELECT COALESCE(coins,0) FROM users WHERE telegram_id=$1)',
+[userId]
+);
+return parseInt(res.rows[0].count) + 1;
+} catch (err) {
+return 1;
+}
+}
+
+export async function getLeaderboard(limit = 100) {
+try {
+const res = await pool.query(`
+SELECT u.telegram_id, u.username, u.first_name, l.coins, u.level, u.referrals_count
+FROM leaderboard l
+JOIN users u ON l.telegram_id = u.telegram_id
+ORDER BY l.coins DESC
+LIMIT $1
+`, [limit]);
+return res.rows;
+} catch (err) {
+console.error('Ошибка getLeaderboard:', err.message);
+return [];
+}
+}
+
+export async function getStats(telegramId) {
+if (!telegramId || isNaN(parseInt(telegramId))) return null;
+    
+try {
+const user = await getUser(telegramId);
+const referrals = await getReferrals(telegramId);
+        
+const leaderboardPositionRes = await pool.query(`
+SELECT COUNT(*) + 1 as position
+FROM leaderboard
+WHERE coins > (SELECT coins FROM leaderboard WHERE telegram_id = $1)
+`, [telegramId]);
+        
+return {
+user,
+referralsCount: referrals.length,
+referrals,
+leaderboardPosition: leaderboardPositionRes.rows[0]?.position || 1,
+totalReferralBonus: (user?.referrals_count || 0) * 1000
+};
+} catch (err) {
+console.error('Ошибка getStats:', err.message);
+return null;
+}
+}
+
+export async function getReferrals(telegramId) {
+if (!telegramId || isNaN(parseInt(telegramId))) return [];
+try {
+const res = await pool.query(`
+SELECT u.telegram_id, u.username, u.first_name, u.coins, r.created_at
+FROM referrals r
+JOIN users u ON r.referred_id = u.telegram_id
+WHERE r.referrer_id = $1
+ORDER BY r.created_at DESC
+`, [telegramId]);
+return res.rows;
+} catch (err) {
+console.error('Ошибка getReferrals:', err.message);
+return [];
+}
+}
+
+export async function claimDailyBonus(telegramId) {
+if (!telegramId || isNaN(parseInt(telegramId))) return { success: false, message: 'Неверный ID' };
+    
+const today = new Date().toISOString().split('T')[0];
+    
+try {
+const user = await getUser(telegramId);
+if (!user) return { success: false, message: 'Пользователь не найден' };
+        
+if (user.last_daily_bonus === today) {
+return { success: false, message: 'Бонус уже получен сегодня!' };
+}
+        
+let streak = user.daily_streak || 0;
+const yesterday = new Date();
+yesterday.setDate(yesterday.getDate() - 1);
+const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+if (user.last_daily_bonus === yesterdayStr) {
+streak = Math.min(streak + 1, 7);
+} else {
+streak = 1;
+}
+        
+const bonuses = [100, 200, 300, 500, 800, 1200, 2000];
+const bonus = bonuses[streak - 1] || 2000;
+        
+await addCoins(telegramId, bonus);
+await pool.query('UPDATE users SET last_daily_bonus = $1, daily_streak = $2 WHERE telegram_id = $3', [today, streak, telegramId]);
+        
+return { success: true, bonus, streak };
+} catch (err) {
+console.error('Ошибка claimDailyBonus:', err.message);
+return { success: false, message: 'Ошибка сервера' };
+}
+}
+
+export async function toggleSound(telegramId) {
+if (!telegramId || isNaN(parseInt(telegramId))) return false;
+    
+try {
+const user = await getUser(telegramId);
+if (!user) return false;
+        
+const newState = !user.sound_enabled;
+await pool.query('UPDATE users SET sound_enabled = $1 WHERE telegram_id = $2', [newState, telegramId]);
+return newState;
+} catch (err) {
+console.error('Ошибка toggleSound:', err.message);
+return false;
+}
 }
