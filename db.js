@@ -136,7 +136,7 @@ export async function createUser(telegramId, username, firstName, referrerId = n
         await pool.query(`
             INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled)
             VALUES ($1, $2, $3, $4, 1000, 1000, 1, 100, 1, 200, 0, 500, true)
-        `, telegramId, username, firstName, referrerId);
+        `, [telegramId, username, firstName, referrerId]);
 
         if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
             const referrer = await getUser(referrerId);
