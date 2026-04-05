@@ -718,7 +718,7 @@ function rechargeEnergy() {
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-async function init() {
+document.addEventListener('DOMContentLoaded', async () => {
     await loadFromServer();
     loadGame();
     setupTabs();
@@ -747,26 +747,6 @@ async function init() {
     if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
     
     setInterval(applyPassiveIncome, 60000);
-    
-    // Периодическая синхронизация с сервером каждые 30 секунд
-    setInterval(async () => {
-        await loadFromServer();
-        console.log('🔄 Данные синхронизированы с сервером');
-    }, 30000);
-    
-    // Синхронизация при фокусе окна (для компьютеров)
-    window.addEventListener('focus', async () => {
-        await loadFromServer();
-        console.log('🔄 Данные синхронизированы при фокусе окна');
-    });
-    
-    // Синхронизация при видимости страницы (для телефонов)
-    document.addEventListener('visibilitychange', async () => {
-        if (!document.hidden) {
-            await loadFromServer();
-            console.log('🔄 Данные синхронизированы при возврате на страницу');
-        }
-    });
     setInterval(rechargeEnergy, 1000);
     
     const raysContainer = document.getElementById('raysContainer');
@@ -777,12 +757,29 @@ async function init() {
     
     if(!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
-        style.id = 'popup-animation';
-        style.textContent = `@keyframes popup {0%{opacity:1;transform:translateY(0) scale(0.8);}100%{opacity:0;transform:translateY(-50px) scale(1);}}.floating-number{animation:popup 0.5s ease-out forwards !important;}`;
+        style.textContent = `
+            @keyframes popupAnimation {
+                0% { transform: scale(0.8) rotate(0deg); opacity: 0; }
+                50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+                100% { transform: scale(1) rotate(360deg); opacity: 0; }
+            }
+            .popup-animation {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 24px;
+                font-weight: bold;
+                color: #FFD60A;
+                pointer-events: none;
+                z-index: 10000;
+            }
+        `;
         document.head.appendChild(style);
     }
     
-    setTimeout(() => { loadLeaderboard(); loadFriends(); }, 1000);
+    console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
+    setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
     
     const soundToggleBtn = document.getElementById('soundToggle');
     if (soundToggleBtn) {
@@ -792,6 +789,6 @@ async function init() {
             showMessage(soundEnabled ? '🔊 Звук включён' : '🔇 Звук выключен');
         });
     }
-}
+});
 
 init();
