@@ -187,8 +187,12 @@ scene.add(starsField);
 function animate() {
     if (!renderer || !scene || !camera) return;
     requestAnimationFrame(animate);
-    if (planetMesh) planetMesh.rotation.y += 0.005;
-    if (starsField) starsField.rotation.y += 0.0005;
+    if (planetMesh) {
+        planetMesh.rotation.y += 0.005;
+    }
+    if (starsField) {
+        starsField.rotation.y += 0.0005;
+    }
     renderer.render(scene, camera);
 }
 animate();
@@ -657,7 +661,7 @@ function shareReferralLink() {
 // ========== ПАНЕЛИ ==========
 function setupTabs() {
     const panels = {
-        game: document.getElementById('game-area'),
+        game: document.getElementById('gameArea'),
         tasks: document.getElementById('tasksPanel'),
         friends: document.getElementById('friendsPanel'),
         profile: document.getElementById('profilePanel'),
@@ -669,11 +673,10 @@ function setupTabs() {
             const tab = btn.dataset.tab;
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            Object.values(panels).forEach(p => { if(p) p.style.display = 'none'; });
-            if (panels[tab]) panels[tab].style.display = 'block';
-            if (tab === 'game') panels.game.style.display = 'flex';
-            if (tab === 'leaderboard') loadLeaderboard();
-            if (tab === 'friends') { loadFriends(); updateReferralLink(); }
+            Object.values(panels).forEach(p => { if(p) p.classList.remove('active'); });
+            if (panels[tab]) panels[tab].classList.add('active');
+            if (tab === 'leaderboard') loadLeaderboardFromAPI();
+            if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
         });
     });
 }
