@@ -182,6 +182,42 @@ export async function addEnergy(telegramId, amount) {
     }
 }
 
+export async function updateUser(telegramId, data) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return null;
+    
+    try {
+        // Строим динамический UPDATE запрос
+        const fields = [];
+        const values = [];
+        let paramCount = 1;
+        
+        for (const [key, value] of Object.entries(data)) {
+            if (value !== undefined) {
+                fields.push(`${key} = $${paramCount}`);
+                values.push(value);
+                paramCount++;
+            }
+        }
+        
+        if (fields.length === 0) return await getUser(telegramId);
+        
+        const query = `UPDATE users SET ${fields.join(', ')} WHERE telegram_id = $${paramCount}`;
+        values.push(telegramId);
+        
+        await pool.query(query, values);
+        
+        // Обновляем лидерборд если изменились монеты
+        if (data.coins !== undefined) {
+            await pool.query('UPDATE leaderboard SET coins = $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [data.coins, telegramId]);
+        }
+        
+        return await getUser(telegramId);
+    } catch (err) {
+        console.error('Ошибка updateUser:', err.message);
+        return null;
+    }
+}
+
 export async function updateUserGameData(telegramId, gameData) {
     if (!telegramId || isNaN(parseInt(telegramId))) return;
     try {
