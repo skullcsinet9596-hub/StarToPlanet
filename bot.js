@@ -66,7 +66,6 @@ app.listen(PORT, '0.0.0.0', () => {
 // ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
-    // Сохраняем никнейм из Telegram
     let userName = ctx.from.username || ctx.from.first_name || 'игрок';
     if (ctx.from.username) userName = `@${ctx.from.username}`;
     
@@ -76,24 +75,25 @@ bot.start(async (ctx) => {
     const total = await getTotalPlayers();
     
     await ctx.replyWithHTML(`
-🌟 <b>Добро пожаловать, ${userName}!</b> 🌟
+🌟 <b>Star to Planet</b> 🌟
 
-💰 Баланс: ${user.coins} монет
-⚡ Энергия: ${user.energy}/${user.max_energy}
-💪 Сила клика: ${user.click_power}
-🏆 Место в рейтинге: #${rank} из ${total}
+👤 <b>Игрок:</b> ${userName}
+💰 <b>Баланс:</b> ${user.coins} 🪙
+⚡ <b>Энергия:</b> ${user.energy}/${user.max_energy}
+💪 <b>Сила клика:</b> ${user.click_power}
+🏆 <b>Рейтинг:</b> #${rank} из ${total}
 
 🎮 Нажми на кнопку ниже!
     `, {
         reply_markup: {
-            inline_keyboard: [[{ text: '✨ ЗАПУСТИТЬ ИГРУ ✨', web_app: { url: APP_URL } }]]
+            inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: APP_URL } }]]
         }
     });
 });
 
 bot.command('rating', async (ctx) => {
     const top = await getTopPlayers(10);
-    let msg = '🏆 ТОП ИГРОКОВ 🏆\n\n';
+    let msg = '🏆 <b>ТОП ИГРОКОВ</b> 🏆\n\n';
     if (top.length === 0) {
         msg += 'Пока нет игроков. Будь первым!';
     } else {
@@ -101,7 +101,7 @@ bot.command('rating', async (ctx) => {
             msg += `${i+1}. ${top[i].name} — ${top[i].coins} 🪙\n`;
         }
     }
-    await ctx.reply(msg);
+    await ctx.reply(msg, { parse_mode: 'HTML' });
 });
 
 // ========== ОБРАБОТКА ДАННЫХ ИЗ ИГРЫ ==========
@@ -110,7 +110,7 @@ bot.on('web_app_data', async (ctx) => {
         const data = JSON.parse(ctx.webAppData.data);
         const userId = ctx.from.id;
         
-        console.log('📥 Получены данные из игры:', data);
+        console.log('📥 Получены данные от игрока', userId, ':', data.coins, 'монет');
         
         await updateUser(userId, {
             coins: data.coins,
@@ -124,21 +124,20 @@ bot.on('web_app_data', async (ctx) => {
         });
         
         const rank = await getPlayerRank(userId);
-        await ctx.reply(`✅ Данные сохранены!\n💰 Баланс: ${data.coins} монет\n🏆 Место в рейтинге: #${rank}`);
+        console.log('✅ Сохранено, рейтинг:', rank);
         
     } catch (e) {
-        console.error('Ошибка обработки web_app_data:', e);
-        await ctx.reply('❌ Ошибка сохранения данных');
+        console.error('❌ Ошибка:', e);
     }
 });
 
 // ========== ЗАПУСК ==========
 const isConnected = await checkConnection();
 if (!isConnected) {
-    console.error('❌ Критическая ошибка: не удалось подключиться к базе данных');
+    console.error('❌ Ошибка подключения к БД');
     process.exit(1);
 }
 
 await initDB();
 bot.launch();
-console.log('🤖 Star to Planet Bot запущен!');
+console.log('🤖 Бот запущен!');
