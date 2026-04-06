@@ -107,7 +107,7 @@ function init3D() {
     scene.fog = new THREE.FogExp2(0x050507, 0.0018);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, -0.28, 3.4);
+    camera.position.set(0, 0, 3.8);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     
@@ -235,8 +235,8 @@ function getPlanetSize(level) {
 }
 
 function getPlanetYOffset() {
-    // Поднимаем планету выше, чтобы центр был между верхней панелью и BOOST.
-    return 0.52;
+    // Баланс между верхним дашбордом и BOOST без обрезки по верхнему краю.
+    return 0.72;
 }
 
 function spawnLevelUpExplosion(level) {
@@ -298,20 +298,20 @@ function createStar() {
     );
 
     const plasma = new THREE.Mesh(
-        new THREE.SphereGeometry(size * 1.08, 40, 40),
+        new THREE.SphereGeometry(size * 1.05, 40, 40),
         new THREE.MeshBasicMaterial({
             color: 0x37b6ff,
             transparent: true,
-            opacity: 0.34
+            opacity: 0.28
         })
     );
 
     const corona = new THREE.Mesh(
-        new THREE.SphereGeometry(size * 1.2, 36, 36),
+        new THREE.SphereGeometry(size * 1.12, 36, 36),
         new THREE.MeshBasicMaterial({
             color: 0xc8f1ff,
             transparent: true,
-            opacity: 0.2
+            opacity: 0.14
         })
     );
 
