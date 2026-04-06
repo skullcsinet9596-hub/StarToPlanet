@@ -16,7 +16,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3a 100%);
+            background: radial-gradient(circle at 50% 20%, #0b0b12 0%, #040406 45%, #010102 100%);
             color: #fff;
             min-height: 100vh;
             overflow-x: hidden;
@@ -107,17 +107,18 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            padding: 20px;
+            padding: 10px 20px 20px;
             min-height: 450px;
             position: relative;
         }
 
         #canvas-container {
-            width: 200px;
-            height: 200px;
-            margin: 20px auto;
+            width: 100%;
+            max-width: 360px;
+            height: 260px;
+            margin: 10px auto 6px;
             cursor: pointer;
             position: relative;
             transition: transform 0.1s ease;
@@ -131,7 +132,6 @@
             width: 100% !important;
             height: 100% !important;
             display: block;
-            border-radius: 50%;
         }
 
         .boost-btn {
@@ -147,7 +147,7 @@
             transition: all 0.2s ease;
             min-width: 104px;
             box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-            margin: 15px auto;
+            margin: 6px auto 12px;
         }
 
         .boost-btn:active { transform: scale(0.96); }
@@ -513,12 +513,11 @@
         @keyframes rayShine { 0% { opacity: 0.3; height: 45px; } 100% { opacity: 0.8; height: 60px; } }
         .airdrop-soon { font-size: 24px; font-weight: bold; color: #FFD60A; margin: 20px 0 12px; }
         .airdrop-subscribe {
-            background: #FFD60A;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
+            margin-top: 2px;
+            font-size: 14px;
+            color: #c8c8cf;
+            font-weight: 500;
+            letter-spacing: 0.2px;
         }
 
         .message {
@@ -567,7 +566,7 @@
             .coin-star-white { font-size: 48px; }
             .task-card { flex-direction: column; text-align: center; }
             .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
-            #canvas-container { width: 160px; height: 160px; }
+            #canvas-container { width: 100%; max-width: 320px; height: 230px; }
             .avatar-img { width: 38px; height: 38px; }
             .profile-avatar-img { width: 45px; height: 45px; }
             .link-box { flex-direction: column; }

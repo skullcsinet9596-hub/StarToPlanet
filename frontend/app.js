@@ -103,11 +103,11 @@ function init3D() {
     
     const scene = new THREE.Scene();
     // Убираем фон сцены, чтобы было видно звездное небо
-    scene.background = null;
-    scene.fog = new THREE.FogExp2(0x030318, 0.003);
+    scene.background = new THREE.Color(0x050507);
+    scene.fog = new THREE.FogExp2(0x050507, 0.0018);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 3.5);
+    camera.position.set(0, -0.1, 3.4);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     
@@ -137,16 +137,16 @@ function init3D() {
     scene.add(fillLight);
     
     // Звёздный фон
-    const starCount = 2000;
+    const starCount = 3200;
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
-        starPositions[i*3] = (Math.random() - 0.5) * 200;
-        starPositions[i*3+1] = (Math.random() - 0.5) * 200;
-        starPositions[i*3+2] = (Math.random() - 0.5) * 100 - 50;
+        starPositions[i*3] = (Math.random() - 0.5) * 240;
+        starPositions[i*3+1] = (Math.random() - 0.5) * 240;
+        starPositions[i*3+2] = (Math.random() - 0.5) * 160 - 60;
     }
     starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.6 }));
+    const starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.75 }));
     scene.add(starsField);
     
     // Сохраняем в глобальные переменные
@@ -271,16 +271,29 @@ function createStar() {
         window.scene.remove(window.planetMesh);
     }
 
-    const geometry = new THREE.SphereGeometry(getPlanetSize(0), 48, 48);
-    const material = new THREE.MeshStandardMaterial({
-        color: 0xfff4a3,
-        emissive: 0xffcf33,
-        emissiveIntensity: 0.35,
-        roughness: 0.35,
-        metalness: 0.05
+    const size = getPlanetSize(0);
+    const coreGeometry = new THREE.SphereGeometry(size, 56, 56);
+    const coreMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfff2a6,
+        emissive: 0xffb300,
+        emissiveIntensity: 0.95,
+        roughness: 0.2,
+        metalness: 0.02
     });
+    const core = new THREE.Mesh(coreGeometry, coreMaterial);
 
-    window.planetMesh = new THREE.Mesh(geometry, material);
+    const glowGeometry = new THREE.SphereGeometry(size * 1.22, 40, 40);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffd24a,
+        transparent: true,
+        opacity: 0.23
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+
+    const starGroup = new THREE.Group();
+    starGroup.add(core);
+    starGroup.add(glow);
+    window.planetMesh = starGroup;
     window.scene.add(window.planetMesh);
     console.log('⭐ Создана звезда (уровень 0)');
 }
