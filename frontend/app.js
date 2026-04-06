@@ -187,6 +187,8 @@ let planetMesh = null;
 let isPlanetCreating = false; // Глобальная блокировка
 
 function createStar() {
+    console.log('🚀 createStar() вызвана, isPlanetCreating:', isPlanetCreating, 'window.planetCreated:', window.planetCreated);
+    
     // Глобальная блокировка
     if (isPlanetCreating) {
         console.log('⚠️ Планета уже создается, пропускаем createStar');
@@ -196,6 +198,7 @@ function createStar() {
     
     // Полностью очищаем сцену от всех объектов
     if (window.scene) {
+        console.log('🧹 Очищаем сцену, объектов до:', window.scene.children.length);
         // Удаляем все объекты из сцены
         while(window.scene.children.length > 0) {
             const child = window.scene.children[0];
@@ -203,6 +206,7 @@ function createStar() {
             if (child.geometry) child.geometry.dispose();
             if (child.material) child.material.dispose();
         }
+        console.log('🧹 Сцена очищена, объектов после:', window.scene.children.length);
     }
     
     if (!window.scene) {
