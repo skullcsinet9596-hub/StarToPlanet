@@ -321,11 +321,8 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
-    // Обновляем планету только если уровень изменился
-    if (window.currentLevel !== level) {
-        updatePlanetByLevel();
-        window.currentLevel = level;
-    }
+    // Обновляем планету только если сцена инициализирована
+    // Планета уже создана в init3D, не обновляем здесь
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
@@ -516,20 +513,7 @@ async function loadFromServer() {
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
                 
-                // Обновляем планету СРАЗУ после загрузки данных
-                if (window.scene) {
-                    updatePlanetByLevel();
-                    console.log('✅ Планета обновлена после загрузки данных');
-                } else {
-                    console.log('⚠️ Сцена еще не готова, обновим позже');
-                    // Пробуем еще раз через 500мс
-                    setTimeout(() => {
-                        if (window.scene) {
-                            updatePlanetByLevel();
-                            console.log('✅ Планета обновлена при повторной попытке');
-                        }
-                    }, 500);
-                }
+                // Планета уже создана в init3D, не обновляем здесь
                 
                 console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
             } else {
@@ -805,8 +789,25 @@ function setupTabs() {
             const tab = btn.dataset.tab;
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            Object.values(panels).forEach(p => { if(p) p.classList.remove('active'); });
-            if (panels[tab]) panels[tab].classList.add('active');
+            
+            // Скрываем все панели
+            Object.values(panels).forEach(p => { 
+                if(p) {
+                    p.style.display = 'none';
+                    p.classList.remove('active');
+                }
+            });
+            
+            // Показываем выбранную панель
+            if (panels[tab]) {
+                if (tab === 'game') {
+                    panels[tab].style.display = 'flex';
+                } else {
+                    panels[tab].style.display = 'block';
+                }
+                panels[tab].classList.add('active');
+            }
+            
             if (tab === 'leaderboard') loadLeaderboardFromAPI();
             if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
         });
