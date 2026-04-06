@@ -196,17 +196,19 @@ function createStar() {
     }
     isPlanetCreating = true;
     
-    // Полностью очищаем сцену от всех объектов
+    // ПОЛНАЯ очистка сцены - удаляем ВСЕ объекты
     if (window.scene) {
-        console.log('🧹 Очищаем сцену, объектов до:', window.scene.children.length);
-        // Удаляем все объекты из сцены
-        while(window.scene.children.length > 0) {
-            const child = window.scene.children[0];
+        console.log('🧹 ПОЛНАЯ ОЧИСТКА СЦЕНЫ, объектов до:', window.scene.children.length);
+        
+        // Удаляем все объекты рекурсивно
+        const objectsToRemove = [...window.scene.children];
+        objectsToRemove.forEach(child => {
             window.scene.remove(child);
             if (child.geometry) child.geometry.dispose();
             if (child.material) child.material.dispose();
-        }
-        console.log('🧹 Сцена очищена, объектов после:', window.scene.children.length);
+        });
+        
+        console.log('🧹 Сцена полностью очищена, объектов после:', window.scene.children.length);
     }
     
     if (!window.scene) {
@@ -248,15 +250,19 @@ function createPlanet(level) {
     }
     isPlanetCreating = true;
     
-    // Полностью очищаем сцену от всех объектов
+    // ПОЛНАЯ очистка сцены - удаляем ВСЕ объекты
     if (window.scene) {
-        // Удаляем все объекты из сцены
-        while(window.scene.children.length > 0) {
-            const child = window.scene.children[0];
+        console.log('🧹 ПОЛНАЯ ОЧИСТКА СЦЕНЫ, объектов до:', window.scene.children.length);
+        
+        // Удаляем все объекты рекурсивно
+        const objectsToRemove = [...window.scene.children];
+        objectsToRemove.forEach(child => {
             window.scene.remove(child);
             if (child.geometry) child.geometry.dispose();
             if (child.material) child.material.dispose();
-        }
+        });
+        
+        console.log('🧹 Сцена полностью очищена, объектов после:', window.scene.children.length);
     }
     
     if (!window.scene) {
@@ -892,9 +898,11 @@ function applyPassiveIncome() {
 
 function rechargeEnergy() { 
     if (energy < maxEnergy) { 
-        energy = Math.min(energy + 5, maxEnergy); 
+        // Плавное восстановление энергии
+        const energyToAdd = Math.min(1, maxEnergy - energy);
+        energy += energyToAdd;
         updateUI(); 
-    } 
+    }
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
