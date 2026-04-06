@@ -251,6 +251,14 @@ function createPlanet(level) {
 }
 
 function updatePlanetByLevel() {
+    // Блокируем повторные вызовы
+    if (window.updatingPlanet) {
+        console.log('⚠️ Планета уже обновляется, пропускаем');
+        return;
+    }
+    
+    window.updatingPlanet = true;
+    
     const level = getLevel();
     
     // Удаляем старую планету если она существует
@@ -261,6 +269,11 @@ function updatePlanetByLevel() {
     
     if (level === 0) createStar();
     else createPlanet(level);
+    
+    // Разблокируем через 100мс
+    setTimeout(() => {
+        window.updatingPlanet = false;
+    }, 100);
 }
 
 // ========== ИГРОВАЯ ЛОГИКА ==========
@@ -308,9 +321,10 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
-    // Обновляем планету только если сцена инициализирована
-    if (window.scene) {
+    // Обновляем планету только если уровень изменился
+    if (window.currentLevel !== level) {
         updatePlanetByLevel();
+        window.currentLevel = level;
     }
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
