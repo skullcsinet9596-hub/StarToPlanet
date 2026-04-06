@@ -150,8 +150,10 @@ function init3D() {
     window.renderer = renderer;
     window.starsField = starsField;
     
-    // Создаем планету
-    updatePlanetByLevel();
+    // Создаем планету напрямую
+    const level = getLevel();
+    if (level === 0) createStar();
+    else createPlanet(level);
     
     console.log('✅ 3D сцена инициализирована');
     
