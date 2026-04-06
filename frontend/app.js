@@ -45,6 +45,9 @@ let passiveIncomeLevel = 0;
 let passiveIncomeUpgradeCost = 500;
 let passiveIncomeRate = 0;
 
+// Делаем функцию глобальной
+window.loadFromServer = loadFromServer;
+
 let hasMoon = false;
 let hasEarth = false;
 let hasSun = false;
