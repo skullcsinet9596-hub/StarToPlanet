@@ -10,13 +10,14 @@ import {
     getPlayerRank,
     claimDailyBonus,
     getStats,
-    toggleSound
+    toggleSound,
+    distributeReferralRewards
 } from './db.js';
 
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 10000);
 const APP_URL = process.env.WEBAPP_URL || 'https://startoplanet.onrender.com';
 const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
 
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
     next();
 });
 app.use(express.static('frontend'));
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
 app.get('/api/leaderboard', async (req, res) => {
     const top = await getLeaderboard(20);
@@ -82,8 +84,13 @@ app.post('/api/save', async (req, res) => {
     const { userId, gameData } = req.body;
     console.log('📥 POST /api/save:', { userId, coins: gameData?.coins });
     if (userId && gameData) {
-        await updateUser(parseInt(userId), {
-            coins: gameData.coins,
+        const telegramId = parseInt(userId);
+        const existingUser = await getUser(telegramId);
+        const previousCoins = existingUser ? Number(existingUser.coins) : 0;
+        const currentCoins = Math.max(0, Math.floor(Number(gameData.coins) || 0));
+
+        await updateUser(telegramId, {
+            coins: currentCoins,
             energy: gameData.energy,
             max_energy: gameData.maxEnergy,
             click_power: gameData.clickPower,
@@ -98,6 +105,11 @@ app.post('/api/save', async (req, res) => {
             passive_income_cost: gameData.passiveIncomeUpgradeCost,
             sound_enabled: gameData.soundEnabled
         });
+
+        const earnedCoins = Math.max(0, currentCoins - previousCoins);
+        if (earnedCoins > 0) {
+            await distributeReferralRewards(telegramId, earnedCoins);
+        }
         res.json({ success: true });
     } else {
         res.json({ success: false });
@@ -168,8 +180,11 @@ app.post('/api/premium/invoice-link', async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Веб-сервер на порту ${PORT}`);
+const server = app.listen(PORT, () => {
+    console.log(`✅ Веб-сервер на порту ${PORT} (env PORT=${process.env.PORT || 'not-set'})`);
+});
+server.on('error', (err) => {
+    console.error('❌ Ошибка веб-сервера:', err);
 });
 
 // ========== КОМАНДЫ БОТА ==========
@@ -179,7 +194,9 @@ bot.start(async (ctx) => {
     if (ctx.from.username) userName = `@${ctx.from.username}`;
     
     // Проверяем реферальный код
-    const referrerId = ctx.startPayload && !isNaN(parseInt(ctx.startPayload)) ? parseInt(ctx.startPayload) : null;
+    const payloadRaw = ctx.startPayload || '';
+    const refMatch = payloadRaw.match(/(\d+)/);
+    const referrerId = refMatch ? parseInt(refMatch[1]) : null;
     
     let user = await getUser(userId);
     if (!user) {
