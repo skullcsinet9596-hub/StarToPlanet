@@ -129,6 +129,89 @@ export async function getUser(telegramId) {
     }
 }
 
+export async function getReferralAncestors(telegramId, maxDepth = 8) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return [];
+    try {
+        const res = await pool.query(`
+            WITH RECURSIVE chain AS (
+                SELECT telegram_id, referrer_id, 1 AS depth
+                FROM users
+                WHERE telegram_id = $1
+                UNION ALL
+                SELECT u.telegram_id, u.referrer_id, c.depth + 1
+                FROM users u
+                JOIN chain c ON u.telegram_id = c.referrer_id
+                WHERE c.depth < $2
+            )
+            SELECT referrer_id AS ancestor_id, depth
+            FROM chain
+            WHERE referrer_id IS NOT NULL
+            ORDER BY depth ASC
+        `, [telegramId, maxDepth]);
+        return res.rows;
+    } catch (err) {
+        console.error('Ошибка getReferralAncestors:', err.message);
+        return [];
+    }
+}
+
+export async function getReferralLineCounts(telegramId, maxDepth = 8) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return {};
+    try {
+        const res = await pool.query(`
+            WITH RECURSIVE tree AS (
+                SELECT telegram_id, referrer_id, 0 AS depth
+                FROM users
+                WHERE telegram_id = $1
+                UNION ALL
+                SELECT u.telegram_id, u.referrer_id, t.depth + 1
+                FROM users u
+                JOIN tree t ON u.referrer_id = t.telegram_id
+                WHERE t.depth < $2
+            )
+            SELECT depth, COUNT(*)::int AS cnt
+            FROM tree
+            WHERE depth > 0
+            GROUP BY depth
+            ORDER BY depth
+        `, [telegramId, maxDepth]);
+
+        const counts = {};
+        for (const row of res.rows) counts[Number(row.depth)] = Number(row.cnt);
+        return counts;
+    } catch (err) {
+        console.error('Ошибка getReferralLineCounts:', err.message);
+        return {};
+    }
+}
+
+async function canAttachToReferrer(referrerId) {
+    const lineCaps = { 1: 5, 2: 15, 3: 25 };
+    const totalCap = 500;
+
+    const referrer = await getUser(referrerId);
+    if (!referrer) return false;
+
+    const ancestors = await getReferralAncestors(referrerId, 7);
+    const impacted = [{ ancestor_id: referrerId, depth: 1 }, ...ancestors.map(a => ({ ancestor_id: a.ancestor_id, depth: a.depth + 1 }))];
+
+    for (const item of impacted) {
+        const depth = Number(item.depth);
+        const ancestorId = Number(item.ancestor_id);
+        if (!ancestorId || depth > 8) continue;
+
+        const counts = await getReferralLineCounts(ancestorId, 8);
+        const lineCount = Number(counts[depth] || 0);
+        const totalCount = Object.values(counts).reduce((sum, v) => sum + Number(v || 0), 0);
+
+        const cap = lineCaps[depth];
+        if (cap !== undefined && lineCount >= cap) return false;
+        if (totalCount >= totalCap) return false;
+    }
+
+    return true;
+}
+
 export async function createUser(telegramId, username, firstName, referrerId = null) {
     if (!telegramId || isNaN(parseInt(telegramId))) return null;
     
@@ -136,23 +219,30 @@ export async function createUser(telegramId, username, firstName, referrerId = n
     if (existing) return existing;
 
     try {
+        let effectiveReferrerId = null;
+        if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
+            const canAttach = await canAttachToReferrer(referrerId);
+            if (canAttach) effectiveReferrerId = referrerId;
+            else console.log(`⚠️ Реферальная привязка отклонена для ${telegramId} к ${referrerId} (лимиты линий/сети)`);
+        }
+
         await pool.query(`
             INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled)
             VALUES ($1, $2, $3, $4, 100, 100, 1, 100, 1, 200, 0, 500, true)
-        `, [telegramId, username, firstName, referrerId]);
+        `, [telegramId, username, firstName, effectiveReferrerId]);
 
-        if (referrerId && referrerId !== telegramId && !isNaN(parseInt(referrerId))) {
-            const referrer = await getUser(referrerId);
+        if (effectiveReferrerId) {
+            const referrer = await getUser(effectiveReferrerId);
             if (referrer) {
                 const existingReferral = await pool.query(
                     'SELECT * FROM referrals WHERE referrer_id = $1 AND referred_id = $2',
-                    [referrerId, telegramId]
+                    [effectiveReferrerId, telegramId]
                 );
                 
                 if (existingReferral.rows.length === 0) {
-                    await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [referrerId, telegramId]);
-                    await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [referrerId]);
-                    await addCoins(referrerId, 1000);
+                    await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [effectiveReferrerId, telegramId]);
+                    await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [effectiveReferrerId]);
+                    await addCoins(effectiveReferrerId, 1000);
                     await addCoins(telegramId, 500);
                 }
             }
@@ -163,6 +253,27 @@ export async function createUser(telegramId, username, firstName, referrerId = n
     } catch (err) {
         console.error('Ошибка createUser:', err.message);
         return null;
+    }
+}
+
+export async function distributeReferralRewards(telegramId, earnedAmount) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    const amount = Math.floor(Number(earnedAmount) || 0);
+    if (amount <= 0) return;
+
+    const rates = { 1: 0.5, 2: 0.2, 3: 0.1 };
+    try {
+        const ancestors = await getReferralAncestors(telegramId, 3);
+        for (const a of ancestors) {
+            const depth = Number(a.depth);
+            const ancestorId = Number(a.ancestor_id);
+            const rate = rates[depth];
+            if (!ancestorId || !rate) continue;
+            const bonus = Math.floor(amount * rate);
+            if (bonus > 0) await addCoins(ancestorId, bonus);
+        }
+    } catch (err) {
+        console.error('Ошибка distributeReferralRewards:', err.message);
     }
 }
 
