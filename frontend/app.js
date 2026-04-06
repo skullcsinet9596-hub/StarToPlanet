@@ -144,6 +144,8 @@ function init3D() {
     // Создаем планету
     updatePlanetByLevel();
     
+    console.log('✅ 3D сцена инициализирована');
+    
     // Запускаем анимацию
     function animate() {
         requestAnimationFrame(animate);
@@ -161,8 +163,6 @@ function init3D() {
     window.addEventListener('resize', () => {
         updateRendererSize();
     });
-    
-    console.log('✅ 3D сцена инициализирована');
 }
 
 // Планета/звезда
@@ -473,6 +473,15 @@ async function loadFromServer() {
                 if (energy > maxEnergy) energy = maxEnergy;
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
+                
+                // Обновляем планету ПОСЛЕ загрузки всех данных
+                setTimeout(() => {
+                    if (window.scene) {
+                        updatePlanetByLevel();
+                        console.log('✅ Планета обновлена после загрузки данных');
+                    }
+                }, 100);
+                
                 console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
             } else {
                 console.log('❌ Неверные данные с сервера:', data);
@@ -481,6 +490,9 @@ async function loadFromServer() {
     } catch(e) { 
         console.log('❌ Ошибка загрузки:', e); 
     }
+    
+    // Также обновляем локально
+    saveGame();
 }
 
 // ========== ОБРАБОТКА КЛИКОВ ==========
