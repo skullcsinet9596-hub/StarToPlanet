@@ -185,14 +185,13 @@ function createStar() {
     }
     const geometry = new THREE.SphereGeometry(0.85, 128, 128);
     const material = new THREE.MeshStandardMaterial({
-        color: 0xffdd99,
+        color: 0xffffff,
         emissive: 0xffaa66,
-        emissiveIntensity: 0.7,
-        roughness: 0.2,
-        metalness: 0.0
+        emissiveIntensity: 0.8,
+        roughness: 0.2
     });
-    planetMesh = new THREE.Mesh(geometry, material);
-    window.scene.add(planetMesh);
+    window.planetMesh = new THREE.Mesh(geometry, material);
+    window.scene.add(window.planetMesh);
     
     const rayCount = 12;
     for (let i = 0; i < rayCount; i++) {
@@ -213,11 +212,6 @@ function createPlanet(level) {
         return;
     }
     
-    const colors = {
-        1: 0xb0a790, 2: 0xc46d5e, 3: 0xe6b856, 4: 0x4169e1,
-        5: 0xb0e0e6, 6: 0xe8cfaa, 7: 0xd8a27a,
-        8: 0xc0c0c0, 9: 0x2e6b8f, 10: 0xffaa44
-    };
     const sizes = { 
         0: 0.85, 
         1: 0.88, 
@@ -232,14 +226,20 @@ function createPlanet(level) {
         10: 1.06 
     };
     
+    const colors = {
+        1: 0xb0a790, 2: 0xc46d5e, 3: 0xe6b856, 4: 0x4169e1,
+        5: 0xb0e0e6, 6: 0xe8cfaa, 7: 0xd8a27a,
+        8: 0xc0c0c0, 9: 0x2e6b8f, 10: 0xffaa44
+    };
+    
     const geometry = new THREE.SphereGeometry(sizes[level] || 1.0, 128, 128);
     const material = new THREE.MeshStandardMaterial({
         color: colors[level] || 0xffffff,
         roughness: 0.5,
         metalness: 0.1
     });
-    planetMesh = new THREE.Mesh(geometry, material);
-    window.scene.add(planetMesh);
+    window.planetMesh = new THREE.Mesh(geometry, material);
+    window.scene.add(window.planetMesh);
     
     if (level === 6) {
         const ringGeo = new THREE.TorusGeometry(sizes[level] * 1.2, 0.1, 64, 200);
@@ -252,6 +252,13 @@ function createPlanet(level) {
 
 function updatePlanetByLevel() {
     const level = getLevel();
+    
+    // Удаляем старую планету если она существует
+    if (window.planetMesh) {
+        window.scene.remove(window.planetMesh);
+        window.planetMesh = null;
+    }
+    
     if (level === 0) createStar();
     else createPlanet(level);
 }
