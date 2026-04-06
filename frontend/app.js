@@ -101,8 +101,16 @@ function init3D() {
     camera.position.set(0, 0, 3.5);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Устанавливаем размер канваса по размеру контейнера
+    const updateRendererSize = () => {
+        const containerRect = container.getBoundingClientRect();
+        renderer.setSize(containerRect.width, containerRect.height);
+        camera.aspect = containerRect.width / containerRect.height;
+        camera.updateProjectionMatrix();
+    };
+    
+    updateRendererSize();
     container.appendChild(renderer.domElement);
     
     const ambientLight = new THREE.AmbientLight(0x404060);
@@ -151,9 +159,7 @@ function init3D() {
     
     // Обработка изменения размера окна
     window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        updateRendererSize();
     });
     
     console.log('✅ 3D сцена инициализирована');
