@@ -150,10 +150,16 @@ function init3D() {
     window.renderer = renderer;
     window.starsField = starsField;
     
-    // Создаем планету напрямую
-    const level = getLevel();
-    if (level === 0) createStar();
-    else createPlanet(level);
+    // Создаем планету только один раз
+    if (!window.planetCreated) {
+        window.planetCreated = true;
+        const level = getLevel();
+        console.log('🚀 Создаем планету первый и последний раз, уровень:', level);
+        if (level === 0) createStar();
+        else createPlanet(level);
+    } else {
+        console.log('🚫 Планета уже создана, пропускаем');
+    }
     
     console.log('✅ 3D сцена инициализирована');
     
@@ -297,29 +303,9 @@ function createPlanet(level) {
 }
 
 function updatePlanetByLevel() {
-    // Блокируем повторные вызовы
-    if (window.updatingPlanet) {
-        console.log('⚠️ Планета уже обновляется, пропускаем');
-        return;
-    }
-    
-    window.updatingPlanet = true;
-    
-    const level = getLevel();
-    
-    // Удаляем старую планету если она существует
-    if (window.planetMesh) {
-        window.scene.remove(window.planetMesh);
-        window.planetMesh = null;
-    }
-    
-    if (level === 0) createStar();
-    else createPlanet(level);
-    
-    // Разблокируем через 100мс
-    setTimeout(() => {
-        window.updatingPlanet = false;
-    }, 100);
+    // Полная блокировка - никогда не вызываем эту функцию
+    console.log('🚫 updatePlanetByLevel заблокирована - планета создается только в init3D');
+    return;
 }
 
 // ========== ИГРОВАЯ ЛОГИКА ==========
