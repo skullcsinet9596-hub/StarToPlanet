@@ -172,6 +172,12 @@ function init3D() {
         if (window.starsField) {
             window.starsField.rotation.y += 0.0005;
         }
+        
+        // Логируем количество объектов в сцене
+        if (window.scene && window.scene.children.length > 20) {
+            console.log('⚠️ СЛИШКОМ МНОГО ОБЪЕКТОВ В СЦЕНЕ:', window.scene.children.length);
+        }
+        
         renderer.render(scene, camera);
     }
     animate();
@@ -595,6 +601,17 @@ function handleClick(event) {
     saveGame();
     syncWithBot();
     updateTaskButtons();
+    
+    // Принудительная очистка дубликатов
+    if (window.scene && window.scene.children.length > 20) {
+        console.log('🧹 ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ДУБЛИКАТОВ');
+        const objectsToRemove = [...window.scene.children];
+        objectsToRemove.forEach(child => {
+            window.scene.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
+    }
     
     // Эффект клика с анимацией
     const popup = document.createElement('div');
