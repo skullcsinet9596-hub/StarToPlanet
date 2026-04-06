@@ -812,7 +812,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
-    setTimeout(() => { loadLeaderboardFromAPI(); loadFriendsFromAPI(); }, 1000);
+    
+    // Загружаем лидерборд и друзей после инициализации
+    setTimeout(() => { 
+        // Эти функции определены в index.html
+        if (typeof loadLeaderboardFromAPI === 'function') loadLeaderboardFromAPI();
+        if (typeof loadFriendsFromAPI === 'function') loadFriendsFromAPI();
+    }, 1000);
     
     const soundToggleBtn = document.getElementById('soundToggle');
     if (soundToggleBtn) {
