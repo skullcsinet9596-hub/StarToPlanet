@@ -17,7 +17,14 @@ dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
-const APP_URL = 'https://startoplanet.onrender.com';
+const APP_URL = process.env.WEBAPP_URL || 'https://startoplanet.onrender.com';
+const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
+
+const PREMIUM_PRODUCTS = {
+    moon: { title: 'Уровень 8 · Луна', amountRub: 50, amountXTR: 50, dbField: 'has_moon' },
+    earth: { title: 'Уровень 9 · Земля', amountRub: 100, amountXTR: 100, dbField: 'has_earth' },
+    sun: { title: 'Уровень 10 · Солнце', amountRub: 200, amountXTR: 200, dbField: 'has_sun' }
+};
 
 if (!BOT_TOKEN) {
     console.error('❌ BOT_TOKEN не найден');
@@ -97,6 +104,70 @@ app.post('/api/save', async (req, res) => {
     }
 });
 
+app.get('/api/premium/config', (req, res) => {
+    res.json({
+        paymentsEnabled: PAYMENTS_ENABLED,
+        prices: {
+            moon: PREMIUM_PRODUCTS.moon.amountRub,
+            earth: PREMIUM_PRODUCTS.earth.amountRub,
+            sun: PREMIUM_PRODUCTS.sun.amountRub
+        }
+    });
+});
+
+app.post('/api/premium/invoice-link', async (req, res) => {
+    try {
+        const { userId, type } = req.body || {};
+        const telegramId = parseInt(userId);
+        const product = PREMIUM_PRODUCTS[type];
+
+        if (!telegramId || !product) {
+            res.status(400).json({ ok: false, message: 'Неверные параметры оплаты' });
+            return;
+        }
+
+        if (!PAYMENTS_ENABLED) {
+            res.status(503).json({ ok: false, message: 'Платежи временно отключены' });
+            return;
+        }
+
+        const user = await getUser(telegramId);
+        if (!user) {
+            res.status(404).json({ ok: false, message: 'Пользователь не найден' });
+            return;
+        }
+
+        const hasLevel7 = Number(user.coins) >= 10000000000;
+        if (type === 'moon' && !hasLevel7) {
+            res.status(400).json({ ok: false, message: '8 уровень доступен только после 7 уровня' });
+            return;
+        }
+        if (type === 'earth' && !user.has_moon) {
+            res.status(400).json({ ok: false, message: '9 уровень доступен после покупки 8 уровня' });
+            return;
+        }
+        if (type === 'sun' && !user.has_earth) {
+            res.status(400).json({ ok: false, message: '10 уровень доступен после покупки 9 уровня' });
+            return;
+        }
+
+        const payload = `premium:${type}:${telegramId}:${Date.now()}`;
+        const invoiceLink = await bot.telegram.createInvoiceLink(
+            product.title,
+            `Покупка ${product.title} в Star to Planet`,
+            payload,
+            '',
+            'XTR',
+            [{ label: product.title, amount: product.amountXTR }]
+        );
+
+        res.json({ ok: true, invoiceLink });
+    } catch (e) {
+        console.error('Ошибка создания invoice-link:', e);
+        res.status(500).json({ ok: false, message: 'Не удалось создать платеж' });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Веб-сервер на порту ${PORT}`);
 });
@@ -156,6 +227,54 @@ bot.on('web_app_data', async (ctx) => {
         console.log('✅ Данные сохранены от', ctx.from.id);
     } catch (e) {
         console.error('Ошибка web_app_data:', e);
+    }
+});
+
+bot.on('pre_checkout_query', async (ctx) => {
+    try {
+        await ctx.answerPreCheckoutQuery(true);
+    } catch (e) {
+        console.error('Ошибка pre_checkout_query:', e);
+    }
+});
+
+bot.on('message', async (ctx) => {
+    try {
+        const payment = ctx.message?.successful_payment;
+        if (!payment) return;
+
+        const payload = payment.invoice_payload || '';
+        const [scope, type, userIdFromPayload] = payload.split(':');
+        if (scope !== 'premium' || !PREMIUM_PRODUCTS[type]) return;
+
+        const buyerId = ctx.from?.id;
+        const targetUserId = parseInt(userIdFromPayload);
+        if (!buyerId || !targetUserId || buyerId !== targetUserId) return;
+
+        const user = await getUser(buyerId);
+        if (!user) return;
+
+        const hasLevel7 = Number(user.coins) >= 10000000000;
+        if (type === 'moon' && !hasLevel7) {
+            await ctx.reply('⚠️ Условие 8 уровня не выполнено. Обратитесь в поддержку.');
+            return;
+        }
+        if (type === 'earth' && !user.has_moon) {
+            await ctx.reply('⚠️ Сначала нужно купить 8 уровень.');
+            return;
+        }
+        if (type === 'sun' && !user.has_earth) {
+            await ctx.reply('⚠️ Сначала нужно купить 9 уровень.');
+            return;
+        }
+
+        const dbField = PREMIUM_PRODUCTS[type].dbField;
+        await updateUser(buyerId, { [dbField]: true });
+
+        const labels = { moon: 'Луна', earth: 'Земля', sun: 'Солнце' };
+        await ctx.reply(`✅ Оплата получена. Уровень ${labels[type]} активирован.`);
+    } catch (e) {
+        console.error('Ошибка обработки successful_payment:', e);
     }
 });
 

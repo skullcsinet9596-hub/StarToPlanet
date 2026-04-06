@@ -30,20 +30,12 @@ export async function checkConnection() {
 
 export async function initDB() {
     try {
-        // Удаляем все таблицы и создаем заново
-        console.log('🔄 Пересоздание таблиц...');
-        
-        await pool.query('DROP TABLE IF EXISTS weekly_tasks CASCADE');
-        await pool.query('DROP TABLE IF EXISTS daily_tasks CASCADE');
-        await pool.query('DROP TABLE IF EXISTS leaderboard CASCADE');
-        await pool.query('DROP TABLE IF EXISTS referrals CASCADE');
-        await pool.query('DROP TABLE IF EXISTS users CASCADE');
-        
-        console.log('🗑️ Старые таблицы удалены');
+        // Безопасная инициализация: только создаем недостающие таблицы
+        console.log('🔄 Проверка и создание таблиц...');
         
         // Таблица пользователей
         await pool.query(`
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 telegram_id BIGINT PRIMARY KEY,
                 username TEXT,
                 first_name TEXT,
@@ -73,7 +65,7 @@ export async function initDB() {
 
         // Таблица рефералов
         await pool.query(`
-            CREATE TABLE referrals (
+            CREATE TABLE IF NOT EXISTS referrals (
                 id SERIAL PRIMARY KEY,
                 referrer_id BIGINT,
                 referred_id BIGINT UNIQUE,
@@ -83,7 +75,7 @@ export async function initDB() {
 
         // Таблица лидерборда
         await pool.query(`
-            CREATE TABLE leaderboard (
+            CREATE TABLE IF NOT EXISTS leaderboard (
                 telegram_id BIGINT PRIMARY KEY,
                 coins BIGINT DEFAULT 0,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -92,7 +84,7 @@ export async function initDB() {
 
         // Таблица ежедневных заданий
         await pool.query(`
-            CREATE TABLE daily_tasks (
+            CREATE TABLE IF NOT EXISTS daily_tasks (
                 id SERIAL PRIMARY KEY,
                 telegram_id BIGINT,
                 date DATE,
@@ -107,7 +99,7 @@ export async function initDB() {
 
         // Таблица еженедельных заданий
         await pool.query(`
-            CREATE TABLE weekly_tasks (
+            CREATE TABLE IF NOT EXISTS weekly_tasks (
                 id SERIAL PRIMARY KEY,
                 telegram_id BIGINT,
                 week_start DATE,
@@ -120,7 +112,7 @@ export async function initDB() {
             )
         `);
 
-        console.log('✅ Все таблицы созданы/проверены');
+        console.log('✅ Таблицы готовы');
     } catch (err) {
         console.error('❌ Ошибка создания таблиц:', err.message);
     }
@@ -159,7 +151,7 @@ export async function createUser(telegramId, username, firstName, referrerId = n
                 
                 if (existingReferral.rows.length === 0) {
                     await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [referrerId, telegramId]);
-                    await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', referrerId);
+                    await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [referrerId]);
                     await addCoins(referrerId, 1000);
                     await addCoins(telegramId, 500);
                 }
@@ -247,8 +239,10 @@ export async function updateUserGameData(telegramId, gameData) {
                 has_moon = $11,
                 has_earth = $12,
                 has_sun = $13,
-                sound_enabled = $14
-            WHERE telegram_id = $15
+                sound_enabled = $14,
+                premium_level = $15,
+                level = $16
+            WHERE telegram_id = $17
         `, [
             gameData.coins, gameData.energy, gameData.maxEnergy,
             gameData.clickPower, gameData.clickUpgradeLevel, gameData.clickUpgradeCost,

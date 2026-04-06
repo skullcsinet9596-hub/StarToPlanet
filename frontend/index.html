@@ -749,8 +749,8 @@
                     <div class="rays" id="raysContainer"></div>
                     <div class="coin-star-white">⭐</div>
                 </div>
-                <div class="airdrop-soon">СКОРО</div>
-                <div class="airdrop-subscribe">📢 ПОДПИСАТЬСЯ</div>
+                <div class="airdrop-soon">Листинг скоро, ожидайте</div>
+                <div class="airdrop-subscribe">Airdrop в разработке</div>
             </div>
         </div>
     </div>
@@ -841,9 +841,9 @@
         let totalEnergySpent = 0;
         let totalUpgradesBought = 0;
 
-        let hasMoon = true;
-        let hasEarth = true;
-        let hasSun = true;
+        let hasMoon = false;
+        let hasEarth = false;
+        let hasSun = false;
 
         let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgradesBought = 0;
         let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
@@ -968,7 +968,7 @@
             starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.6 }));
             scene.add(starsField);
             
-            updatePlanet3D(0);
+            // updatePlanet3D(0); // ЗАБЛОКИРОВАНО - планета создается в app.js
             
             function animate() {
                 requestAnimationFrame(animate);
@@ -1378,7 +1378,7 @@
             passiveIncomeRate = rate;
             document.getElementById('passiveIncomeRate').textContent = rate;
             
-            updatePlanet3D(level);
+            // updatePlanet3D(level); // ЗАБЛОКИРОВАНО - планета создается в app.js
             
             document.getElementById('profileCoins').textContent = Math.floor(coins);
             document.getElementById('profileClickPower').textContent = clickPower;

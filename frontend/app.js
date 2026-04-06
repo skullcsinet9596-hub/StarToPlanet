@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-// ========== АДРЕС БОТА (RENDER) ==========
-const API_BASE = 'https://startoplanet.onrender.com';
+// ========== API БЭКЕНДА ==========
+const API_BASE = window.API_BASE || window.location.origin || 'https://startoplanet.onrender.com';
 
 // ========== Telegram WebApp ==========
 let tg = null;
@@ -51,6 +51,11 @@ window.loadFromServer = loadFromServer;
 let hasMoon = false;
 let hasEarth = false;
 let hasSun = false;
+let premiumPaymentConfig = {
+    paymentsEnabled: false,
+    prices: { moon: 50, earth: 100, sun: 200 }
+};
+let currentVisualLevel = null;
 
 let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
@@ -149,16 +154,16 @@ function init3D() {
     window.camera = camera;
     window.renderer = renderer;
     window.starsField = starsField;
+    window.activeExplosions = [];
     
     // Создаем планету только один раз
     if (!window.planetCreated) {
         window.planetCreated = true;
         const level = getLevel();
-        console.log('🚀 Создаем планету первый и последний раз, уровень:', level);
+        currentVisualLevel = level;
+        console.log('🚀 Создаем планету, уровень:', level);
         if (level === 0) createStar();
         else createPlanet(level);
-    } else {
-        console.log('🚫 Планета уже создана, пропускаем');
     }
     
     console.log('✅ 3D сцена инициализирована');
@@ -171,6 +176,28 @@ function init3D() {
         }
         if (window.starsField) {
             window.starsField.rotation.y += 0.0005;
+        }
+        if (window.activeExplosions?.length) {
+            const next = [];
+            for (const exp of window.activeExplosions) {
+                exp.life -= 0.02;
+                exp.points.rotation.x += 0.02;
+                exp.points.rotation.y += 0.03;
+                exp.material.opacity = Math.max(0, exp.life);
+                const position = exp.points.geometry.attributes.position;
+                for (let i = 0; i < position.count; i++) {
+                    position.setXYZ(
+                        i,
+                        position.getX(i) + exp.velocities[i * 3],
+                        position.getY(i) + exp.velocities[i * 3 + 1],
+                        position.getZ(i) + exp.velocities[i * 3 + 2]
+                    );
+                }
+                position.needsUpdate = true;
+                if (exp.life > 0) next.push(exp);
+                else window.scene.remove(exp.points);
+            }
+            window.activeExplosions = next;
         }
         
         // Логируем количество объектов в сцене
@@ -192,18 +219,121 @@ function init3D() {
 let planetMesh = null;
 let isPlanetCreating = false; // Глобальная блокировка
 
+function getPlanetSize(level) {
+    const minSize = 0.85;
+    const maxSize = 1.3;
+    return Math.min(maxSize, minSize + (level * 0.045));
+}
+
+function spawnLevelUpExplosion(level) {
+    if (!window.scene || !window.planetMesh) return;
+
+    const count = Math.min(220, 80 + level * 14);
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    const radius = getPlanetSize(level) * 0.6;
+
+    for (let i = 0; i < count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const speed = 0.02 + Math.random() * 0.04;
+        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const y = radius * Math.sin(phi) * Math.sin(theta);
+        const z = radius * Math.cos(phi);
+
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        velocities[i * 3] = x * speed;
+        velocities[i * 3 + 1] = y * speed;
+        velocities[i * 3 + 2] = z * speed;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+        color: 0xffcf66,
+        size: 0.05,
+        transparent: true,
+        opacity: 0.9
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.position.copy(window.planetMesh.position);
+    window.scene.add(points);
+    window.activeExplosions.push({ points, material, velocities, life: 1 });
+}
+
 function createStar() {
-    console.log('🚀 createStar() вызвана - БЛОКИРУЕМ!');
-    return; // ВРЕМЕННАЯ БЛОКИРОВКА - НИКОГДА НЕ СОЗДАВАТЬ ВТОРУЮ ПЛАНЕТУ
+    if (!window.scene) return;
+
+    if (window.planetMesh) {
+        window.scene.remove(window.planetMesh);
+    }
+
+    const geometry = new THREE.SphereGeometry(getPlanetSize(0), 48, 48);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xfff4a3,
+        emissive: 0xffcf33,
+        emissiveIntensity: 0.35,
+        roughness: 0.35,
+        metalness: 0.05
+    });
+
+    window.planetMesh = new THREE.Mesh(geometry, material);
+    window.scene.add(window.planetMesh);
+    console.log('⭐ Создана звезда (уровень 0)');
+}
 
 function createPlanet(level) {
-    console.log('🚀 createPlanet() вызвана - БЛОКИРУЕМ!');
-    return; // ВРЕМЕННАЯ БЛОКИРОВКА - НИКОГДА НЕ СОЗДАВАТЬ ВТОРУЮ ПЛАНЕТУ
+    if (!window.scene) return;
+
+    if (window.planetMesh) {
+        window.scene.remove(window.planetMesh);
+    }
+
+    const palette = [
+        0x999999, // Меркурий
+        0xb84a3a, // Марс
+        0xd3b07a, // Венера
+        0x3a6db8, // Нептун
+        0x80a8d6, // Уран
+        0xd6bf8a, // Сатурн
+        0xd9a85b, // Юпитер
+        0xe6e6e6, // Луна
+        0x2f7de1, // Земля
+        0xffcc66  // Солнце
+    ];
+    const color = palette[Math.max(0, Math.min(level - 1, palette.length - 1))];
+
+    const geometry = new THREE.SphereGeometry(getPlanetSize(level), 48, 48);
+    const material = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.8,
+        metalness: 0.05
+    });
+
+    window.planetMesh = new THREE.Mesh(geometry, material);
+    window.scene.add(window.planetMesh);
+    console.log(`🪐 Создана планета уровня ${level}`);
+}
 
 function updatePlanetByLevel() {
-    // Полная блокировка - никогда не вызываем эту функцию
-    console.log('🚫 updatePlanetByLevel заблокирована - планета создается только в init3D');
-    return;
+    if (!window.scene) return;
+    const level = getLevel();
+
+    if (currentVisualLevel === null) {
+        currentVisualLevel = level;
+    }
+    if (currentVisualLevel === level) return;
+
+    if (level > currentVisualLevel) {
+        spawnLevelUpExplosion(level);
+    }
+
+    currentVisualLevel = level;
+    if (level === 0) createStar();
+    else createPlanet(level);
 }
 
 // ========== ИГРОВАЯ ЛОГИКА ==========
@@ -251,8 +381,7 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
-    // Планета создается только один раз в init3D
-    // Никаких обновлений планеты здесь
+    updatePlanetByLevel();
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
@@ -270,60 +399,110 @@ function updateUI() {
 
 function updatePremiumUI() {
     const hasJupiter = coins >= 10000000000;
+    const moonReady = hasJupiter && !hasMoon;
+    const earthReady = hasMoon && !hasEarth;
+    const sunReady = hasEarth && !hasSun;
     const moonBtn = document.getElementById('buyMoon');
     const earthBtn = document.getElementById('buyEarth');
     const sunBtn = document.getElementById('buySun');
     const moonCard = document.getElementById('premiumMoonCard');
     const earthCard = document.getElementById('premiumEarthCard');
     const sunCard = document.getElementById('premiumSunCard');
-    
-    if (hasJupiter && !hasMoon) {
-        if (moonCard) moonCard.classList.remove('premium-locked');
-        if (moonBtn) { moonBtn.disabled = false; moonBtn.classList.remove('disabled'); moonBtn.textContent = 'Купить за 50 ₽'; }
-        const cond = document.getElementById('moonCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasMoon) {
-        if (moonBtn) { moonBtn.disabled = true; moonBtn.classList.add('disabled'); moonBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('moonCondition');
-        if (cond) cond.innerHTML = '✅ Луна куплена';
+
+    if (moonCard) moonCard.classList.remove('premium-locked');
+    if (earthCard) earthCard.classList.remove('premium-locked');
+    if (sunCard) sunCard.classList.remove('premium-locked');
+
+    if (moonBtn) {
+        moonBtn.disabled = hasMoon || !premiumPaymentConfig.paymentsEnabled || !moonReady;
+        if (moonBtn.disabled) moonBtn.classList.add('disabled');
+        else moonBtn.classList.remove('disabled');
+        moonBtn.textContent = hasMoon ? '✅ КУПЛЕНО' : `${premiumPaymentConfig.paymentsEnabled ? 'Купить' : 'Скоро'} · ${premiumPaymentConfig.prices.moon} ₽`;
     }
-    if (hasMoon && !hasEarth) {
-        if (earthCard) earthCard.classList.remove('premium-locked');
-        if (earthBtn) { earthBtn.disabled = false; earthBtn.classList.remove('disabled'); earthBtn.textContent = 'Купить за 100 ₽'; }
-        const cond = document.getElementById('earthCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasEarth) {
-        if (earthBtn) { earthBtn.disabled = true; earthBtn.classList.add('disabled'); earthBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('earthCondition');
-        if (cond) cond.innerHTML = '✅ Земля куплена';
+    if (earthBtn) {
+        earthBtn.disabled = hasEarth || !premiumPaymentConfig.paymentsEnabled || !earthReady;
+        if (earthBtn.disabled) earthBtn.classList.add('disabled');
+        else earthBtn.classList.remove('disabled');
+        earthBtn.textContent = hasEarth ? '✅ КУПЛЕНО' : `${premiumPaymentConfig.paymentsEnabled ? 'Купить' : 'Скоро'} · ${premiumPaymentConfig.prices.earth} ₽`;
     }
-    if (hasEarth && !hasSun) {
-        if (sunCard) sunCard.classList.remove('premium-locked');
-        if (sunBtn) { sunBtn.disabled = false; sunBtn.classList.remove('disabled'); sunBtn.textContent = 'Купить за 200 ₽'; }
-        const cond = document.getElementById('sunCondition');
-        if (cond) cond.innerHTML = '🎉 Доступно для покупки!';
-    } else if (hasSun) {
-        if (sunBtn) { sunBtn.disabled = true; sunBtn.classList.add('disabled'); sunBtn.textContent = '✅ КУПЛЕНО'; }
-        const cond = document.getElementById('sunCondition');
-        if (cond) cond.innerHTML = '✅ Солнце куплено';
+    if (sunBtn) {
+        sunBtn.disabled = hasSun || !premiumPaymentConfig.paymentsEnabled || !sunReady;
+        if (sunBtn.disabled) sunBtn.classList.add('disabled');
+        else sunBtn.classList.remove('disabled');
+        sunBtn.textContent = hasSun ? '✅ КУПЛЕНО' : `${premiumPaymentConfig.paymentsEnabled ? 'Купить' : 'Скоро'} · ${premiumPaymentConfig.prices.sun} ₽`;
+    }
+
+    const moonCond = document.getElementById('moonCondition');
+    const earthCond = document.getElementById('earthCondition');
+    const sunCond = document.getElementById('sunCondition');
+
+    const paymentText = premiumPaymentConfig.paymentsEnabled ? '✅ Оплата доступна в Telegram' : '🚧 Платежи скоро будут доступны';
+    if (moonCond) moonCond.innerHTML = hasMoon ? '✅ Луна куплена' : (moonReady ? paymentText : '🔒 Требуется: сначала достичь 7 уровня');
+    if (earthCond) earthCond.innerHTML = hasEarth ? '✅ Земля куплена' : (earthReady ? paymentText : '🔒 Требуется: сначала купить 8 уровень');
+    if (sunCond) sunCond.innerHTML = hasSun ? '✅ Солнце куплено' : (sunReady ? paymentText : '🔒 Требуется: сначала купить 9 уровень');
+}
+
+async function loadPremiumConfig() {
+    try {
+        const res = await fetch(`${API_BASE}/api/premium/config`);
+        if (!res.ok) return;
+        const data = await res.json();
+        premiumPaymentConfig = {
+            paymentsEnabled: Boolean(data.paymentsEnabled),
+            prices: {
+                moon: data?.prices?.moon ?? 50,
+                earth: data?.prices?.earth ?? 100,
+                sun: data?.prices?.sun ?? 200
+            }
+        };
+    } catch (e) {
+        console.log('Ошибка загрузки premium config:', e);
     }
 }
 
-function buyPremium(type) {
-    if (type === 'moon' && coins >= 10000000000 && !hasMoon) {
-        hasMoon = true;
-        showMessage('🌕 Луна куплена! +20 000 монет/мин');
-        updateUI(); saveGame(); syncWithBot();
-    } else if (type === 'earth' && hasMoon && !hasEarth) {
-        hasEarth = true;
-        showMessage('🌍 Земля куплена! +50 000 монет/мин');
-        updateUI(); saveGame(); syncWithBot();
-    } else if (type === 'sun' && hasEarth && !hasSun) {
-        hasSun = true;
-        showMessage('☀️ Солнце куплено! +100 000 монет/мин');
-        updateUI(); saveGame(); syncWithBot();
-    } else {
-        showMessage('❌ Условия не выполнены', true);
+async function buyPremium(type) {
+    const amount = premiumPaymentConfig.prices[type] || 0;
+    const hasJupiter = coins >= 10000000000;
+    if (type === 'moon' && !hasJupiter) {
+        showMessage('🔒 8 уровень доступен только после 7 уровня', true);
+        return;
+    }
+    if (type === 'earth' && !hasMoon) {
+        showMessage('🔒 9 уровень доступен только после покупки 8 уровня', true);
+        return;
+    }
+    if (type === 'sun' && !hasEarth) {
+        showMessage('🔒 10 уровень доступен только после покупки 9 уровня', true);
+        return;
+    }
+
+    if (!premiumPaymentConfig.paymentsEnabled) {
+        showMessage(`🚧 Покупка уровня временно неактивна. Цена: ${amount} ₽`, true);
+        return;
+    }
+
+    if (!userId) {
+        showMessage('❌ Telegram-пользователь не определен', true);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/premium/invoice-link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, type })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data?.ok || !data?.invoiceLink) {
+            showMessage(data?.message || '❌ Не удалось создать платеж', true);
+            return;
+        }
+
+        if (tg?.openInvoice) tg.openInvoice(data.invoiceLink);
+        else window.open(data.invoiceLink, '_blank');
+    } catch (e) {
+        showMessage('❌ Ошибка при создании платежа', true);
     }
 }
 
@@ -808,6 +987,8 @@ function rechargeEnergy() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadFromServer();
     loadGame();
+    await loadPremiumConfig();
+    updateUI();
     setupTabs();
     setupTasksTabs();
     
