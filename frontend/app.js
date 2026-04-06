@@ -218,7 +218,10 @@ function createPlanet(level) {
         5: 0xb0e0e6, 6: 0xe8cfaa, 7: 0xd8a27a,
         8: 0xc0c0c0, 9: 0x2e6b8f, 10: 0xffaa44
     };
-    const sizes = { 1: 0.9, 2: 0.95, 3: 1.0, 4: 1.05, 5: 1.1, 6: 1.15, 7: 1.2, 8: 1.0, 9: 1.05, 10: 1.3 };
+    const sizes = { 
+        0: 0.85, 1: 0.9, 2: 0.95, 3: 1.0, 4: 1.05, 5: 1.1, 6: 1.15, 7: 1.2, 
+        8: 1.0, 9: 1.05, 10: 1.3 
+    };
     
     const geometry = new THREE.SphereGeometry(sizes[level] || 1.0, 128, 128);
     const material = new THREE.MeshStandardMaterial({
@@ -527,23 +530,58 @@ function handleClick(event) {
     
     energy -= clickPower;
     coins += clickPower;
-    dailyClickCount++; weeklyClickCount++;
-    dailyCoinsEarned += clickPower; weeklyCoinsEarned += clickPower;
-    updateUI(); saveGame(); syncWithBot();
+    dailyClickCount++;
+    weeklyClickCount++;
+    dailyCoinsEarned += clickPower;
+    weeklyCoinsEarned += clickPower;
+    dailyEnergySpent += clickPower;
+    weeklyEnergySpent += clickPower;
     
-    const target = document.getElementById('star-container');
-    if (target) {
-        target.style.transform = 'scale(0.95)';
-        setTimeout(() => { if (target) target.style.transform = 'scale(1)'; }, 100);
-    }
+    updateUI();
+    saveGame();
+    syncWithBot();
+    updateTaskButtons();
     
+    // Эффект клика с анимацией
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
     popup.style.position = 'fixed';
     popup.style.left = (event.clientX || window.innerWidth/2) + 'px';
-    popup.style.top = (event.clientY || window.innerHeight/2 - 100) + 'px';
-    popup.style.color = '#ffd700';
+    popup.style.top = (event.clientY || window.innerHeight/2) + 'px';
     popup.style.fontSize = '24px';
+    popup.style.fontWeight = 'bold';
+    popup.style.color = '#FFD60A';
+    popup.style.pointerEvents = 'none';
+    popup.style.zIndex = '10000';
+    popup.style.animation = 'popupAnimation 0.8s ease-out';
+    document.body.appendChild(popup);
+    
+    setTimeout(() => {
+        if (popup.parentNode) {
+            popup.parentNode.removeChild(popup);
+        }
+    }, 800);
+    
+    // Анимация планеты
+    if (window.planetMesh) {
+        window.planetMesh.rotation.x += 0.1;
+        setTimeout(() => {
+            if (window.planetMesh) {
+                window.planetMesh.rotation.x = 0;
+            }
+        }, 100);
+    }
+    
+    // Анимация канваса
+    const container = document.getElementById('canvas-container');
+    if (container) {
+        container.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            if (container) {
+                container.style.transform = 'scale(1.0)';
+            }
+        }, 100);
+    }
     popup.style.fontWeight = 'bold';
     popup.style.pointerEvents = 'none';
     popup.style.zIndex = '1000';
