@@ -163,7 +163,11 @@ function init3D() {
 let planetMesh = null;
 
 function createStar() {
-    if (planetMesh) window.scene.remove(planetMesh);
+    if (planetMesh && window.scene) window.scene.remove(planetMesh);
+    if (!window.scene) {
+        console.error('❌ Сцена еще не инициализирована');
+        return;
+    }
     const geometry = new THREE.SphereGeometry(0.85, 128, 128);
     const material = new THREE.MeshStandardMaterial({
         color: 0xffdd99,
@@ -188,7 +192,11 @@ function createStar() {
 }
 
 function createPlanet(level) {
-    if (planetMesh) window.scene.remove(planetMesh);
+    if (planetMesh && window.scene) window.scene.remove(planetMesh);
+    if (!window.scene) {
+        console.error('❌ Сцена еще не инициализирована');
+        return;
+    }
     
     const colors = {
         1: 0xb0a790, 2: 0xc46d5e, 3: 0xe6b856, 4: 0x4169e1,
@@ -266,7 +274,10 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
-    updatePlanetByLevel();
+    // Обновляем планету только если сцена инициализирована
+    if (window.scene) {
+        updatePlanetByLevel();
+    }
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
@@ -812,5 +823,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-
-init();
