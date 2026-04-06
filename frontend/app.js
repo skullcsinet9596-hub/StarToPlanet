@@ -178,11 +178,22 @@ function init3D() {
 let planetMesh = null;
 
 function createStar() {
-    if (planetMesh && window.scene) window.scene.remove(planetMesh);
+    // Полностью очищаем сцену от всех объектов
+    if (window.scene) {
+        // Удаляем все объекты из сцены
+        while(window.scene.children.length > 0) {
+            const child = window.scene.children[0];
+            window.scene.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        }
+    }
+    
     if (!window.scene) {
         console.error('❌ Сцена еще не инициализирована');
         return;
     }
+    
     const geometry = new THREE.SphereGeometry(0.85, 128, 128);
     const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -206,7 +217,17 @@ function createStar() {
 }
 
 function createPlanet(level) {
-    if (planetMesh && window.scene) window.scene.remove(planetMesh);
+    // Полностью очищаем сцену от всех объектов
+    if (window.scene) {
+        // Удаляем все объекты из сцены
+        while(window.scene.children.length > 0) {
+            const child = window.scene.children[0];
+            window.scene.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        }
+    }
+    
     if (!window.scene) {
         console.error('❌ Сцена еще не инициализирована');
         return;
