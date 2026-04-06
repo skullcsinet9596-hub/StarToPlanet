@@ -176,8 +176,16 @@ function init3D() {
 
 // Планета/звезда
 let planetMesh = null;
+let isPlanetCreating = false; // Глобальная блокировка
 
 function createStar() {
+    // Глобальная блокировка
+    if (isPlanetCreating) {
+        console.log('⚠️ Планета уже создается, пропускаем createStar');
+        return;
+    }
+    isPlanetCreating = true;
+    
     // Полностью очищаем сцену от всех объектов
     if (window.scene) {
         // Удаляем все объекты из сцены
@@ -191,6 +199,7 @@ function createStar() {
     
     if (!window.scene) {
         console.error('❌ Сцена еще не инициализирована');
+        isPlanetCreating = false;
         return;
     }
     
@@ -214,9 +223,19 @@ function createStar() {
         ray.rotation.z = angle;
         window.scene.add(ray);
     }
+    
+    console.log('✅ Звезда создана, объектов в сцене:', window.scene.children.length);
+    isPlanetCreating = false;
 }
 
 function createPlanet(level) {
+    // Глобальная блокировка
+    if (isPlanetCreating) {
+        console.log('⚠️ Планета уже создается, пропускаем createPlanet');
+        return;
+    }
+    isPlanetCreating = true;
+    
     // Полностью очищаем сцену от всех объектов
     if (window.scene) {
         // Удаляем все объекты из сцены
@@ -230,6 +249,7 @@ function createPlanet(level) {
     
     if (!window.scene) {
         console.error('❌ Сцена еще не инициализирована');
+        isPlanetCreating = false;
         return;
     }
     
@@ -269,6 +289,9 @@ function createPlanet(level) {
         ring.rotation.x = Math.PI / 2.2;
         window.scene.add(ring);
     }
+    
+    console.log('✅ Планета создана, объектов в сцене:', window.scene.children.length);
+    isPlanetCreating = false;
 }
 
 function updatePlanetByLevel() {
