@@ -97,13 +97,19 @@ function init3D() {
     }
     
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x030318);
+    // Убираем фон сцены, чтобы было видно звездное небо
+    scene.background = null;
     scene.fog = new THREE.FogExp2(0x030318, 0.003);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 3.5);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    
+    // Проверяем поддержку WebGL
+    if (!renderer.capabilities.isWebGL2) {
+        console.warn('⚠️ WebGL2 не поддерживается, используется WebGL1');
+    }
     
     // Устанавливаем размер канваса по размеру контейнера
     const updateRendererSize = () => {
@@ -477,13 +483,20 @@ async function loadFromServer() {
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
                 
-                // Обновляем планету ПОСЛЕ загрузки всех данных
-                setTimeout(() => {
-                    if (window.scene) {
-                        updatePlanetByLevel();
-                        console.log('✅ Планета обновлена после загрузки данных');
-                    }
-                }, 100);
+                // Обновляем планету СРАЗУ после загрузки данных
+                if (window.scene) {
+                    updatePlanetByLevel();
+                    console.log('✅ Планета обновлена после загрузки данных');
+                } else {
+                    console.log('⚠️ Сцена еще не готова, обновим позже');
+                    // Пробуем еще раз через 500мс
+                    setTimeout(() => {
+                        if (window.scene) {
+                            updatePlanetByLevel();
+                            console.log('✅ Планета обновлена при повторной попытке');
+                        }
+                    }, 500);
+                }
                 
                 console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
             } else {
