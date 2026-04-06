@@ -843,7 +843,17 @@ function setupTabs() {
             }
             
             if (tab === 'leaderboard') loadLeaderboardFromAPI();
-            if (tab === 'friends') { loadFriendsFromAPI(); updateReferralLink(); }
+            function loadFriendsFromAPI() {
+    console.log('👥 Загрузка данных друзей...');
+    // Заглушка для друзей
+    const container = document.getElementById('level1List');
+    if(container) {
+        container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+    }
+    document.getElementById('referralCount').textContent = '0';
+    document.getElementById('referralBonus').textContent = '0';
+    document.getElementById('profileReferrals').textContent = '0';
+}
         });
     });
 }
@@ -893,7 +903,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadGame();
     setupTabs();
     setupTasksTabs();
-    init3D(); // Добавляем инициализацию 3D сцены
+    
+    // Инициализируем 3D только если canvas-container существует
+    const container = document.getElementById('canvas-container');
+    if (container) {
+        init3D(); // Добавляем инициализацию 3D сцены
+    } else {
+        console.log('⚠️ canvas-container не найден, 3D сцена не инициализирована');
+    }
+    
     updateReferralLink();
     
     document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
