@@ -103,13 +103,14 @@ function init3D() {
     
     const scene = new THREE.Scene();
     // Убираем фон сцены, чтобы было видно звездное небо
-    scene.background = new THREE.Color(0x050507);
+    scene.background = null;
     scene.fog = new THREE.FogExp2(0x050507, 0.0018);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 3.8);
+    camera.position.set(0, 0.06, 4.05);
     
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0);
     
     // Проверяем поддержку WebGL
     if (!renderer.capabilities.isWebGL2) {
@@ -236,7 +237,7 @@ function getPlanetSize(level) {
 
 function getPlanetYOffset() {
     // Баланс между верхним дашбордом и BOOST без обрезки по верхнему краю.
-    return 0.72;
+    return 0.45;
 }
 
 function spawnLevelUpExplosion(level) {
