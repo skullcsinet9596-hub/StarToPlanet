@@ -107,7 +107,7 @@ function init3D() {
     scene.fog = new THREE.FogExp2(0x050507, 0.0018);
     
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, -0.1, 3.4);
+    camera.position.set(0, -0.28, 3.4);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     
@@ -173,6 +173,15 @@ function init3D() {
         requestAnimationFrame(animate);
         if (window.planetMesh) {
             window.planetMesh.rotation.y += 0.005;
+            const fx = window.planetMesh.userData;
+            if (fx?.plasma && fx?.corona) {
+                fx.pulsePhase += 0.03;
+                const pulse = 1 + Math.sin(fx.pulsePhase) * 0.015;
+                fx.plasma.scale.setScalar(pulse);
+                fx.corona.scale.setScalar(1 + Math.cos(fx.pulsePhase * 0.8) * 0.02);
+                fx.plasma.material.opacity = fx.kind === 'red-sun' ? 0.3 + Math.max(0, Math.sin(fx.pulsePhase)) * 0.15 : 0.3 + Math.max(0, Math.sin(fx.pulsePhase)) * 0.12;
+                fx.corona.material.opacity = fx.kind === 'red-sun' ? 0.2 + Math.max(0, Math.cos(fx.pulsePhase * 1.3)) * 0.11 : 0.16 + Math.max(0, Math.cos(fx.pulsePhase * 1.2)) * 0.08;
+            }
         }
         if (window.starsField) {
             window.starsField.rotation.y += 0.0005;
@@ -225,6 +234,11 @@ function getPlanetSize(level) {
     return Math.min(maxSize, minSize + (level * 0.045));
 }
 
+function getPlanetYOffset() {
+    // Поднимаем планету выше, чтобы центр был между верхней панелью и BOOST.
+    return 0.52;
+}
+
 function spawnLevelUpExplosion(level) {
     if (!window.scene || !window.planetMesh) return;
 
@@ -272,30 +286,44 @@ function createStar() {
     }
 
     const size = getPlanetSize(0);
-    const coreGeometry = new THREE.SphereGeometry(size, 56, 56);
-    const coreMaterial = new THREE.MeshStandardMaterial({
-        color: 0xfff2a6,
-        emissive: 0xffb300,
-        emissiveIntensity: 0.95,
-        roughness: 0.2,
-        metalness: 0.02
-    });
-    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+    const core = new THREE.Mesh(
+        new THREE.SphereGeometry(size, 64, 64),
+        new THREE.MeshStandardMaterial({
+            color: 0x4a84ff,
+            emissive: 0x1d6bff,
+            emissiveIntensity: 1.35,
+            roughness: 0.22,
+            metalness: 0.03
+        })
+    );
 
-    const glowGeometry = new THREE.SphereGeometry(size * 1.22, 40, 40);
-    const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffd24a,
-        transparent: true,
-        opacity: 0.23
-    });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    const plasma = new THREE.Mesh(
+        new THREE.SphereGeometry(size * 1.08, 40, 40),
+        new THREE.MeshBasicMaterial({
+            color: 0x37b6ff,
+            transparent: true,
+            opacity: 0.34
+        })
+    );
+
+    const corona = new THREE.Mesh(
+        new THREE.SphereGeometry(size * 1.2, 36, 36),
+        new THREE.MeshBasicMaterial({
+            color: 0xc8f1ff,
+            transparent: true,
+            opacity: 0.2
+        })
+    );
 
     const starGroup = new THREE.Group();
     starGroup.add(core);
-    starGroup.add(glow);
+    starGroup.add(plasma);
+    starGroup.add(corona);
+    starGroup.userData = { plasma, corona, pulsePhase: Math.random() * Math.PI * 2, kind: 'blue-star' };
+    starGroup.position.y = getPlanetYOffset();
     window.planetMesh = starGroup;
     window.scene.add(window.planetMesh);
-    console.log('⭐ Создана звезда (уровень 0)');
+    console.log('⭐ Создана синяя звезда (уровень 0)');
 }
 
 function createPlanet(level) {
@@ -319,15 +347,57 @@ function createPlanet(level) {
     ];
     const color = palette[Math.max(0, Math.min(level - 1, palette.length - 1))];
 
-    const geometry = new THREE.SphereGeometry(getPlanetSize(level), 48, 48);
-    const material = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.8,
-        metalness: 0.05
-    });
+    if (level === 10) {
+        const size = getPlanetSize(level);
+        const sunCore = new THREE.Mesh(
+            new THREE.SphereGeometry(size, 64, 64),
+            new THREE.MeshStandardMaterial({
+                color: 0xff4c1f,
+                emissive: 0xff1a00,
+                emissiveIntensity: 1.45,
+                roughness: 0.26,
+                metalness: 0.02
+            })
+        );
 
-    window.planetMesh = new THREE.Mesh(geometry, material);
-    window.scene.add(window.planetMesh);
+        const sunPlasma = new THREE.Mesh(
+            new THREE.SphereGeometry(size * 1.1, 40, 40),
+            new THREE.MeshBasicMaterial({
+                color: 0xff7a1f,
+                transparent: true,
+                opacity: 0.33
+            })
+        );
+
+        const sunCorona = new THREE.Mesh(
+            new THREE.SphereGeometry(size * 1.23, 36, 36),
+            new THREE.MeshBasicMaterial({
+                color: 0xff2a00,
+                transparent: true,
+                opacity: 0.23
+            })
+        );
+
+        const sunGroup = new THREE.Group();
+        sunGroup.add(sunCore);
+        sunGroup.add(sunPlasma);
+        sunGroup.add(sunCorona);
+        sunGroup.userData = { plasma: sunPlasma, corona: sunCorona, pulsePhase: Math.random() * Math.PI * 2, kind: 'red-sun' };
+        sunGroup.position.y = getPlanetYOffset();
+        window.planetMesh = sunGroup;
+        window.scene.add(window.planetMesh);
+    } else {
+        const geometry = new THREE.SphereGeometry(getPlanetSize(level), 48, 48);
+        const material = new THREE.MeshStandardMaterial({
+            color,
+            roughness: 0.8,
+            metalness: 0.05
+        });
+
+        window.planetMesh = new THREE.Mesh(geometry, material);
+        window.planetMesh.position.y = getPlanetYOffset();
+        window.scene.add(window.planetMesh);
+    }
     console.log(`🪐 Создана планета уровня ${level}`);
 }
 
