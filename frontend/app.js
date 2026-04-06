@@ -353,8 +353,8 @@ function updateUI() {
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
     
-    // Обновляем планету только если сцена инициализирована
-    // Планета уже создана в init3D, не обновляем здесь
+    // Планета создается только один раз в init3D
+    // Никаких обновлений планеты здесь
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
@@ -544,8 +544,6 @@ async function loadFromServer() {
                 if (energy > maxEnergy) energy = maxEnergy;
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
-                
-                // Планета уже создана в init3D, не обновляем здесь
                 
                 console.log('✅ Данные загружены с сервера:', { coins, energy, maxEnergy, clickPower });
             } else {
