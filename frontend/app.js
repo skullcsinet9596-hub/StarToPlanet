@@ -13,6 +13,14 @@ if (window.Telegram && window.Telegram.WebApp) {
     tg = window.Telegram.WebApp;
     tg.expand();
     tg.ready();
+    const tp = tg.themeParams;
+    if (tp && tp.bg_color) {
+        document.documentElement.style.setProperty('--tg-bg', `#${tp.bg_color}`);
+        document.body.style.background = `radial-gradient(circle at 50% 15%, rgba(255,255,255,0.04), transparent 40%), #${tp.bg_color}`;
+    }
+    if (tp && tp.secondary_bg_color) {
+        document.documentElement.style.setProperty('--tg-secondary', `#${tp.secondary_bg_color}`);
+    }
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         userId = tg.initDataUnsafe.user.id;
         if (tg.initDataUnsafe.user.username) displayName = `@${tg.initDataUnsafe.user.username}`;
@@ -1112,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const raysContainer = document.getElementById('raysContainer');
     if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
     
-    const gameArea = document.getElementById('game-area');
+    const gameArea = document.getElementById('gameArea');
     if (gameArea) gameArea.style.display = 'flex';
     
     if(!document.querySelector('#popup-animation')) {
