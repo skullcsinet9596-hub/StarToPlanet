@@ -464,35 +464,36 @@ bot.start(async (ctx) => {
     let userName = ctx.from.username || ctx.from.first_name || 'игрок';
     if (ctx.from.username) userName = `@${ctx.from.username}`;
     
-    // Проверяем реферальный код
+    // Проверяем реферальный код (нужен для передачи в WebApp).
     const payloadRaw = ctx.startPayload || '';
-    const refMatch = payloadRaw.match(/(\d+)/);
-    const referrerId = refMatch ? parseInt(refMatch[1]) : null;
-    
     let user = await getUser(userId);
-    if (!user) {
-        user = await createUser(userId, ctx.from.username, ctx.from.first_name, referrerId);
-    } else {
+    if (user) {
         await updateUser(userId, { username: ctx.from.username, first_name: ctx.from.first_name });
     }
     
-    const rank = await getPlayerRank(userId);
-    const stats = await getStats(userId);
+    const rank = user ? await getPlayerRank(userId) : '—';
+    const stats = user ? await getStats(userId) : { referralsCount: 0 };
+    const safeCoins = user ? Number(user.coins).toLocaleString() : '0';
+    const safeEnergy = user ? `${user.energy}/${user.max_energy}` : '100/100';
+    const safeClickPower = user ? user.click_power : 1;
+    const webAppUrl = payloadRaw
+        ? `${APP_URL}?startapp=${encodeURIComponent(payloadRaw)}`
+        : APP_URL;
     
     await ctx.replyWithHTML(`
 🌟 <b>Star to Planet</b> 🌟
 
 👤 <b>Игрок:</b> ${userName}
-💰 <b>Баланс:</b> ${Number(user.coins).toLocaleString()} 🪙
-⚡ <b>Энергия:</b> ${user.energy}/${user.max_energy}
-💪 <b>Сила клика:</b> ${user.click_power}
+💰 <b>Баланс:</b> ${safeCoins} 🪙
+⚡ <b>Энергия:</b> ${safeEnergy}
+💪 <b>Сила клика:</b> ${safeClickPower}
 🏆 <b>Рейтинг:</b> #${rank}
-👥 <b>Рефералов:</b> ${stats.referralsCount}
+👥 <b>Рефералов:</b> ${stats?.referralsCount ?? 0}
 
 🎮 Нажми на кнопку ниже!
     `, {
         reply_markup: {
-            inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: APP_URL } }]]
+            inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: webAppUrl } }]]
         }
     });
 });
