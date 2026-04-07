@@ -68,8 +68,9 @@ let currentVisualLevel = null;
 let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
 
-let lastClickTime = 0;
 let clickCooldown = 30;
+/** Кулдаун отдельно на каждый палец / мышь — иначе мультитап блокируется одним lastClickTime */
+const lastTapByPointer = new Map();
 
 // ========== ЗВУК ==========
 let soundEnabled = true;
@@ -728,10 +729,17 @@ async function loadFromServer() {
 }
 
 // ========== ОБРАБОТКА КЛИКОВ ==========
+function tapPointerKey(event) {
+    if (event && typeof event.pointerId === 'number') return `p${event.pointerId}`;
+    return 'mouse';
+}
+
 function handleClick(event) {
     const now = Date.now();
-    if (now - lastClickTime < clickCooldown) return;
-    lastClickTime = now;
+    const key = tapPointerKey(event);
+    const last = lastTapByPointer.get(key) || 0;
+    if (now - last < clickCooldown) return;
+    lastTapByPointer.set(key, now);
     
     if (energy < clickPower) {
         showMessage('❌ Нет энергии!', true);
@@ -813,6 +821,12 @@ function bindPlanetTapTargets() {
         handleClick(e);
         setTimeout(() => { skipNextClick = false; }, 450);
     });
+    const releasePointer = (e) => {
+        if (typeof e.pointerId === 'number') lastTapByPointer.delete(`p${e.pointerId}`);
+    };
+    target.addEventListener('pointerup', releasePointer);
+    target.addEventListener('pointercancel', releasePointer);
+    target.addEventListener('lostpointercapture', releasePointer);
     target.addEventListener('click', (e) => {
         if (skipNextClick) return;
         handleClick(e);
