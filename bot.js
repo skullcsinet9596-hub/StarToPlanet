@@ -17,7 +17,13 @@ import {
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const PORT = Number(process.env.PORT || 10000);
+// Render передаёт PORT; пустая строка даёт Number('') === 0 — случайный порт, healthcheck не найдёт.
+const rawPort = process.env.PORT;
+const parsedPort = rawPort != null && String(rawPort).trim() !== '' ? Number(rawPort) : NaN;
+const PORT = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 10000;
+if (!Number.isFinite(parsedPort) || parsedPort <= 0) {
+    console.warn('⚠️ PORT из окружения не задан или неверен — используется fallback 10000. Для Render нужен тип Web Service, чтобы подставился PORT.');
+}
 const APP_URL = process.env.WEBAPP_URL || 'https://startoplanet.onrender.com';
 const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
 
@@ -180,8 +186,9 @@ app.post('/api/premium/invoice-link', async (req, res) => {
     }
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`✅ Веб-сервер на порту ${PORT} (env PORT=${process.env.PORT || 'not-set'})`);
+const HOST = '0.0.0.0';
+const server = app.listen(PORT, HOST, () => {
+    console.log(`✅ Веб-сервер слушает http://${HOST}:${PORT} (env PORT=${process.env.PORT ?? 'not-set'})`);
 });
 server.on('error', (err) => {
     console.error('❌ Ошибка веб-сервера:', err);
