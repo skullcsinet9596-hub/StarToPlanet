@@ -328,6 +328,7 @@ let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgrad
 let dailyTasksClaimed = defaultDailyTasksClaimed();
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
 let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
+const claimInFlight = new Set();
 
 const TASK_TARGETS = {
     dailyClick: 1,
@@ -339,6 +340,43 @@ const TASK_TARGETS = {
     weeklyEnergy: 1000,
     weeklyUpgrade: 5
 };
+
+function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function weekKey() {
+    const now = new Date();
+    const day = (now.getUTCDay() + 6) % 7;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day));
+    return monday.toISOString().slice(0, 10);
+}
+
+function getCycleClaimMap(scope) {
+    const suffix = scope === 'daily' ? todayKey() : weekKey();
+    const key = `stp_claimed_${scope}_${suffix}`;
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function setCycleClaim(scope, taskKey, value) {
+    const suffix = scope === 'daily' ? todayKey() : weekKey();
+    const key = `stp_claimed_${scope}_${suffix}`;
+    const map = getCycleClaimMap(scope);
+    map[taskKey] = Boolean(value);
+    try { localStorage.setItem(key, JSON.stringify(map)); } catch (e) {}
+}
+
+function hydrateClaimStateFromCycleCache() {
+    const d = getCycleClaimMap('daily');
+    const w = getCycleClaimMap('weekly');
+    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...dailyTasksClaimed, ...d };
+    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...weeklyTasksClaimed, ...w };
+}
 
 /** Минимальный интервал между событиями одного и того же указателя (мс). 0 = каждый палец тратит энергию сразу, независимо от остальных. */
 let clickCooldown = 0;
@@ -1176,6 +1214,7 @@ function loadGame() {
             normalized = normalizeUpgradeCosts();
         } catch(e) { console.log(e); }
     }
+    hydrateClaimStateFromCycleCache();
     // Оффлайн начисление (до 3 часов)
     applyOfflineEarnings();
     lastSeenAtMs = Date.now();
@@ -1500,62 +1539,104 @@ function applyTaskReward(reward) {
 }
 
 async function claimTask(taskId, reward, type) {
+    if (claimInFlight.has(type)) return;
+    claimInFlight.add(type);
+    const mapTypeToKey = {
+        daily_click: ['daily', 'click'],
+        daily_coins: ['daily', 'coins'],
+        daily_energy: ['daily', 'energy'],
+        daily_upgrade: ['daily', 'upgrade'],
+        daily_passive: ['daily', 'passive'],
+        weekly_click: ['weekly', 'click'],
+        weekly_coins: ['weekly', 'coins'],
+        weekly_energy: ['weekly', 'energy'],
+        weekly_upgrade: ['weekly', 'upgrade'],
+        weekly_passive: ['weekly', 'passive']
+    };
+    const pair = mapTypeToKey[type];
+    if (!pair) {
+        claimInFlight.delete(type);
+        showMessage('❌ Задание недоступно!', true);
+        return;
+    }
+    const [scope, taskKey] = pair;
+    const cycleMap = getCycleClaimMap(scope);
+    if (cycleMap?.[taskKey]) {
+        if (scope === 'daily') dailyTasksClaimed[taskKey] = true;
+        if (scope === 'weekly') weeklyTasksClaimed[taskKey] = true;
+        updateUI();
+        updateTaskButtons();
+        claimInFlight.delete(type);
+        showMessage('ℹ️ Награда за это задание уже получена', true);
+        return;
+    }
+
     if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= TASK_TARGETS.dailyClick) { 
         dailyTasksClaimed.click = true; 
+        setCycleClaim('daily', 'click', true);
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= TASK_TARGETS.dailyCoins) { 
         dailyTasksClaimed.coins = true; 
+        setCycleClaim('daily', 'coins', true);
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= TASK_TARGETS.weeklyClick) { 
         weeklyTasksClaimed.click = true; 
+        setCycleClaim('weekly', 'click', true);
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= TASK_TARGETS.weeklyCoins) { 
         weeklyTasksClaimed.coins = true; 
+        setCycleClaim('weekly', 'coins', true);
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= TASK_TARGETS.dailyEnergy) {
         dailyTasksClaimed.energy = true;
+        setCycleClaim('daily', 'energy', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= TASK_TARGETS.dailyUpgrade) {
         dailyTasksClaimed.upgrade = true;
+        setCycleClaim('daily', 'upgrade', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'daily_passive' && !dailyTasksClaimed.passive && getPassiveRate() >= 10) {
         dailyTasksClaimed.passive = true;
+        setCycleClaim('daily', 'passive', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy) {
         weeklyTasksClaimed.energy = true;
+        setCycleClaim('weekly', 'energy', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade) {
         weeklyTasksClaimed.upgrade = true;
+        setCycleClaim('weekly', 'upgrade', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'weekly_passive' && !weeklyTasksClaimed.passive && getPassiveRate() >= 40) {
         weeklyTasksClaimed.passive = true;
+        setCycleClaim('weekly', 'passive', true);
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
@@ -1563,6 +1644,7 @@ async function claimTask(taskId, reward, type) {
     else {
         showMessage('❌ Задание недоступно!', true);
     }
+    claimInFlight.delete(type);
     updateUI(); syncWithBot(); updateTaskButtons();
 }
 
