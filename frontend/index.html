@@ -197,7 +197,7 @@
             gap: 0;
             flex-shrink: 0;
             margin-top: auto;
-            padding-top: clamp(8px, 2vh, 20px);
+            padding-top: clamp(4px, 1vh, 12px);
             padding-bottom: clamp(4px, 1vh, 12px);
         }
 
@@ -244,6 +244,266 @@
         .boost-btn:active { transform: scale(0.96); }
         .boost-icon { font-size: 18px; }
         .boost-text { font-weight: 590; font-size: 15px; color: #FFD60A; }
+
+        /* Превью званий (погоны) — между планетой и BOOST */
+        .rank-strip {
+            width: 100%;
+            max-width: min(360px, 94vw);
+            margin: 0 auto 8px;
+            padding: 10px 14px 12px;
+            z-index: 2;
+            border: 0.5px solid rgba(255, 214, 10, 0.2);
+        }
+        .rank-strip-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #98989E;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .rank-shoulder-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 20px;
+        }
+        .shoulder-board {
+            width: 34px;
+            height: 72px;
+            border-radius: 6px 5px 8px 5px;
+            border: 1px solid rgba(201, 162, 39, 0.85);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.12),
+                0 4px 12px rgba(0,0,0,0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        .shoulder-board--officer {
+            background:
+                linear-gradient(165deg, #2a3d22 0%, #1a2615 45%, #243018 100%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 2px, rgba(0,0,0,0) 2px 6px);
+        }
+        .shoulder-board--general {
+            background: linear-gradient(165deg, #7a1528 0%, #3d0a14 50%, #5c1020 100%);
+            border-color: rgba(232, 197, 71, 0.95);
+        }
+        .shoulder-board--general.shoulder-board--elite {
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                0 0 0 1px rgba(232, 197, 71, 0.35),
+                0 4px 16px rgba(255, 60, 80, 0.15);
+        }
+        .shoulder-board__inner {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 4px 10px;
+            gap: 4px;
+        }
+        .shoulder-board__stars {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .shoulder-star {
+            color: #e8c547;
+            text-shadow: 0 0 6px rgba(255, 214, 10, 0.45);
+            line-height: 1;
+            position: absolute;
+            transform: translate(-50%, -50%);
+        }
+        .shoulder-star--small { font-size: 11px; }
+        .shoulder-star--large { font-size: 13px; }
+        .shoulder-star--army {
+            font-size: 20px;
+            color: #f2d36a;
+            text-shadow:
+                0 0 8px rgba(255, 214, 10, 0.35),
+                0 0 0 rgba(0,0,0,0);
+            filter: drop-shadow(0 0 0.6px rgba(160, 0, 22, 0.9)) drop-shadow(0 0 2px rgba(160, 0, 22, 0.55));
+        }
+        .shoulder-board--general .shoulder-star--large { font-size: 15px; }
+        .shoulder-board--general.shoulder-board--elite .shoulder-star--large { font-size: 16px; }
+
+        .shoulder-emblem {
+            position: absolute;
+            left: 50%;
+            top: 34%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #e8c547;
+            text-shadow: 0 0 6px rgba(255, 214, 10, 0.35);
+            opacity: 0.95;
+            pointer-events: none;
+        }
+        .shoulder-emblem .wreath {
+            font-size: 11px;
+            letter-spacing: -0.08em;
+            transform: rotate(10deg);
+            opacity: 0.9;
+        }
+        .shoulder-emblem .mini-star {
+            font-size: 10px;
+            filter: drop-shadow(0 0 1px rgba(160, 0, 22, 0.55));
+        }
+
+        /* Просветы (лапмасы) */
+        .shoulder-board.sb-stripes-1::before,
+        .shoulder-board.sb-stripes-2::before,
+        .shoulder-board.sb-stripes-2::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, rgba(160,0,22,0.75), rgba(255,40,60,0.95), rgba(160,0,22,0.8));
+            opacity: 0.9;
+            filter: drop-shadow(0 0 2px rgba(255, 40, 60, 0.25));
+        }
+        .shoulder-board.sb-stripes-1::before { left: 50%; transform: translateX(-50%); }
+        .shoulder-board.sb-stripes-2::before { left: calc(50% - 9px); transform: translateX(-50%); }
+        .shoulder-board.sb-stripes-2::after { left: calc(50% + 9px); transform: translateX(-50%); }
+        .shoulder-board__stripe {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, transparent, rgba(232, 197, 71, 0.55), transparent);
+            border-top: 1px solid rgba(232, 197, 71, 0.35);
+        }
+        .shoulder-board--general .shoulder-board__stripe {
+            background: linear-gradient(90deg, transparent, rgba(255, 220, 120, 0.5), transparent);
+        }
+        .rank-strip-title {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 590;
+            color: #fff;
+            margin-top: 10px;
+            line-height: 1.25;
+        }
+        .rank-strip-hint {
+            text-align: center;
+            font-size: 10px;
+            color: #98989E;
+            margin-top: 4px;
+        }
+
+        .boost-modal-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px 0;
+            border-bottom: 0.5px solid rgba(255,255,255,0.08);
+        }
+        .boost-modal-tab {
+            flex: 1;
+            border: none;
+            background: rgba(44, 44, 48, 0.5);
+            color: #98989E;
+            font-size: 13px;
+            font-weight: 590;
+            padding: 10px 12px;
+            border-radius: 14px 14px 0 0;
+            cursor: pointer;
+        }
+        .boost-modal-tab.active {
+            background: rgba(255, 214, 10, 0.12);
+            color: #FFD60A;
+        }
+        .boost-tab-panel { display: none; padding-bottom: 8px; }
+        .boost-tab-panel.active { display: block; }
+        .ranks-preview-note {
+            font-size: 11px;
+            color: #98989E;
+            text-align: center;
+            padding: 12px 20px 8px;
+            margin: 0;
+        }
+        .ranks-preview-grid {
+            padding: 8px 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ranks-preview-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(44, 44, 48, 0.55);
+            border-radius: 20px;
+            padding: 10px 12px;
+            border: 0.5px solid rgba(255,255,255,0.06);
+        }
+        .ranks-preview-row--current {
+            border-color: rgba(255, 214, 10, 0.35);
+            background: rgba(255, 214, 10, 0.06);
+        }
+        .ranks-preview-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .ranks-preview-level {
+            font-size: 11px;
+            color: #FFD60A;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .ranks-preview-name {
+            font-size: 13px;
+            font-weight: 590;
+            color: #fff;
+        }
+        .ranks-preview-salary {
+            margin-top: 4px;
+            font-size: 11px;
+            color: #98989E;
+        }
+        .ranks-preview-pair {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .ranks-preview-pair .shoulder-board {
+            width: 28px;
+            height: 60px;
+        }
+        .ranks-preview-pair .shoulder-star--small { font-size: 9px; }
+        .ranks-preview-pair .shoulder-star--large { font-size: 11px; }
+        .ranks-preview-pair .shoulder-board--general .shoulder-star--large { font-size: 12px; }
+
+        /* Горизонтальный погон (используем в HUD) */
+        .shoulder-board--horizontal {
+            transform: rotate(90deg);
+            transform-origin: center;
+        }
+
+        .ranks-buy-btn {
+            background: rgba(255, 214, 10, 0.95);
+            border: none;
+            padding: 8px 14px;
+            border-radius: 44px;
+            color: #1C1C1E;
+            font-weight: 590;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .ranks-buy-btn.disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .ranks-preview-row--owned .ranks-buy-btn {
+            background: rgba(255, 214, 10, 0.18);
+            color: #FFD60A;
+            border: 0.5px solid rgba(255, 214, 10, 0.35);
+        }
 
         .stats-container {
             width: 100%;
@@ -357,6 +617,58 @@
         }
         .tab-panel.active { display: block; }
         .tab-panel h2 { font-size: 18px; margin-bottom: 16px; text-align: center; color: #FFD60A; }
+
+        .registration-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1500;
+            background: rgba(4, 5, 10, 0.92);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .registration-card {
+            width: 100%;
+            max-width: 420px;
+            border-radius: 28px;
+            padding: 18px 16px;
+            text-align: center;
+        }
+        .registration-title {
+            color: #FFD60A;
+            font-size: 19px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .registration-text {
+            color: #f2f2f7;
+            font-size: 14px;
+            line-height: 1.45;
+            margin-bottom: 12px;
+        }
+        .registration-help {
+            color: #a7a7b3;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 14px;
+        }
+        .registration-btn {
+            background: #FFD60A;
+            border: none;
+            color: #1C1C1E;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 44px;
+            padding: 12px 20px;
+            min-width: 200px;
+            cursor: pointer;
+        }
+        .registration-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
 
         .modal-overlay {
             display: none;
@@ -714,6 +1026,14 @@
     <script type="module" src="app.js"></script>
 </head>
 <body>
+    <div class="registration-overlay" id="registrationOverlay">
+        <div class="registration-card glass-panel">
+            <div class="registration-title">Регистрация</div>
+            <div class="registration-text">Сначала создайте профиль, затем сможете запустить игру.</div>
+            <div class="registration-help" id="registrationHelp">Проверяем данные приглашения...</div>
+            <button type="button" class="registration-btn" id="registerProfileBtn">Регистрация</button>
+        </div>
+    </div>
     <div class="app-container">
         <div class="top-bar glass-panel">
             <div class="user-info">
@@ -734,6 +1054,12 @@
                 <div id="canvas-container"></div>
             </div>
             <div class="hud-below">
+                <div class="rank-strip glass-panel" id="rankStripPreview" aria-label="Звание">
+                    <span class="rank-strip-label">Звание</span>
+                    <div class="rank-shoulder-row" id="hudShoulderRow" role="img" aria-hidden="true"></div>
+                    <div class="rank-strip-title" id="hudRankTitle">Младший лейтенант</div>
+                    <div class="rank-strip-hint" id="rankStripHint">Уровень игры <span id="hudRankLevelNum">0</span></div>
+                </div>
                 <button type="button" class="boost-btn" id="boostBtn">
                     <span class="boost-icon">⚡</span>
                     <span class="boost-text">BOOST</span>
@@ -767,11 +1093,21 @@
 
         <div class="modal-overlay" id="boostModal">
             <div class="modal-content glass-panel">
-                <div class="modal-header"><h3>⚡ Улучшения</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
-                <div class="boost-list">
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div><div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div></div><button class="boost-buy-btn" id="buyClickUpgrade">Купить</button></div>
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень <span id="energyUpgradeLevel">1</span>/100</div><div class="boost-cost" id="energyUpgradeCostDisplay">200 🪙</div></div><button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button></div>
-                    <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень <span id="passiveUpgradeLevel">0</span>/100</div><div class="boost-cost" id="passiveUpgradeCostDisplay">500 🪙</div></div><button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button></div>
+                <div class="modal-header"><h3>⚡ BOOST</h3><button class="modal-close" id="closeBoostModal">✕</button></div>
+                <div class="boost-modal-tabs">
+                    <button type="button" class="boost-modal-tab active" data-boost-tab="upgrades">Улучшения</button>
+                    <button type="button" class="boost-modal-tab" data-boost-tab="ranks">Звания</button>
+                </div>
+                <div class="boost-tab-panel active" id="boostTabUpgrades">
+                    <div class="boost-list">
+                        <div class="boost-card"><div class="boost-info"><div class="boost-name">⭐ Сила клика</div><div class="boost-desc">+1 монета/клик</div><div class="boost-level">Уровень <span id="upgradeLevel">1</span>/100</div><div class="boost-cost" id="clickUpgradeCostDisplay">100 🪙</div></div><button class="boost-buy-btn" id="buyClickUpgrade">Купить</button></div>
+                        <div class="boost-card"><div class="boost-info"><div class="boost-name">⚡ Энергия</div><div class="boost-desc">+50 макс. энергии</div><div class="boost-level">Уровень <span id="energyUpgradeLevel">1</span>/100</div><div class="boost-cost" id="energyUpgradeCostDisplay">200 🪙</div></div><button class="boost-buy-btn" id="buyEnergyUpgrade">Купить</button></div>
+                        <div class="boost-card"><div class="boost-info"><div class="boost-name">🤖 Пассивный доход</div><div class="boost-desc">+5 монет/мин</div><div class="boost-level">Уровень <span id="passiveUpgradeLevel">0</span>/100</div><div class="boost-cost" id="passiveUpgradeCostDisplay">500 🪙</div></div><button class="boost-buy-btn" id="buyPassiveUpgrade">Купить</button></div>
+                    </div>
+                </div>
+                <div class="boost-tab-panel" id="boostTabRanks">
+                    <p class="ranks-preview-note">Звания покупаются за монеты по порядку. Доход от звания работает по текущему уровню планеты.</p>
+                    <div class="ranks-preview-grid" id="ranksPreviewGrid"></div>
                 </div>
             </div>
         </div>

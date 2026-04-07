@@ -40,6 +40,57 @@ if (profileNameElem) profileNameElem.textContent = displayName;
 if (userAvatarElem) userAvatarElem.src = userAvatar;
 if (profileAvatarElem) profileAvatarElem.src = userAvatar;
 
+let isRegistered = false;
+
+function getLaunchReferrerId() {
+    const fromTelegram = tg?.initDataUnsafe?.start_param || '';
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('startapp') || params.get('start') || '';
+    const source = String(fromTelegram || fromUrl || '');
+    const match = source.match(/ref_(\d+)|(\d+)/);
+    const refId = match ? parseInt(match[1] || match[2], 10) : null;
+    if (!refId || !userId || refId === userId) return null;
+    return refId;
+}
+
+function showRegistrationOverlay(show) {
+    const overlay = document.getElementById('registrationOverlay');
+    const nav = document.querySelector('.nav-bar');
+    if (overlay) overlay.style.display = show ? 'flex' : 'none';
+    if (nav) nav.style.display = show ? 'none' : 'flex';
+}
+
+async function checkRegistrationStatus() {
+    if (!userId) return false;
+    try {
+        const res = await fetch(`${API_BASE}/api/user/${userId}`);
+        if (!res.ok) return false;
+        const data = await res.json();
+        return Boolean(data?.registered);
+    } catch (e) {
+        return false;
+    }
+}
+
+async function registerCurrentUser() {
+    if (!userId) return { ok: false, message: 'Не удалось определить Telegram пользователя' };
+    const referrerId = getLaunchReferrerId();
+    const username = tg?.initDataUnsafe?.user?.username || null;
+    const firstName = tg?.initDataUnsafe?.user?.first_name || null;
+    try {
+        const res = await fetch(`${API_BASE}/api/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, username, firstName, referrerId })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) return { ok: false, message: data?.message || 'Ошибка регистрации' };
+        return { ok: true, created: Boolean(data?.created), message: data?.message || '' };
+    } catch (e) {
+        return { ok: false, message: 'Ошибка сети при регистрации' };
+    }
+}
+
 // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
 let coins = 0;
 let energy = 100;
@@ -52,6 +103,119 @@ let energyUpgradeLevel = 1;
 let passiveIncomeLevel = 0;
 let passiveIncomeUpgradeCost = 500;
 let passiveIncomeRate = 0;
+
+// ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
+let ownedRankLevel = -1; // -1 = ничего не куплено
+let lastSeenAtMs = Date.now();
+const OFFLINE_CAP_MINUTES = 180; // 3 часа
+let isRegistering = false;
+let lastBoostTapAt = 0;
+
+function ignoreRapidBoostTap() {
+    const now = Date.now();
+    if (now - lastBoostTapAt < 220) return true;
+    lastBoostTapAt = now;
+    return false;
+}
+
+function clampInt(n, min, max) {
+    const v = Math.floor(Number(n));
+    if (!Number.isFinite(v)) return min;
+    return Math.max(min, Math.min(max, v));
+}
+
+function getLevelForCoins(coinsValue) {
+    if (hasSun) return 10;
+    if (hasEarth) return 9;
+    if (hasMoon) return 8;
+    const c = Number(coinsValue) || 0;
+    if (c >= 10000000000) return 7;
+    if (c >= 1000000000) return 6;
+    if (c >= 100000000) return 5;
+    if (c >= 10000000) return 4;
+    if (c >= 1000000) return 3;
+    if (c >= 100000) return 2;
+    if (c >= 10000) return 1;
+    return 0;
+}
+
+function getEffectiveRankLevel() {
+    const owned = clampInt(ownedRankLevel, -1, 10);
+    return Math.min(owned, getLevel());
+}
+
+function getRankCost(level) {
+    const n = clampInt(level, 0, 10);
+    // Стартовые значения (будем тюнить): стоимость растёт быстро, чтобы драйвером оставались рефералы
+    const base = 50_000;
+    const growth = 6.0;
+    return Math.round(base * Math.pow(growth, n));
+}
+
+function getRankSalaryPerMinute(level) {
+    const n = clampInt(level, -1, 10);
+    if (n < 0) return 0;
+    // Ступенчатая «зарплата» (монет/мин). Тюним позже, цель: год до 10/10 при реферальном драйвере.
+    const table = [
+        20_000, 35_000, 55_000, 80_000,          // 0..3
+        120_000, 180_000, 260_000,               // 4..6
+        400_000, 650_000, 1_000_000, 1_600_000   // 7..10
+    ];
+    return table[n] ?? 0;
+}
+
+function canBuyRank(level) {
+    const n = clampInt(level, 0, 10);
+    if (ownedRankLevel >= n) return { ok: false, reason: 'owned' };
+    if (n > 0 && ownedRankLevel < n - 1) return { ok: false, reason: 'order' };
+    if (getLevel() < n) return { ok: false, reason: 'planet_level' };
+    const cost = getRankCost(n);
+    if (coins < cost) return { ok: false, reason: 'coins' };
+    return { ok: true, reason: 'ok' };
+}
+
+function buyRank(level) {
+    const n = clampInt(level, 0, 10);
+    const check = canBuyRank(n);
+    if (!check.ok) {
+        const map = {
+            owned: '✅ Звание уже куплено',
+            order: '🔒 Сначала купите предыдущее звание',
+            planet_level: '🔒 Сначала достигните нужного уровня планеты',
+            coins: '❌ Недостаточно монет'
+        };
+        showMessage(map[check.reason] || '❌ Нельзя купить звание', true);
+        return;
+    }
+    const cost = getRankCost(n);
+    coins -= cost;
+    ownedRankLevel = n;
+    showMessage(`✅ Куплено звание: ${MILITARY_RANKS[n]?.name || `Уровень ${n}`}`);
+    updateUI();
+    fillRanksPreviewGrid();
+    saveGame();
+    syncWithBot();
+}
+
+function applyOfflineEarnings() {
+    const now = Date.now();
+    const last = Number(lastSeenAtMs) || now;
+    const minutes = Math.floor((now - last) / 60000);
+    const offlineMinutes = Math.max(0, Math.min(minutes, OFFLINE_CAP_MINUTES));
+    if (offlineMinutes <= 0) return;
+
+    // Считаем пассивку по состоянию ДО оффлайн начисления (чтобы не разгонять уровень «сам из себя»).
+    const levelAtStart = getLevelForCoins(coins);
+    const effRank = Math.min(clampInt(ownedRankLevel, -1, 10), levelAtStart);
+    let perMinute = passiveIncomeLevel * 5;
+    if (hasSun) perMinute += 100000;
+    else if (hasEarth) perMinute += 50000;
+    else if (hasMoon) perMinute += 20000;
+    perMinute += getRankSalaryPerMinute(effRank);
+
+    coins += offlineMinutes * perMinute;
+    showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${(offlineMinutes * perMinute).toLocaleString()} 🪙`);
+}
 
 // Делаем функцию глобальной
 window.loadFromServer = loadFromServer;
@@ -77,6 +241,172 @@ let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
 let clickCooldown = 0;
 /** Кулдаун отдельно на каждый палец / мышь — иначе мультитап блокируется одним lastClickTime */
 const lastTapByPointer = new Map();
+
+/** Звания (превью): уровень игры 0–10 ↔ погоны, без сервера */
+const MILITARY_RANKS = [
+    // Офицерские погоны: 1 центральный просвет (красная полоса)
+    { level: 0, name: 'Младший лейтенант', kind: 'officer', stripes: 1, starSize: 'small', layout: 'centerStrict', stars: 1 },
+    // Лейтенант: две звезды по бокам от просвета (как на скрине)
+    { level: 1, name: 'Лейтенант', kind: 'officer', stripes: 1, starSize: 'small', layout: 'side2Bottom', stars: 2 },
+    // Старший лейтенант: треугольник (1 сверху по центру, 2 снизу по бокам)
+    { level: 2, name: 'Старший лейтенант', kind: 'officer', stripes: 1, starSize: 'small', layout: 'triBottom', stars: 3 },
+    // Капитан: 2 звезды вдоль просвета + 2 звезды снизу по бокам
+    { level: 3, name: 'Капитан', kind: 'officer', stripes: 1, starSize: 'small', layout: 'captainRef', stars: 4 },
+
+    // Старшие офицеры: 2 продольных просвета (две красные полосы)
+    // Майор: одна «крупная» звезда по центру
+    { level: 4, name: 'Майор', kind: 'officer', stripes: 2, starSize: 'large', layout: 'center', stars: 1 },
+    // Подполковник: 2 большие звезды снизу между двумя полосами
+    { level: 5, name: 'Подполковник', kind: 'officer', stripes: 2, starSize: 'large', layout: 'doubleStripeBottom2', stars: 2 },
+    // Полковник: 1 большая по центру + 2 снизу между двумя полосами
+    { level: 6, name: 'Полковник', kind: 'officer', stripes: 2, starSize: 'large', layout: 'doubleStripeColonel', stars: 3 },
+
+    // Генералы (малиновое поле), звезды крупнее
+    { level: 7, name: 'Генерал-майор', kind: 'general', stripes: 0, starSize: 'large', layout: 'center', stars: 1 },
+    { level: 8, name: 'Генерал-лейтенант', kind: 'general', stripes: 0, starSize: 'large', layout: 'v2', stars: 2 },
+    { level: 9, name: 'Генерал-полковник', kind: 'general', stripes: 0, starSize: 'large', layout: 'genV3', stars: 3 },
+    // Генерал армии: большая звезда + венок с маленькой звездой (стилизация)
+    { level: 10, name: 'Генерал армии', kind: 'general', stripes: 0, starSize: 'army', layout: 'armyBig', stars: 1, emblem: 'wreath' }
+];
+
+function getRankForGameLevel(level) {
+    const lv = Math.max(0, Math.min(10, Math.floor(Number(level)) || 0));
+    return MILITARY_RANKS[lv];
+}
+
+function starPositions(layout, count) {
+    // Координаты в процентах — под «просвет» по центру.
+    const layouts = {
+        // строго по центру погона
+        centerStrict: [{ x: 50, y: 58 }],
+        center: [{ x: 50, y: 56 }],
+        // две звезды по бокам от центрального просвета
+        side2: [{ x: 36, y: 62 }, { x: 64, y: 62 }],
+        // Лейтенант (как на скрине): две звезды внизу по бокам от центрального просвета
+        side2Bottom: [{ x: 30, y: 74 }, { x: 70, y: 74 }],
+        v2: [{ x: 50, y: 44 }, { x: 50, y: 64 }],
+        v4: [{ x: 50, y: 34 }, { x: 50, y: 48 }, { x: 50, y: 62 }, { x: 50, y: 76 }],
+        v3: [{ x: 50, y: 38 }, { x: 50, y: 54 }, { x: 50, y: 70 }],
+        // Для генерал-полковника: чуть больше расстояние между звездами
+        genV3: [{ x: 50, y: 34 }, { x: 50, y: 54 }, { x: 50, y: 74 }],
+        triWide: [{ x: 50, y: 44 }, { x: 34, y: 66 }, { x: 66, y: 66 }],
+        // Старший лейтенант (скрин): 1 по центру на просвете + 2 снизу по бокам
+        triBottom: [{ x: 50, y: 52 }, { x: 30, y: 76 }, { x: 70, y: 76 }],
+        // Капитан (скрин): 2 по центру вдоль просвета + 2 снизу по бокам
+        captainRef: [{ x: 50, y: 46 }, { x: 50, y: 62 }, { x: 30, y: 76 }, { x: 70, y: 76 }],
+        // Подполковник: 2 звезды СТРОГО на двух просветах (каждая по центру своей красной полосы)
+        doubleStripeBottom2: [{ x: 24, y: 82 }, { x: 76, y: 82 }],
+        // Полковник: 1 по центру + 2 снизу на двух просветах
+        doubleStripeColonel: [{ x: 50, y: 58 }, { x: 24, y: 82 }, { x: 76, y: 82 }],
+        // Большая звезда у генерала армии — ниже, как на примере
+        armyBig: [{ x: 50, y: 74 }]
+    };
+    const base = layouts[layout] || layouts.center;
+    return base.slice(0, count);
+}
+
+function shoulderBoardHTML(rank) {
+    const elite = rank.kind === 'general' && rank.elite ? ' shoulder-board--elite' : '';
+    const cls = rank.kind === 'general'
+        ? `shoulder-board shoulder-board--general${elite}`
+        : 'shoulder-board shoulder-board--officer';
+    const stripesCls = rank.stripes === 2 ? ' sb-stripes-2' : (rank.stripes === 1 ? ' sb-stripes-1' : '');
+    const sizeCls =
+        rank.starSize === 'army' ? ' shoulder-star--army'
+            : (rank.starSize === 'large' ? ' shoulder-star--large' : ' shoulder-star--small');
+    const positions = starPositions(rank.layout, rank.stars);
+    const stars = positions.map((p) => `<span class="shoulder-star${sizeCls}" style="left:${p.x}%;top:${p.y}%;">★</span>`).join('');
+    const emblem = rank.emblem === 'wreath'
+        ? `<div class="shoulder-emblem" aria-hidden="true"><span class="wreath">❧❧</span><span class="mini-star">★</span><span class="wreath">❧❧</span></div>`
+        : '';
+    return `<div class="${cls}${stripesCls}"><div class="shoulder-board__inner"><div class="shoulder-board__stars">${emblem}${stars}</div></div><div class="shoulder-board__stripe"></div></div>`;
+}
+
+function shoulderPairHTML(rank) {
+    return shoulderBoardHTML(rank) + shoulderBoardHTML(rank);
+}
+
+function shoulderBoardHTMLHorizontal(rank) {
+    // Для таблички: один погон, горизонтально (как на реф-скрине)
+    const html = shoulderBoardHTML(rank);
+    return html.replace('shoulder-board ', 'shoulder-board shoulder-board--horizontal ');
+}
+
+function updateMilitaryRankHUD() {
+    const row = document.getElementById('hudShoulderRow');
+    const title = document.getElementById('hudRankTitle');
+    const num = document.getElementById('hudRankLevelNum');
+    if (!row || !title) return;
+    const level = getLevel();
+    const rank = getRankForGameLevel(level);
+    // В HUD показываем один погон (горизонтально)
+    row.innerHTML = shoulderBoardHTMLHorizontal(rank);
+    title.textContent = rank.name;
+    if (num) num.textContent = String(level);
+    const hint = document.getElementById('rankStripHint');
+    if (hint) {
+        const owned = clampInt(ownedRankLevel, -1, 10);
+        const eff = getEffectiveRankLevel();
+        const ownedName = owned >= 0 ? (MILITARY_RANKS[owned]?.name || `Уровень ${owned}`) : 'не куплено';
+        const effName = eff >= 0 ? (MILITARY_RANKS[eff]?.name || `Уровень ${eff}`) : 'нет';
+        hint.textContent = `Уровень игры ${level} · Куплено: ${ownedName} · Доход сейчас: ${effName}`;
+    }
+    document.querySelectorAll('.ranks-preview-row').forEach((el) => {
+        const lv = parseInt(el.getAttribute('data-rank-level'), 10);
+        el.classList.toggle('ranks-preview-row--current', lv === level);
+    });
+}
+
+function fillRanksPreviewGrid() {
+    const grid = document.getElementById('ranksPreviewGrid');
+    if (!grid) return;
+    const currentPlanetLevel = getLevel();
+    grid.innerHTML = MILITARY_RANKS.map((r) => {
+        const lv = r.level;
+        const salary = getRankSalaryPerMinute(lv);
+        const cost = getRankCost(lv);
+        const owned = ownedRankLevel >= lv;
+        const lockedByOrder = lv > 0 && ownedRankLevel < lv - 1;
+        const lockedByPlanet = currentPlanetLevel < lv;
+        const canBuy = !owned && !lockedByOrder && !lockedByPlanet && coins >= cost;
+        const status = owned ? 'owned' : (canBuy ? 'can' : 'locked');
+        const btnText = owned ? '✅ Куплено' : (lockedByOrder || lockedByPlanet ? '🔒 Недоступно' : `Купить · ${cost.toLocaleString()} 🪙`);
+        return `
+        <div class="ranks-preview-row ranks-preview-row--${status}" data-rank-level="${lv}">
+            <div class="ranks-preview-pair">${shoulderPairHTML(r)}</div>
+            <div class="ranks-preview-meta">
+                <div class="ranks-preview-level">Уровень ${lv}</div>
+                <div class="ranks-preview-name">${r.name}</div>
+                <div class="ranks-preview-salary">Пассивный доход: <b>+${salary.toLocaleString()}</b> / мин</div>
+            </div>
+            <button type="button" class="ranks-buy-btn ${owned || !canBuy ? 'disabled' : ''}" data-buy-rank="${lv}" ${owned || !canBuy ? 'disabled' : ''}>${btnText}</button>
+        </div>`;
+    }).join('');
+
+    grid.querySelectorAll('[data-buy-rank]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const lv = parseInt(btn.getAttribute('data-buy-rank'), 10);
+            buyRank(lv);
+        });
+    });
+}
+
+function setupBoostModalTabs() {
+    const tabs = document.querySelectorAll('.boost-modal-tab');
+    const panels = {
+        upgrades: document.getElementById('boostTabUpgrades'),
+        ranks: document.getElementById('boostTabRanks')
+    };
+    tabs.forEach((t) => {
+        t.addEventListener('click', () => {
+            const id = t.dataset.boostTab;
+            tabs.forEach((x) => x.classList.toggle('active', x === t));
+            Object.entries(panels).forEach(([k, p]) => {
+                if (p) p.classList.toggle('active', k === id);
+            });
+        });
+    });
+}
 let tapPersistTimer = null;
 
 function schedulePersistAfterTap() {
@@ -457,6 +787,7 @@ function getPassiveRate() {
     if (hasSun) rate += 100000;
     else if (hasEarth) rate += 50000;
     else if (hasMoon) rate += 20000;
+    rate += getRankSalaryPerMinute(getEffectiveRankLevel());
     return rate;
 }
 
@@ -481,7 +812,6 @@ function updateUI() {
     let rate = getPassiveRate();
     passiveIncomeRate = rate;
     document.getElementById('passiveIncomeRate').textContent = rate;
-    
     updatePlanetByLevel();
     
     document.getElementById('profileCoins').textContent = Math.floor(coins);
@@ -504,6 +834,7 @@ function updateUI() {
     if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/5`;
     updateTaskButtons();
     updatePremiumUI();
+    updateMilitaryRankHUD();
 }
 
 function updatePremiumUI() {
@@ -621,7 +952,9 @@ function saveGame() {
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
         dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
         weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
-        hasMoon, hasEarth, hasSun, soundEnabled
+        hasMoon, hasEarth, hasSun, soundEnabled,
+        ownedRankLevel,
+        lastSeenAtMs: Date.now()
     };
     localStorage.setItem('starToPlanet', JSON.stringify(gameData));
 }
@@ -655,10 +988,16 @@ function loadGame() {
             hasEarth = data.hasEarth || false;
             hasSun = data.hasSun || false;
             soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
+            ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : -1;
+            lastSeenAtMs = Number.isFinite(Number(data.lastSeenAtMs)) ? Number(data.lastSeenAtMs) : Date.now();
             if (energy > maxEnergy) energy = maxEnergy;
         } catch(e) { console.log(e); }
     }
+    // Оффлайн начисление (до 3 часов)
+    applyOfflineEarnings();
+    lastSeenAtMs = Date.now();
     updateUI();
+    fillRanksPreviewGrid();
 }
 
 // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
@@ -711,6 +1050,11 @@ async function loadFromServer() {
         if (response.ok) {
             const data = await response.json();
             console.log('📥 Полученные данные:', data);
+            if (data?.registered === false) {
+                isRegistered = false;
+                return;
+            }
+            isRegistered = true;
             
             // Проверяем что данные валидны
             if (data && typeof data.coins === 'number') {
@@ -854,6 +1198,7 @@ function bindPlanetTapTargets() {
 
 // ========== БУСТЫ ==========
 function upgradeClick() {
+    if (ignoreRapidBoostTap()) return;
     const cost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
     if (coins >= cost && clickPower < 100) {
         coins -= cost;
@@ -869,6 +1214,7 @@ function upgradeClick() {
 }
 
 function upgradeEnergy() {
+    if (ignoreRapidBoostTap()) return;
     const level = (maxEnergy - 100) / 50;
     const cost = Math.floor(200 * Math.pow(1.25, level));
     if (coins >= cost && maxEnergy < 500) {
@@ -886,6 +1232,7 @@ function upgradeEnergy() {
 }
 
 function upgradePassive() {
+    if (ignoreRapidBoostTap()) return;
     const cost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
     if (coins >= cost && passiveIncomeLevel < 100) {
         coins -= cost;
@@ -1126,6 +1473,40 @@ function rechargeEnergy() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.addEventListener('DOMContentLoaded', async () => {
+    const registerBtn = document.getElementById('registerProfileBtn');
+    const registrationHelp = document.getElementById('registrationHelp');
+    const alreadyRegistered = await checkRegistrationStatus();
+    isRegistered = alreadyRegistered;
+    if (!alreadyRegistered) {
+        showRegistrationOverlay(true);
+        if (registrationHelp) {
+            const refId = getLaunchReferrerId();
+            registrationHelp.textContent = refId
+                ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
+                : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
+        }
+        if (registerBtn) {
+            registerBtn.addEventListener('click', async () => {
+                if (isRegistering) return;
+                isRegistering = true;
+                registerBtn.disabled = true;
+                registerBtn.textContent = 'Создаем профиль...';
+                const result = await registerCurrentUser();
+                if (!result.ok) {
+                    showMessage(result.message || 'Ошибка регистрации', true);
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Регистрация';
+                    isRegistering = false;
+                    return;
+                }
+                showMessage(result.created === false ? 'ℹ️ Вы уже зарегистрированы' : '✅ Регистрация завершена');
+                window.location.reload();
+            });
+        }
+        return;
+    }
+    showRegistrationOverlay(false);
+
     await loadFromServer();
     loadGame();
     await loadPremiumConfig();
@@ -1164,9 +1545,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const boostBtn = document.getElementById('boostBtn');
     const boostModal = document.getElementById('boostModal');
     const closeBoost = document.getElementById('closeBoostModal');
-    if(boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
-    if(closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
-    if(boostModal) boostModal.onclick = (e) => { if(e.target === boostModal) boostModal.classList.remove('active'); };
+    setupBoostModalTabs();
+    fillRanksPreviewGrid();
+    updateMilitaryRankHUD();
+
+    if (boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
+    if (closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
+    if (boostModal) boostModal.onclick = (e) => { if (e.target === boostModal) boostModal.classList.remove('active'); };
     
     setInterval(applyPassiveIncome, 60000);
     setInterval(rechargeEnergy, 1000);

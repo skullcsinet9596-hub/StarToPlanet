@@ -212,6 +212,29 @@ async function canAttachToReferrer(referrerId) {
     return true;
 }
 
+async function pickRandomAvailableReferrer(excludeTelegramId = null) {
+    try {
+        // Берем случайную выборку кандидатов и ищем первого, кто проходит лимиты линий/сети.
+        const candidatesRes = await pool.query(
+            `SELECT telegram_id
+             FROM users
+             WHERE ($1::bigint IS NULL OR telegram_id <> $1)
+             ORDER BY RANDOM()
+             LIMIT 80`,
+            [excludeTelegramId]
+        );
+        for (const row of candidatesRes.rows) {
+            const candidateId = Number(row.telegram_id);
+            if (!candidateId) continue;
+            const ok = await canAttachToReferrer(candidateId);
+            if (ok) return candidateId;
+        }
+    } catch (err) {
+        console.error('Ошибка pickRandomAvailableReferrer:', err.message);
+    }
+    return null;
+}
+
 export async function createUser(telegramId, username, firstName, referrerId = null) {
     if (!telegramId || isNaN(parseInt(telegramId))) return null;
     
@@ -224,6 +247,14 @@ export async function createUser(telegramId, username, firstName, referrerId = n
             const canAttach = await canAttachToReferrer(referrerId);
             if (canAttach) effectiveReferrerId = referrerId;
             else console.log(`⚠️ Реферальная привязка отклонена для ${telegramId} к ${referrerId} (лимиты линий/сети)`);
+        } else {
+            // Если пользователь пришел без реферальной ссылки — назначаем случайного игрока.
+            effectiveReferrerId = await pickRandomAvailableReferrer(telegramId);
+            if (effectiveReferrerId) {
+                console.log(`🎲 Пользователь ${telegramId} прикреплен к случайному рефереру ${effectiveReferrerId}`);
+            } else {
+                console.log(`ℹ️ Для пользователя ${telegramId} не найден доступный случайный реферер`);
+            }
         }
 
         await pool.query(`

@@ -73,13 +73,15 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/user/:userId', async (req, res) => {
     try {
-        const user = await getUser(parseInt(req.params.userId));
+        const telegramId = parseInt(req.params.userId);
+        const user = await getUser(telegramId);
         if (!user) {
-            res.json({ coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
+            res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
         
         res.json({
+            registered: true,
             coins: Number(user.coins),
             energy: user.energy,
             maxEnergy: user.max_energy,
@@ -96,7 +98,32 @@ app.get('/api/user/:userId', async (req, res) => {
             soundEnabled: user.sound_enabled
         });
     } catch (e) {
-        res.json({ coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
+        res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
+    }
+});
+
+app.post('/api/register', async (req, res) => {
+    try {
+        const { userId, username, firstName, referrerId } = req.body || {};
+        const telegramId = parseInt(userId);
+        if (!telegramId) {
+            res.status(400).json({ success: false, message: 'Неверный userId' });
+            return;
+        }
+
+        let user = await getUser(telegramId);
+        if (!user) {
+            const ref = referrerId && !isNaN(parseInt(referrerId)) ? parseInt(referrerId) : null;
+            user = await createUser(telegramId, username || null, firstName || null, ref);
+            res.json({ success: true, registered: true, created: true, userId: telegramId, message: 'Профиль создан' });
+            return;
+        }
+
+        await updateUser(telegramId, { username: username || user.username, first_name: firstName || user.first_name });
+        res.json({ success: true, registered: true, created: false, userId: telegramId, message: 'Вы уже зарегистрированы' });
+    } catch (e) {
+        console.error('Ошибка /api/register:', e);
+        res.status(500).json({ success: false, message: 'Ошибка регистрации' });
     }
 });
 
