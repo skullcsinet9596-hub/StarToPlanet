@@ -91,6 +91,17 @@ async function registerCurrentUser() {
     }
 }
 
+function renderFriendsFallback() {
+    const container = document.getElementById('level1List');
+    if (container) container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+    const referralCount = document.getElementById('referralCount');
+    const referralBonus = document.getElementById('referralBonus');
+    const profileReferrals = document.getElementById('profileReferrals');
+    if (referralCount) referralCount.textContent = '0';
+    if (referralBonus) referralBonus.textContent = '0';
+    if (profileReferrals) profileReferrals.textContent = '0';
+}
+
 // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
 let coins = 0;
 let energy = 100;
@@ -577,14 +588,14 @@ let planetMesh = null;
 let isPlanetCreating = false; // Глобальная блокировка
 
 function getPlanetSize(level) {
-    const minSize = 0.85;
-    const maxSize = 1.3;
-    return Math.min(maxSize, minSize + (level * 0.045));
+    const minSize = 0.98;
+    const maxSize = 1.42;
+    return Math.min(maxSize, minSize + (level * 0.05));
 }
 
 function getPlanetYOffset() {
     // Баланс между верхним дашбордом и BOOST без обрезки по верхнему краю.
-    return 0.45;
+    return 0.42;
 }
 
 function spawnLevelUpExplosion(level) {
@@ -1371,12 +1382,43 @@ async function loadLeaderboard() {
     }
 }
 
-function loadFriends() {
+async function loadFriends() {
+    if (!userId) {
+        renderFriendsFallback();
+        return;
+    }
     const container = document.getElementById('level1List');
-    if (container) container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
-    document.getElementById('referralCount').textContent = '0';
-    document.getElementById('referralBonus').textContent = '0';
-    document.getElementById('profileReferrals').textContent = '0';
+    if (!container) return;
+    container.innerHTML = `<div class="level-item"><span>⏳ Загрузка рефералов...</span><span></span></div>`;
+    try {
+        const res = await fetch(`${API_BASE}/api/friends/${userId}`);
+        const data = await res.json();
+        if (!res.ok || !data?.success) {
+            renderFriendsFallback();
+            return;
+        }
+        const refs = Array.isArray(data.referrals) ? data.referrals : [];
+        const referralCount = Number(data.referralsCount || refs.length || 0);
+        const bonus = Number(data.totalReferralBonus || 0);
+        const referralCountEl = document.getElementById('referralCount');
+        const referralBonusEl = document.getElementById('referralBonus');
+        const profileReferralsEl = document.getElementById('profileReferrals');
+        if (referralCountEl) referralCountEl.textContent = String(referralCount);
+        if (referralBonusEl) referralBonusEl.textContent = String(bonus);
+        if (profileReferralsEl) profileReferralsEl.textContent = String(referralCount);
+
+        if (!refs.length) {
+            container.innerHTML = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;
+            return;
+        }
+        container.innerHTML = refs.map((u) => {
+            const name = (u.username && `@${u.username}`) || u.first_name || `ID ${u.telegram_id}`;
+            const coinsVal = Number(u.coins || 0).toLocaleString();
+            return `<div class="level-item"><span>${name}</span><span>${coinsVal} 🪙</span></div>`;
+        }).join('');
+    } catch (e) {
+        renderFriendsFallback();
+    }
 }
 
 function updateReferralLink() { 
@@ -1487,6 +1529,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     isRegistered = alreadyRegistered;
     if (!alreadyRegistered) {
         showRegistrationOverlay(true);
+        if (!userId && registerBtn) {
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Откройте игру через Telegram';
+            if (registrationHelp) registrationHelp.textContent = 'Telegram ID не получен. Запустите WebApp из бота через /start.';
+            return;
+        }
         if (registrationHelp) {
             const refId = getLaunchReferrerId();
             registrationHelp.textContent = refId
@@ -1502,6 +1550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const result = await registerCurrentUser();
                 if (!result.ok) {
                     showMessage(result.message || 'Ошибка регистрации', true);
+                    if (registrationHelp) registrationHelp.textContent = result.message || 'Ошибка регистрации. Попробуйте еще раз.';
                     registerBtn.disabled = false;
                     registerBtn.textContent = 'Регистрация';
                     isRegistering = false;

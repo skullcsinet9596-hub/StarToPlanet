@@ -19,7 +19,7 @@
             background: radial-gradient(circle at 50% 20%, #0b0b12 0%, #040406 45%, #010102 100%);
             color: #fff;
             min-height: 100vh;
-            overflow-x: hidden;
+            overflow: hidden;
             touch-action: manipulation;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
@@ -27,9 +27,10 @@
         .app-container {
             max-width: 500px;
             margin: 0 auto;
-            min-height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .glass-panel {
@@ -179,8 +180,8 @@
             width: 100%;
             max-width: min(400px, 92vw);
             flex: 1 1 auto;
-            min-height: min(28vh, 220px);
-            max-height: min(48vh, 420px);
+            min-height: min(32vh, 250px);
+            max-height: min(52vh, 460px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -204,7 +205,7 @@
         #canvas-container {
             width: 100%;
             max-width: 360px;
-            height: 220px;
+            height: 250px;
             margin: 0 auto;
             cursor: pointer;
             position: relative;
@@ -248,20 +249,20 @@
         /* Превью званий (погоны) — между планетой и BOOST */
         .rank-strip {
             width: 100%;
-            max-width: min(360px, 94vw);
-            margin: 0 auto 8px;
-            padding: 10px 14px 12px;
+            max-width: min(320px, 88vw);
+            margin: 0 auto 6px;
+            padding: 6px 10px 8px;
             z-index: 2;
             border: 0.5px solid rgba(255, 214, 10, 0.2);
         }
         .rank-strip-label {
             display: block;
-            font-size: 10px;
+            font-size: 9px;
             letter-spacing: 0.12em;
             text-transform: uppercase;
             color: #98989E;
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         .rank-shoulder-row {
             display: flex;
@@ -383,17 +384,17 @@
         }
         .rank-strip-title {
             text-align: center;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 590;
             color: #fff;
-            margin-top: 10px;
+            margin-top: 4px;
             line-height: 1.25;
         }
         .rank-strip-hint {
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             color: #98989E;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .boost-modal-tabs {
@@ -611,7 +612,7 @@
             padding: 16px;
             padding-bottom: 80px;
             overflow-y: auto;
-            max-height: calc(100vh - 140px);
+            max-height: calc(100dvh - 140px);
             background: transparent;
             position: static;
         }
@@ -905,38 +906,36 @@
         .airdrop-content { text-align: center; padding: 30px 16px; }
         .golden-coin {
             position: relative;
-            width: 160px;
-            height: 160px;
+            width: 220px;
+            height: 220px;
             margin: 20px auto;
             border-radius: 50%;
-            background: radial-gradient(circle at 35% 35%, #FFE55C, #E5A800);
-            box-shadow: inset -15px -15px 30px rgba(0,0,0,0.4), inset 10px 10px 20px rgba(255,255,200,0.5), 0 15px 25px rgba(0,0,0,0.4);
+            background: radial-gradient(circle at 35% 35%, #ffe786 0%, #f4c542 45%, #cc8f15 100%);
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.22), inset 8px 8px 14px rgba(255,255,210,0.45), 0 12px 24px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            animation: coinFloat 2s ease-in-out infinite;
+            animation: coinFloat 2.4s ease-in-out infinite;
         }
-        .golden-coin .rays {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
+        .coin-planet-zero {
+            width: 148px;
+            height: 148px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 32% 30%, #2d4f7a 0%, #1f3658 60%, #17283f 100%);
+            border: 4px solid rgba(255, 231, 134, 0.9);
+            box-shadow: inset 0 0 14px rgba(255,255,255,0.25), 0 0 22px rgba(255, 214, 10, 0.38);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .ray {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 5px;
-            height: 50px;
-            background: linear-gradient(180deg, #FFD966, transparent);
-            transform-origin: center;
-            opacity: 0.6;
-            animation: rayShine 1.2s ease-in-out infinite alternate;
+        .coin-dollar {
+            font-size: 64px;
+            font-weight: 800;
+            color: #fff4a8;
+            text-shadow: 0 0 10px rgba(255, 214, 10, 0.7), 0 0 2px rgba(0,0,0,0.6);
+            line-height: 1;
         }
-        .coin-star-white { font-size: 60px; color: white; text-shadow: 0 0 10px rgba(255,255,240,0.8); }
         @keyframes coinFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-        @keyframes rayShine { 0% { opacity: 0.3; height: 45px; } 100% { opacity: 0.8; height: 60px; } }
         .airdrop-soon { font-size: 24px; font-weight: bold; color: #FFD60A; margin: 20px 0 12px; }
         .airdrop-subscribe {
             margin-top: 2px;
@@ -1000,8 +999,9 @@
         }
 
         @media (max-width: 480px) {
-            .golden-coin { width: 130px; height: 130px; }
-            .coin-star-white { font-size: 48px; }
+            .golden-coin { width: 168px; height: 168px; }
+            .coin-planet-zero { width: 112px; height: 112px; }
+            .coin-dollar { font-size: 48px; }
             .task-card { flex-direction: column; text-align: center; }
             .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
             #canvas-container { width: 100%; max-width: min(300px, 88vw); height: min(180px, 32vh); margin: 0 auto; }
@@ -1214,8 +1214,7 @@
         <div class="tab-panel" id="airdropPanel">
             <div class="airdrop-content">
                 <div class="golden-coin">
-                    <div class="rays" id="raysContainer"></div>
-                    <div class="coin-star-white">⭐</div>
+                    <div class="coin-planet-zero"><span class="coin-dollar">$</span></div>
                 </div>
                 <div class="airdrop-soon">Листинг скоро, ожидайте</div>
                 <div class="airdrop-subscribe">Airdrop в разработке</div>

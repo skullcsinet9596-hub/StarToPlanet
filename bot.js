@@ -39,6 +39,7 @@ const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
 const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'virtual_wallet').toLowerCase();
 const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET || crypto.createHash('sha256').update(BOT_TOKEN + ':pay').digest('hex').slice(0, 24);
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+const ADMIN_TELEGRAM_ID = Number(process.env.ADMIN_TELEGRAM_ID || 0) || null;
 
 const PREMIUM_PRODUCTS = {
     moon: { title: 'Уровень 8 · Луна', amountRub: 50, amountXTR: 50, dbField: 'has_moon' },
@@ -92,6 +93,13 @@ function requireAdmin(req, res, next) {
     if (token !== ADMIN_TOKEN) {
         res.status(403).json({ success: false, message: 'Доступ запрещен' });
         return;
+    }
+    if (ADMIN_TELEGRAM_ID) {
+        const adminUserId = Number(req.headers['x-admin-user-id']?.toString() || req.query?.adminUserId?.toString() || 0);
+        if (adminUserId !== ADMIN_TELEGRAM_ID) {
+            res.status(403).json({ success: false, message: 'Доступ запрещен (allowlist)' });
+            return;
+        }
     }
     next();
 }
@@ -190,6 +198,30 @@ app.post('/api/register', rateLimit('register', 30, 60_000), async (req, res) =>
     } catch (e) {
         console.error('Ошибка /api/register:', e);
         res.status(500).json({ success: false, message: 'Ошибка регистрации' });
+    }
+});
+
+app.get('/api/friends/:userId', async (req, res) => {
+    try {
+        const telegramId = parseInt(req.params.userId);
+        if (!telegramId) {
+            res.status(400).json({ success: false, message: 'Неверный userId' });
+            return;
+        }
+        const stats = await getStats(telegramId);
+        if (!stats) {
+            res.json({ success: true, referralsCount: 0, totalReferralBonus: 0, referrals: [] });
+            return;
+        }
+        res.json({
+            success: true,
+            referralsCount: Number(stats.referralsCount || 0),
+            totalReferralBonus: Number(stats.totalReferralBonus || 0),
+            referrals: Array.isArray(stats.referrals) ? stats.referrals : []
+        });
+    } catch (e) {
+        console.error('Ошибка /api/friends/:userId:', e);
+        res.status(500).json({ success: false, message: 'Ошибка загрузки друзей' });
     }
 });
 

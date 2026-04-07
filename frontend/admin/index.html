@@ -18,9 +18,10 @@
   <div class="panel">
     <div class="row">
       <input id="adminToken" placeholder="ADMIN_TOKEN" style="min-width:280px" />
+      <input id="adminUserId" placeholder="ADMIN_TELEGRAM_ID" style="min-width:180px" />
       <button onclick="saveToken()">Сохранить токен</button>
     </div>
-    <small>Токен передается в `x-admin-token`.</small>
+    <small>Передаются заголовки `x-admin-token` и `x-admin-user-id`.</small>
   </div>
 
   <div class="panel">
@@ -75,10 +76,19 @@
 
   <script>
     const tokenInput = document.getElementById('adminToken');
+    const adminUserIdInput = document.getElementById('adminUserId');
     tokenInput.value = localStorage.getItem('adminToken') || '';
-    function saveToken() { localStorage.setItem('adminToken', tokenInput.value.trim()); }
+    adminUserIdInput.value = localStorage.getItem('adminUserId') || '';
+    function saveToken() {
+      localStorage.setItem('adminToken', tokenInput.value.trim());
+      localStorage.setItem('adminUserId', adminUserIdInput.value.trim());
+    }
     function headers() {
-      return { 'Content-Type': 'application/json', 'x-admin-token': (localStorage.getItem('adminToken') || '').trim() };
+      return {
+        'Content-Type': 'application/json',
+        'x-admin-token': (localStorage.getItem('adminToken') || '').trim(),
+        'x-admin-user-id': (localStorage.getItem('adminUserId') || '').trim()
+      };
     }
     async function call(url, opts = {}) {
       const res = await fetch(url, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
