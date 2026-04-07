@@ -489,9 +489,12 @@ bot.start(async (ctx) => {
     const safeCoins = user ? Number(user.coins).toLocaleString() : '0';
     const safeEnergy = user ? `${user.energy}/${user.max_energy}` : '100/100';
     const safeClickPower = user ? user.click_power : 1;
-    const webAppUrl = payloadRaw
+    const baseUrl = payloadRaw
         ? `${APP_URL}?startapp=${encodeURIComponent(payloadRaw)}`
         : APP_URL;
+    const registerUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}register=1`;
+    const webAppUrl = user ? baseUrl : registerUrl;
+    const actionText = user ? '✨ ИГРАТЬ ✨' : '📝 РЕГИСТРАЦИЯ';
     
     await ctx.replyWithHTML(`
 🌟 <b>Star to Planet</b> 🌟
@@ -506,7 +509,7 @@ bot.start(async (ctx) => {
 🎯 <b>Оффер:</b> Играй 15-30 мин в день, прокачай 10/10 и попади в условия airdrop.
 
 🚀 <b>Первые 2 минуты:</b>
-1) Нажми <b>Играть</b> и зарегистрируйся
+1) Нажми <b>${user ? 'Играть' : 'Регистрация'}</b>
 2) Сделай первый тап и забери первое задание
 3) Открой Boost и купи первое улучшение
 4) Пригласи друга по реферальной ссылке
@@ -514,7 +517,7 @@ bot.start(async (ctx) => {
 🎮 Нажми на кнопку ниже!
     `, {
         reply_markup: {
-            inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: webAppUrl } }]]
+            inline_keyboard: [[{ text: actionText, web_app: { url: webAppUrl } }]]
         }
     });
 });

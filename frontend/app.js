@@ -100,6 +100,11 @@ function getLaunchReferrerId() {
     return refId;
 }
 
+function isRegisterIntentLaunch() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('register') === '1';
+}
+
 function showRegistrationOverlay(show) {
     const overlay = document.getElementById('registrationOverlay');
     const nav = document.querySelector('.nav-bar');
@@ -1800,8 +1805,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const registerBtn = document.getElementById('registerProfileBtn');
     const registrationHelp = document.getElementById('registrationHelp');
     const alreadyRegistered = await checkRegistrationStatus();
-    isRegistered = alreadyRegistered;
-    if (!alreadyRegistered) {
+    const registerIntent = isRegisterIntentLaunch();
+    const hasLocalProgress = Boolean(localStorage.getItem('starToPlanet'));
+    const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered() || hasLocalProgress;
+    isRegistered = canBypassRegistrationOverlay;
+    if (!canBypassRegistrationOverlay) {
         showRegistrationOverlay(true);
         if (!userId && registerBtn) {
             registerBtn.disabled = true;
@@ -1821,6 +1829,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
                 : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
         }
+        if (registerIntent && registerBtn && !isRegistering && userId) {
+            isRegistering = true;
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Создаем профиль...';
+            if (registrationHelp) registrationHelp.textContent = 'Регистрируем профиль...';
+            const result = await registerCurrentUser();
+            if (result.ok || result.created === false) {
+                setCachedRegistered(true);
+                window.location.reload();
+                return;
+            }
+            isRegistering = false;
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Регистрация';
+            if (registrationHelp) registrationHelp.textContent = result.message || 'Ошибка регистрации. Попробуйте еще раз.';
+        }
         if (registerBtn) {
             registerBtn.addEventListener('click', async () => {
                 if (isRegistering) return;
@@ -1829,6 +1853,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 registerBtn.textContent = 'Создаем профиль...';
                 const result = await registerCurrentUser();
                 if (!result.ok) {
+                    const fallbackRegistered = await checkRegistrationStatus();
+                    if (fallbackRegistered || Boolean(localStorage.getItem('starToPlanet'))) {
+                        showMessage('ℹ️ Профиль найден, продолжаем вход');
+                        setCachedRegistered(true);
+                        window.location.reload();
+                        return;
+                    }
                     showMessage(result.message || 'Ошибка регистрации', true);
                     if (registrationHelp) registrationHelp.textContent = result.message || 'Ошибка регистрации. Попробуйте еще раз.';
                     registerBtn.disabled = false;
