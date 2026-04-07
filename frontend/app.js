@@ -146,24 +146,11 @@ function init3D() {
     fillLight.position.set(-2, 1, 2);
     scene.add(fillLight);
     
-    // Звёздный фон
-    const starCount = 3200;
-    const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-        starPositions[i*3] = (Math.random() - 0.5) * 240;
-        starPositions[i*3+1] = (Math.random() - 0.5) * 240;
-        starPositions[i*3+2] = (Math.random() - 0.5) * 160 - 60;
-    }
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starsField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.75 }));
-    scene.add(starsField);
-    
-    // Сохраняем в глобальные переменные
+    // Звёздное небо только в CSS (.game-area) на всю площадь; в WebGL только планета/эффекты.
     window.scene = scene;
     window.camera = camera;
     window.renderer = renderer;
-    window.starsField = starsField;
+    window.starsField = null;
     window.activeExplosions = [];
     
     // Создаем планету только один раз
@@ -192,9 +179,6 @@ function init3D() {
                 fx.plasma.material.opacity = fx.kind === 'red-sun' ? 0.3 + Math.max(0, Math.sin(fx.pulsePhase)) * 0.15 : 0.3 + Math.max(0, Math.sin(fx.pulsePhase)) * 0.12;
                 fx.corona.material.opacity = fx.kind === 'red-sun' ? 0.2 + Math.max(0, Math.cos(fx.pulsePhase * 1.3)) * 0.11 : 0.16 + Math.max(0, Math.cos(fx.pulsePhase * 1.2)) * 0.08;
             }
-        }
-        if (window.starsField) {
-            window.starsField.rotation.y += 0.0005;
         }
         if (window.activeExplosions?.length) {
             const next = [];
