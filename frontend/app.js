@@ -56,6 +56,65 @@ function setCachedRegistered(value) {
     try { localStorage.setItem(registeredCacheKey(), value ? '1' : '0'); } catch (e) {}
 }
 
+function showServerWakeupOverlay(show, text = '', attemptText = '') {
+    const overlay = document.getElementById('serverWakeupOverlay');
+    const textEl = document.getElementById('serverWakeupText');
+    const attemptEl = document.getElementById('serverWakeupAttempt');
+    if (textEl && text) textEl.textContent = text;
+    if (attemptEl) attemptEl.textContent = attemptText || '';
+    if (overlay) overlay.style.display = show ? 'flex' : 'none';
+}
+
+async function warmupServer(maxAttempts = 5) {
+    showServerWakeupOverlay(true, 'Проверяем подключение к серверу...');
+    for (let i = 1; i <= maxAttempts; i++) {
+        try {
+            showServerWakeupOverlay(true, 'Сервер может быть в sleep, запускаем его...', `Попытка ${i} из ${maxAttempts}`);
+            const res = await fetch(`${API_BASE}/healthz`, { cache: 'no-store' });
+            if (res.ok) {
+                showServerWakeupOverlay(false);
+                return true;
+            }
+        } catch (e) {}
+        await new Promise((resolve) => setTimeout(resolve, 1200 * i));
+    }
+    showServerWakeupOverlay(false);
+    return false;
+}
+
+function tryResolveTelegramUser() {
+    if (!tg) return false;
+    if (userId) return true;
+
+    let tgUser = tg.initDataUnsafe?.user || null;
+    if (!tgUser && tg.initData) {
+        try {
+            const raw = new URLSearchParams(tg.initData).get('user');
+            if (raw) tgUser = JSON.parse(raw);
+        } catch (e) {}
+    }
+    if (!tgUser?.id) return false;
+
+    userId = tgUser.id;
+    if (tgUser.username) displayName = `@${tgUser.username}`;
+    else if (tgUser.first_name) displayName = tgUser.first_name;
+    userAvatar = tgUser.photo_url || userAvatar;
+    if (userNameElem) userNameElem.textContent = displayName;
+    if (profileNameElem) profileNameElem.textContent = displayName;
+    if (userAvatarElem) userAvatarElem.src = userAvatar;
+    if (profileAvatarElem) profileAvatarElem.src = userAvatar;
+    return true;
+}
+
+async function ensureTelegramUserResolved(maxAttempts = 8, delayMs = 350) {
+    if (tryResolveTelegramUser()) return true;
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        if (tryResolveTelegramUser()) return true;
+    }
+    return false;
+}
+
 function getLaunchReferrerId() {
     const fromTelegram = tg?.initDataUnsafe?.start_param || '';
     const params = new URLSearchParams(window.location.search);
@@ -76,7 +135,7 @@ function showRegistrationOverlay(show) {
 
 async function checkRegistrationStatus() {
     if (!userId) return getCachedRegistered();
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 4; attempt++) {
         try {
             const res = await fetch(`${API_BASE}/api/user/${userId}`);
             if (!res.ok) continue;
@@ -85,7 +144,7 @@ async function checkRegistrationStatus() {
             if (registered) setCachedRegistered(true);
             return registered;
         } catch (e) {}
-        await new Promise((resolve) => setTimeout(resolve, 600));
+        await new Promise((resolve) => setTimeout(resolve, 700 + attempt * 500));
     }
     return getCachedRegistered();
 }
@@ -1679,6 +1738,8 @@ function rechargeEnergy() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.addEventListener('DOMContentLoaded', async () => {
+    await warmupServer();
+    await ensureTelegramUserResolved();
     const registerBtn = document.getElementById('registerProfileBtn');
     const registrationHelp = document.getElementById('registrationHelp');
     const alreadyRegistered = await checkRegistrationStatus();
