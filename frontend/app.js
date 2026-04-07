@@ -21,11 +21,18 @@ if (window.Telegram && window.Telegram.WebApp) {
     if (tp && tp.secondary_bg_color) {
         document.documentElement.style.setProperty('--tg-secondary', `#${tp.secondary_bg_color}`);
     }
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        userId = tg.initDataUnsafe.user.id;
-        if (tg.initDataUnsafe.user.username) displayName = `@${tg.initDataUnsafe.user.username}`;
-        else if (tg.initDataUnsafe.user.first_name) displayName = tg.initDataUnsafe.user.first_name;
-        userAvatar = tg.initDataUnsafe.user.photo_url || userAvatar;
+    let tgUser = tg.initDataUnsafe?.user || null;
+    if (!tgUser && tg.initData) {
+        try {
+            const raw = new URLSearchParams(tg.initData).get('user');
+            if (raw) tgUser = JSON.parse(raw);
+        } catch (e) {}
+    }
+    if (tgUser?.id) {
+        userId = tgUser.id;
+        if (tgUser.username) displayName = `@${tgUser.username}`;
+        else if (tgUser.first_name) displayName = tgUser.first_name;
+        userAvatar = tgUser.photo_url || userAvatar;
         console.log('✅ Пользователь авторизован, ID:', userId);
     }
 }
@@ -41,6 +48,13 @@ if (userAvatarElem) userAvatarElem.src = userAvatar;
 if (profileAvatarElem) profileAvatarElem.src = userAvatar;
 
 let isRegistered = false;
+const registeredCacheKey = () => `stp_registered_${userId || 'guest'}`;
+function getCachedRegistered() {
+    try { return localStorage.getItem(registeredCacheKey()) === '1'; } catch (e) { return false; }
+}
+function setCachedRegistered(value) {
+    try { localStorage.setItem(registeredCacheKey(), value ? '1' : '0'); } catch (e) {}
+}
 
 function getLaunchReferrerId() {
     const fromTelegram = tg?.initDataUnsafe?.start_param || '';
@@ -61,15 +75,19 @@ function showRegistrationOverlay(show) {
 }
 
 async function checkRegistrationStatus() {
-    if (!userId) return false;
-    try {
-        const res = await fetch(`${API_BASE}/api/user/${userId}`);
-        if (!res.ok) return false;
-        const data = await res.json();
-        return Boolean(data?.registered);
-    } catch (e) {
-        return false;
+    if (!userId) return getCachedRegistered();
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const res = await fetch(`${API_BASE}/api/user/${userId}`);
+            if (!res.ok) continue;
+            const data = await res.json();
+            const registered = Boolean(data?.registered);
+            if (registered) setCachedRegistered(true);
+            return registered;
+        } catch (e) {}
+        await new Promise((resolve) => setTimeout(resolve, 600));
     }
+    return getCachedRegistered();
 }
 
 async function registerCurrentUser() {
@@ -85,6 +103,7 @@ async function registerCurrentUser() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data?.success) return { ok: false, message: data?.message || 'Ошибка регистрации' };
+        setCachedRegistered(true);
         return { ok: true, created: Boolean(data?.created), message: data?.message || '' };
     } catch (e) {
         return { ok: false, message: 'Ошибка сети при регистрации' };
@@ -226,6 +245,8 @@ function applyOfflineEarnings() {
     perMinute += getRankSalaryPerMinute(effRank);
 
     coins += offlineMinutes * perMinute;
+    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * 60);
+    if (offlineEnergyRecover > 0) energy += offlineEnergyRecover;
     showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${(offlineMinutes * perMinute).toLocaleString()} 🪙`);
 }
 
@@ -815,7 +836,7 @@ function getPassiveRate() {
 
 function updateUI() {
     const level = getLevel();
-    const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
+    const levelNames = ['⭐ Звезда', '☄️ Меркурий', '🔴 Марс', '🟠 Венера', '🔵 Нептун', '🧊 Уран', '🪐 Сатурн', '🟤 Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
     const userLevelElem = document.getElementById('userLevel');
     if (userLevelElem) userLevelElem.textContent = `Уровень ${level} · ${levelNames[level]}`;
     
