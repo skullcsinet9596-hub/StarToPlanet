@@ -152,7 +152,7 @@ function getLevelForCoins(coinsValue) {
 
 function getEffectiveRankLevel() {
     const owned = clampInt(ownedRankLevel, -1, 10);
-    return Math.min(owned, getLevel());
+    return owned;
 }
 
 function getRankCost(level) {
@@ -216,8 +216,7 @@ function applyOfflineEarnings() {
     if (offlineMinutes <= 0) return;
 
     // Считаем пассивку по состоянию ДО оффлайн начисления (чтобы не разгонять уровень «сам из себя»).
-    const levelAtStart = getLevelForCoins(coins);
-    const effRank = Math.min(clampInt(ownedRankLevel, -1, 10), levelAtStart);
+    const effRank = clampInt(ownedRankLevel, -1, 10);
     let perMinute = passiveIncomeLevel * 5;
     if (hasSun) perMinute += 100000;
     else if (hasEarth) perMinute += 50000;
@@ -240,8 +239,8 @@ let premiumPaymentConfig = {
 };
 let currentVisualLevel = null;
 
-const defaultDailyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false });
-const defaultWeeklyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false });
+const defaultDailyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false, passive: false });
+const defaultWeeklyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false, passive: false });
 
 let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgradesBought = 0;
 let dailyTasksClaimed = defaultDailyTasksClaimed();
@@ -348,23 +347,22 @@ function updateMilitaryRankHUD() {
     const title = document.getElementById('hudRankTitle');
     const num = document.getElementById('hudRankLevelNum');
     if (!row || !title) return;
-    const level = getLevel();
-    const rank = getRankForGameLevel(level);
+    const boughtLevel = clampInt(ownedRankLevel, -1, 10);
+    const displayLevel = boughtLevel >= 0 ? boughtLevel : 0;
+    const rank = MILITARY_RANKS[displayLevel] || MILITARY_RANKS[0];
     // В HUD показываем один погон (горизонтально)
     row.innerHTML = shoulderBoardHTMLHorizontal(rank);
-    title.textContent = rank.name;
-    if (num) num.textContent = String(level);
+    title.textContent = boughtLevel >= 0 ? rank.name : `${rank.name} (не куплено)`;
+    if (num) num.textContent = String(displayLevel);
     const hint = document.getElementById('rankStripHint');
     if (hint) {
-        const owned = clampInt(ownedRankLevel, -1, 10);
-        const eff = getEffectiveRankLevel();
-        const ownedName = owned >= 0 ? (MILITARY_RANKS[owned]?.name || `Уровень ${owned}`) : 'не куплено';
-        const effName = eff >= 0 ? (MILITARY_RANKS[eff]?.name || `Уровень ${eff}`) : 'нет';
-        hint.textContent = `Уровень игры ${level} · Куплено: ${ownedName} · Доход сейчас: ${effName}`;
+        const currentPlanetLevel = getLevel();
+        const ownedName = boughtLevel >= 0 ? (MILITARY_RANKS[boughtLevel]?.name || `Уровень ${boughtLevel}`) : 'не куплено';
+        hint.textContent = `Уровень планеты ${currentPlanetLevel} · Куплено: ${ownedName}`;
     }
     document.querySelectorAll('.ranks-preview-row').forEach((el) => {
         const lv = parseInt(el.getAttribute('data-rank-level'), 10);
-        el.classList.toggle('ranks-preview-row--current', lv === level);
+        el.classList.toggle('ranks-preview-row--current', lv === displayLevel);
     });
 }
 
@@ -813,7 +811,7 @@ function updateUI() {
     document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
     document.getElementById('clickPower').textContent = clickPower;
     document.getElementById('energyCost').textContent = clickPower;
-    document.getElementById('upgradeLevel').textContent = clickUpgradeLevel;
+    document.getElementById('upgradeLevel').textContent = clickPower;
     document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
     document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
     document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
@@ -837,12 +835,16 @@ function updateUI() {
     if (dailyEnergyEl) dailyEnergyEl.textContent = `${dailyEnergySpent}/200`;
     const dailyUpgradeEl = document.getElementById('dailyUpgradeProgress');
     if (dailyUpgradeEl) dailyUpgradeEl.textContent = `${dailyUpgradesBought}/1`;
+    const dailyPassiveEl = document.getElementById('dailyPassiveProgress');
+    if (dailyPassiveEl) dailyPassiveEl.textContent = `${Math.min(getPassiveRate(), 10)}/10`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
     document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
     const weeklyEnergyEl = document.getElementById('weeklyEnergyProgress');
     if (weeklyEnergyEl) weeklyEnergyEl.textContent = `${weeklyEnergySpent}/1000`;
     const weeklyUpgradeEl = document.getElementById('weeklyUpgradeProgress');
     if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/5`;
+    const weeklyPassiveEl = document.getElementById('weeklyPassiveProgress');
+    if (weeklyPassiveEl) weeklyPassiveEl.textContent = `${Math.min(getPassiveRate(), 40)}/40`;
     updateTaskButtons();
     updatePremiumUI();
     updateMilitaryRankHUD();
@@ -978,8 +980,50 @@ function saveGame() {
     localStorage.setItem('starToPlanet', JSON.stringify(gameData));
 }
 
+function normalizeUpgradeCosts() {
+    let changed = false;
+    const safeClickPower = clampInt(clickPower || 1, 1, 100);
+    if (safeClickPower !== clickPower) {
+        clickPower = safeClickPower;
+        changed = true;
+    }
+    if (clickUpgradeLevel !== clickPower) {
+        clickUpgradeLevel = clickPower;
+        changed = true;
+    }
+    const expectedEnergyLevel = clampInt(Math.floor((Math.max(100, maxEnergy) - 100) / 50) + 1, 1, 100);
+    if (energyUpgradeLevel !== expectedEnergyLevel) {
+        energyUpgradeLevel = expectedEnergyLevel;
+        changed = true;
+    }
+    const safePassiveLevel = clampInt(passiveIncomeLevel || 0, 0, 100);
+    if (safePassiveLevel !== passiveIncomeLevel) {
+        passiveIncomeLevel = safePassiveLevel;
+        changed = true;
+    }
+
+    const expectedClickCost = Math.floor(100 * Math.pow(1.3, Math.max(0, clickUpgradeLevel - 1)));
+    const expectedEnergyCost = Math.floor(200 * Math.pow(1.25, Math.max(0, energyUpgradeLevel - 1)));
+    const expectedPassiveCost = Math.floor(500 * Math.pow(1.25, Math.max(0, passiveIncomeLevel)));
+
+    if (!Number.isFinite(clickUpgradeCost) || clickUpgradeCost !== expectedClickCost) {
+        clickUpgradeCost = expectedClickCost;
+        changed = true;
+    }
+    if (!Number.isFinite(energyUpgradeCost) || energyUpgradeCost !== expectedEnergyCost) {
+        energyUpgradeCost = expectedEnergyCost;
+        changed = true;
+    }
+    if (!Number.isFinite(passiveIncomeUpgradeCost) || passiveIncomeUpgradeCost !== expectedPassiveCost) {
+        passiveIncomeUpgradeCost = expectedPassiveCost;
+        changed = true;
+    }
+    return changed;
+}
+
 function loadGame() {
     const saved = localStorage.getItem('starToPlanet');
+    let normalized = false;
     if (saved) {
         try {
             const data = JSON.parse(saved);
@@ -1010,6 +1054,7 @@ function loadGame() {
             ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : -1;
             lastSeenAtMs = Number.isFinite(Number(data.lastSeenAtMs)) ? Number(data.lastSeenAtMs) : Date.now();
             if (energy > maxEnergy) energy = maxEnergy;
+            normalized = normalizeUpgradeCosts();
         } catch(e) { console.log(e); }
     }
     // Оффлайн начисление (до 3 часов)
@@ -1017,6 +1062,7 @@ function loadGame() {
     lastSeenAtMs = Date.now();
     updateUI();
     fillRanksPreviewGrid();
+    if (normalized) saveGame();
 }
 
 // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
@@ -1095,6 +1141,7 @@ async function loadFromServer() {
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                 
                 if (energy > maxEnergy) energy = maxEnergy;
+                normalizeUpgradeCosts();
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
                 
@@ -1218,7 +1265,7 @@ function bindPlanetTapTargets() {
 // ========== БУСТЫ ==========
 function upgradeClick() {
     if (ignoreRapidBoostTap()) return;
-    const cost = Math.floor(100 * Math.pow(1.3, clickPower - 1));
+    const cost = clickUpgradeCost;
     if (coins >= cost && clickPower < 100) {
         coins -= cost;
         clickPower++;
@@ -1234,8 +1281,7 @@ function upgradeClick() {
 
 function upgradeEnergy() {
     if (ignoreRapidBoostTap()) return;
-    const level = (maxEnergy - 100) / 50;
-    const cost = Math.floor(200 * Math.pow(1.25, level));
+    const cost = energyUpgradeCost;
     if (coins >= cost && maxEnergy < 500) {
         coins -= cost;
         maxEnergy += 50;
@@ -1252,7 +1298,7 @@ function upgradeEnergy() {
 
 function upgradePassive() {
     if (ignoreRapidBoostTap()) return;
-    const cost = Math.floor(500 * Math.pow(1.25, passiveIncomeLevel));
+    const cost = passiveIncomeUpgradeCost;
     if (coins >= cost && passiveIncomeLevel < 100) {
         coins -= cost;
         passiveIncomeLevel++;
@@ -1277,71 +1323,118 @@ function setTaskClaimButton(btn, canClaim) {
     }
 }
 
+function setTaskCardVisible(selector, visible) {
+    const card = document.querySelector(selector);
+    if (card) card.style.display = visible ? '' : 'none';
+}
+
+function updateTasksDoneMessages() {
+    const dailyDone = Object.values(dailyTasksClaimed).every(Boolean);
+    const weeklyDone = Object.values(weeklyTasksClaimed).every(Boolean);
+    const dailyDoneEl = document.getElementById('dailyTasksDoneMessage');
+    const weeklyDoneEl = document.getElementById('weeklyTasksDoneMessage');
+    if (dailyDoneEl) dailyDoneEl.style.display = dailyDone ? 'block' : 'none';
+    if (weeklyDoneEl) weeklyDoneEl.style.display = weeklyDone ? 'block' : 'none';
+}
+
 function updateTaskButtons() {
     setTaskClaimButton(document.getElementById('dailyClickClaim'), dailyClickCount >= 100 && !dailyTasksClaimed.click);
     setTaskClaimButton(document.getElementById('dailyCoinsClaim'), dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins);
     setTaskClaimButton(document.getElementById('dailyEnergyClaim'), dailyEnergySpent >= 200 && !dailyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('dailyUpgradeClaim'), dailyUpgradesBought >= 1 && !dailyTasksClaimed.upgrade);
+    setTaskClaimButton(document.getElementById('dailyPassiveClaim'), getPassiveRate() >= 10 && !dailyTasksClaimed.passive);
     setTaskClaimButton(document.getElementById('weeklyClickClaim'), weeklyClickCount >= 1000 && !weeklyTasksClaimed.click);
     setTaskClaimButton(document.getElementById('weeklyCoinsClaim'), weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins);
     setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= 1000 && !weeklyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= 5 && !weeklyTasksClaimed.upgrade);
+    setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= 40 && !weeklyTasksClaimed.passive);
+
+    setTaskCardVisible('[data-daily-task="1"]', !dailyTasksClaimed.click);
+    setTaskCardVisible('[data-daily-task="2"]', !dailyTasksClaimed.coins);
+    setTaskCardVisible('[data-daily-task="3"]', !dailyTasksClaimed.energy);
+    setTaskCardVisible('[data-daily-task="4"]', !dailyTasksClaimed.upgrade);
+    setTaskCardVisible('[data-daily-task="5"]', !dailyTasksClaimed.passive);
+    setTaskCardVisible('[data-weekly-task="1"]', !weeklyTasksClaimed.click);
+    setTaskCardVisible('[data-weekly-task="2"]', !weeklyTasksClaimed.coins);
+    setTaskCardVisible('[data-weekly-task="3"]', !weeklyTasksClaimed.energy);
+    setTaskCardVisible('[data-weekly-task="4"]', !weeklyTasksClaimed.upgrade);
+    setTaskCardVisible('[data-weekly-task="5"]', !weeklyTasksClaimed.passive);
+    updateTasksDoneMessages();
+}
+
+function applyTaskReward(reward) {
+    if (typeof reward === 'number') {
+        coins += reward;
+        return `🎉 +${reward} монет!`;
+    }
+    if (reward?.type === 'passive') {
+        const before = passiveIncomeLevel;
+        passiveIncomeLevel = clampInt(passiveIncomeLevel + (reward.value || 0), 0, 100);
+        normalizeUpgradeCosts();
+        const gained = Math.max(0, passiveIncomeLevel - before) * 5;
+        return gained > 0 ? `🎉 Пассивный доход +${gained}/мин` : '⚠️ Пассивный доход уже на максимуме';
+    }
+    return '🎉 Награда получена!';
 }
 
 async function claimTask(taskId, reward, type) {
     if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { 
         dailyTasksClaimed.click = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+        showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { 
         dailyTasksClaimed.coins = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+        showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { 
         weeklyTasksClaimed.click = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+        showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { 
         weeklyTasksClaimed.coins = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+        showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
     else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= 200) {
         dailyTasksClaimed.energy = true;
-        coins += reward;
-        showMessage(`🎉 +${reward} монет!`);
+        showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= 1) {
         dailyTasksClaimed.upgrade = true;
-        coins += reward;
-        showMessage(`🎉 +${reward} монет!`);
+        showMessage(applyTaskReward(reward));
+        saveGame();
+        updateTaskButtons();
+    }
+    else if (type === 'daily_passive' && !dailyTasksClaimed.passive && getPassiveRate() >= 10) {
+        dailyTasksClaimed.passive = true;
+        showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= 1000) {
         weeklyTasksClaimed.energy = true;
-        coins += reward;
-        showMessage(`🎉 +${reward} монет!`);
+        showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
     else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= 5) {
         weeklyTasksClaimed.upgrade = true;
-        coins += reward;
-        showMessage(`🎉 +${reward} монет!`);
+        showMessage(applyTaskReward(reward));
+        saveGame();
+        updateTaskButtons();
+    }
+    else if (type === 'weekly_passive' && !weeklyTasksClaimed.passive && getPassiveRate() >= 40) {
+        weeklyTasksClaimed.passive = true;
+        showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
@@ -1591,10 +1684,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
     document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', 300, 'daily_energy'));
     document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', 200, 'daily_upgrade'));
+    document.getElementById('dailyPassiveClaim')?.addEventListener('click', () => claimTask('dailyPassiveClaim', { type: 'passive', value: 2 }, 'daily_passive'));
     document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
     document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
     document.getElementById('weeklyEnergyClaim')?.addEventListener('click', () => claimTask('weeklyEnergyClaim', 1500, 'weekly_energy'));
     document.getElementById('weeklyUpgradeClaim')?.addEventListener('click', () => claimTask('weeklyUpgradeClaim', 2000, 'weekly_upgrade'));
+    document.getElementById('weeklyPassiveClaim')?.addEventListener('click', () => claimTask('weeklyPassiveClaim', { type: 'passive', value: 5 }, 'weekly_passive'));
     document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
     document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
     document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
