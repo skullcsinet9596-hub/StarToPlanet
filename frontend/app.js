@@ -65,8 +65,13 @@ let premiumPaymentConfig = {
 };
 let currentVisualLevel = null;
 
-let dailyClickCount = 0, dailyCoinsEarned = 0, dailyTasksClaimed = { click: false, coins: false };
-let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyTasksClaimed = { click: false, coins: false };
+const defaultDailyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false });
+const defaultWeeklyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false });
+
+let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgradesBought = 0;
+let dailyTasksClaimed = defaultDailyTasksClaimed();
+let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
+let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
 
 let clickCooldown = 30;
 /** Кулдаун отдельно на каждый палец / мышь — иначе мультитап блокируется одним lastClickTime */
@@ -468,8 +473,16 @@ function updateUI() {
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
     document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
     document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
+    const dailyEnergyEl = document.getElementById('dailyEnergyProgress');
+    if (dailyEnergyEl) dailyEnergyEl.textContent = `${dailyEnergySpent}/200`;
+    const dailyUpgradeEl = document.getElementById('dailyUpgradeProgress');
+    if (dailyUpgradeEl) dailyUpgradeEl.textContent = `${dailyUpgradesBought}/1`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
     document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
+    const weeklyEnergyEl = document.getElementById('weeklyEnergyProgress');
+    if (weeklyEnergyEl) weeklyEnergyEl.textContent = `${weeklyEnergySpent}/1000`;
+    const weeklyUpgradeEl = document.getElementById('weeklyUpgradeProgress');
+    if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/5`;
     updateTaskButtons();
     updatePremiumUI();
 }
@@ -587,8 +600,8 @@ function saveGame() {
     const gameData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
-        dailyClickCount, dailyCoinsEarned, dailyTasksClaimed,
-        weeklyClickCount, weeklyCoinsEarned, weeklyTasksClaimed,
+        dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
+        weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
         hasMoon, hasEarth, hasSun, soundEnabled
     };
     localStorage.setItem('starToPlanet', JSON.stringify(gameData));
@@ -611,10 +624,14 @@ function loadGame() {
             passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
             dailyClickCount = data.dailyClickCount || 0;
             dailyCoinsEarned = data.dailyCoinsEarned || 0;
-            dailyTasksClaimed = data.dailyTasksClaimed || { click: false, coins: false };
+            dailyEnergySpent = data.dailyEnergySpent || 0;
+            dailyUpgradesBought = data.dailyUpgradesBought || 0;
+            dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...(data.dailyTasksClaimed || {}) };
             weeklyClickCount = data.weeklyClickCount || 0;
             weeklyCoinsEarned = data.weeklyCoinsEarned || 0;
-            weeklyTasksClaimed = data.weeklyTasksClaimed || { click: false, coins: false };
+            weeklyEnergySpent = data.weeklyEnergySpent || 0;
+            weeklyUpgradesBought = data.weeklyUpgradesBought || 0;
+            weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...(data.weeklyTasksClaimed || {}) };
             hasMoon = data.hasMoon || false;
             hasEarth = data.hasEarth || false;
             hasSun = data.hasSun || false;
@@ -824,6 +841,8 @@ function upgradeClick() {
         coins -= cost;
         clickPower++;
         clickUpgradeLevel++;
+        dailyUpgradesBought++;
+        weeklyUpgradesBought++;
         clickUpgradeCost = Math.floor(clickUpgradeCost * 1.3);
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Сила клика +1 (${clickPower})`);
@@ -839,6 +858,8 @@ function upgradeEnergy() {
         maxEnergy += 50;
         energy += 50;
         energyUpgradeLevel++;
+        dailyUpgradesBought++;
+        weeklyUpgradesBought++;
         energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
@@ -851,6 +872,8 @@ function upgradePassive() {
     if (coins >= cost && passiveIncomeLevel < 100) {
         coins -= cost;
         passiveIncomeLevel++;
+        dailyUpgradesBought++;
+        weeklyUpgradesBought++;
         passiveIncomeUpgradeCost = Math.floor(passiveIncomeUpgradeCost * 1.25);
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
@@ -859,15 +882,26 @@ function upgradePassive() {
 }
 
 // ========== ЗАДАНИЯ ==========
+function setTaskClaimButton(btn, canClaim) {
+    if (!btn) return;
+    if (canClaim) {
+        btn.classList.remove('disabled');
+        btn.disabled = false;
+    } else {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+    }
+}
+
 function updateTaskButtons() {
-    const dailyClickBtn = document.getElementById('dailyClickClaim');
-    const dailyCoinsBtn = document.getElementById('dailyCoinsClaim');
-    const weeklyClickBtn = document.getElementById('weeklyClickClaim');
-    const weeklyCoinsBtn = document.getElementById('weeklyCoinsClaim');
-    if (dailyClickBtn) { if (dailyClickCount >= 100 && !dailyTasksClaimed.click) dailyClickBtn.classList.remove('disabled'); else dailyClickBtn.classList.add('disabled'); }
-    if (dailyCoinsBtn) { if (dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins) dailyCoinsBtn.classList.remove('disabled'); else dailyCoinsBtn.classList.add('disabled'); }
-    if (weeklyClickBtn) { if (weeklyClickCount >= 1000 && !weeklyTasksClaimed.click) weeklyClickBtn.classList.remove('disabled'); else weeklyClickBtn.classList.add('disabled'); }
-    if (weeklyCoinsBtn) { if (weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins) weeklyCoinsBtn.classList.remove('disabled'); else weeklyCoinsBtn.classList.add('disabled'); }
+    setTaskClaimButton(document.getElementById('dailyClickClaim'), dailyClickCount >= 100 && !dailyTasksClaimed.click);
+    setTaskClaimButton(document.getElementById('dailyCoinsClaim'), dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins);
+    setTaskClaimButton(document.getElementById('dailyEnergyClaim'), dailyEnergySpent >= 200 && !dailyTasksClaimed.energy);
+    setTaskClaimButton(document.getElementById('dailyUpgradeClaim'), dailyUpgradesBought >= 1 && !dailyTasksClaimed.upgrade);
+    setTaskClaimButton(document.getElementById('weeklyClickClaim'), weeklyClickCount >= 1000 && !weeklyTasksClaimed.click);
+    setTaskClaimButton(document.getElementById('weeklyCoinsClaim'), weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins);
+    setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= 1000 && !weeklyTasksClaimed.energy);
+    setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= 5 && !weeklyTasksClaimed.upgrade);
 }
 
 async function claimTask(taskId, reward, type) {
@@ -899,33 +933,33 @@ async function claimTask(taskId, reward, type) {
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
-    else if (type === 'daily_energy' && !dailyTasksClaimed.energy && energy >= 100) { 
-        dailyTasksClaimed.energy = true; 
-        energy -= 100; 
-        showMessage(`🎉 Энергия восстановлена!`); 
+    else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= 200) {
+        dailyTasksClaimed.energy = true;
+        coins += reward;
+        showMessage(`🎉 +${reward} монет!`);
         saveGame();
-        updateTaskButtons(); // Обновляем кнопки
+        updateTaskButtons();
     }
-    else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && clickUpgradeLevel >= 5) { 
-        dailyTasksClaimed.upgrade = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+    else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= 1) {
+        dailyTasksClaimed.upgrade = true;
+        coins += reward;
+        showMessage(`🎉 +${reward} монет!`);
         saveGame();
-        updateTaskButtons(); // Обновляем кнопки
+        updateTaskButtons();
     }
-    else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && energy >= 100) { 
-        weeklyTasksClaimed.energy = true; 
-        energy -= 100; 
-        showMessage(`🎉 Энергия восстановлена!`); 
+    else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= 1000) {
+        weeklyTasksClaimed.energy = true;
+        coins += reward;
+        showMessage(`🎉 +${reward} монет!`);
         saveGame();
-        updateTaskButtons(); // Обновляем кнопки
+        updateTaskButtons();
     }
-    else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && clickUpgradeLevel >= 10) { 
-        weeklyTasksClaimed.upgrade = true; 
-        coins += reward; 
-        showMessage(`🎉 +${reward} монет!`); 
+    else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= 5) {
+        weeklyTasksClaimed.upgrade = true;
+        coins += reward;
+        showMessage(`🎉 +${reward} монет!`);
         saveGame();
-        updateTaskButtons(); // Обновляем кнопки
+        updateTaskButtons();
     }
     else {
         showMessage('❌ Задание недоступно!', true);
@@ -937,21 +971,31 @@ async function claimTask(taskId, reward, type) {
 async function loadLeaderboard() {
     const container = document.getElementById('leaderboardList');
     if (!container) return;
+    container.innerHTML = '<div class="leaderboard-item glass-panel">🏆 Загрузка...</div>';
     try {
         const response = await fetch(`${API_BASE}/api/leaderboard`);
-        if (response.ok) {
-            const players = await response.json();
-            if (players.length > 0) {
-                container.innerHTML = players.map((p, i) => {
-                    let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
-                    const isCurrent = p.id == userId;
-                    return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i<3?`top-${i+1}`:''}">${medal}</div><div class="leaderboard-name">${p.name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${p.coins.toLocaleString()} 🪙</div></div>`;
-                }).join('');
-                return;
-            }
+        if (!response.ok) {
+            container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Не удалось загрузить рейтинг</div>';
+            return;
         }
-    } catch(e) { console.log(e); }
-    container.innerHTML = '<div class="leaderboard-item">🏆 Загрузка...</div>';
+        const players = await response.json();
+        if (!Array.isArray(players) || players.length === 0) {
+            container.innerHTML = '<div class="leaderboard-item glass-panel">Пока никого в таблице — сыграйте и сохраните прогресс</div>';
+            return;
+        }
+        container.innerHTML = players.map((p, i) => {
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+            const name = (p.username && `@${p.username}`) || p.first_name || 'Аноним';
+            const coinsVal = Number(p.coins) || 0;
+            const lvl = p.level != null ? p.level : 1;
+            const tid = p.telegram_id != null ? p.telegram_id : p.id;
+            const isCurrent = userId != null && String(tid) === String(userId);
+            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i + 1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${coinsVal.toLocaleString()} 🪙</div><div class="leaderboard-level">Уровень ${lvl}</div></div>`;
+        }).join('');
+    } catch (e) {
+        console.log(e);
+        container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Ошибка сети</div>';
+    }
 }
 
 function loadFriends() {
@@ -1015,18 +1059,8 @@ function setupTabs() {
                 panels[tab].classList.add('active');
             }
             
-            if (tab === 'leaderboard') loadLeaderboardFromAPI();
-            function loadFriendsFromAPI() {
-    console.log('👥 Загрузка данных друзей...');
-    // Заглушка для друзей
-    const container = document.getElementById('level1List');
-    if(container) {
-        container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
-    }
-    document.getElementById('referralCount').textContent = '0';
-    document.getElementById('referralBonus').textContent = '0';
-    document.getElementById('profileReferrals').textContent = '0';
-}
+            if (tab === 'leaderboard') loadLeaderboard();
+            if (tab === 'friends') loadFriends();
         });
     });
 }
@@ -1099,8 +1133,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
     document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
     document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
+    document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', 300, 'daily_energy'));
+    document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', 200, 'daily_upgrade'));
     document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
     document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
+    document.getElementById('weeklyEnergyClaim')?.addEventListener('click', () => claimTask('weeklyEnergyClaim', 1500, 'weekly_energy'));
+    document.getElementById('weeklyUpgradeClaim')?.addEventListener('click', () => claimTask('weeklyUpgradeClaim', 2000, 'weekly_upgrade'));
     document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
     document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
     document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));
@@ -1147,10 +1185,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
     
     // Загружаем лидерборд и друзей после инициализации
-    setTimeout(() => { 
-        // Эти функции определены в index.html
-        if (typeof loadLeaderboardFromAPI === 'function') loadLeaderboardFromAPI();
-        if (typeof loadFriendsFromAPI === 'function') loadFriendsFromAPI();
+    setTimeout(() => {
+        loadLeaderboard();
+        loadFriends();
     }, 1000);
     
     const soundToggleBtn = document.getElementById('soundToggle');
