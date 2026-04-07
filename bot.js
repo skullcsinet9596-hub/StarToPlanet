@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import express from 'express';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import { 
     initDB, 
     getUser, 
@@ -38,6 +39,14 @@ if (!BOT_TOKEN) {
     process.exit(1);
 }
 
+/** Публичный URL сервиса (Render задаёт RENDER_EXTERNAL_URL). Long polling + второй инстанс дают 409 Conflict. */
+const publicUrl = (process.env.WEBHOOK_BASE_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
+const useWebhookMode = process.env.BOT_POLLING !== 'true' && Boolean(publicUrl);
+const webhookSecret =
+    process.env.TELEGRAM_WEBHOOK_SECRET ||
+    crypto.createHash('sha256').update(BOT_TOKEN).digest('hex').slice(0, 24);
+const WEBHOOK_PATH = `/tg-hook/${webhookSecret}`;
+
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 
@@ -49,8 +58,13 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
 });
-app.use(express.static('frontend'));
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
+
+if (useWebhookMode) {
+    app.post(WEBHOOK_PATH, (req, res) => {
+        bot.handleUpdate(req.body, res);
+    });
+}
 
 app.get('/api/leaderboard', async (req, res) => {
     const top = await getLeaderboard(20);
@@ -186,6 +200,8 @@ app.post('/api/premium/invoice-link', async (req, res) => {
     }
 });
 
+app.use(express.static('frontend'));
+
 const HOST = '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
     console.log(`✅ Веб-сервер слушает http://${HOST}:${PORT} (env PORT=${process.env.PORT ?? 'not-set'})`);
@@ -303,9 +319,16 @@ bot.on('message', async (ctx) => {
 });
 
 // ========== ЗАПУСК ==========
-await bot.telegram.deleteWebhook();
-console.log('✅ Вебхук удалён');
+await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+console.log('✅ Старый webhook снят');
 
 await initDB();
-bot.launch();
-console.log('🤖 Бот запущен!');
+
+if (useWebhookMode) {
+    const hookUrl = `${publicUrl}${WEBHOOK_PATH}`;
+    await bot.telegram.setWebhook(hookUrl);
+    console.log(`✅ Режим webhook (нет конфликта getUpdates). URL зарегистрирован в Telegram.`);
+} else {
+    await bot.launch();
+    console.log('🤖 Бот в режиме long polling (убедись, что нет второго инстанса с тем же BOT_TOKEN)');
+}
