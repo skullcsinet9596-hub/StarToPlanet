@@ -21,7 +21,9 @@ import {
     getReferralTreeAdmin,
     updateEconomyConfig,
     getEconomyConfig,
-    adjustUserAdmin
+    adjustUserAdmin,
+    trackBotStart,
+    getMarketingMetricsAdmin
 } from './db.js';
 
 dotenv.config();
@@ -153,6 +155,7 @@ app.get('/api/user/:userId', async (req, res) => {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
+        await updateUser(telegramId, { last_seen_at: new Date() });
         
         res.json({
             registered: true,
@@ -426,6 +429,15 @@ app.get('/api/admin/economy', requireAdmin, async (req, res) => {
     res.json({ success: true, config: cfg || {} });
 });
 
+app.get('/api/admin/marketing-metrics', requireAdmin, async (req, res) => {
+    const metrics = await getMarketingMetricsAdmin();
+    if (!metrics) {
+        res.status(500).json({ success: false, message: 'Не удалось загрузить метрики' });
+        return;
+    }
+    res.json({ success: true, metrics });
+});
+
 app.post('/api/admin/economy', requireAdmin, async (req, res) => {
     const patch = req.body || {};
     const cfg = await updateEconomyConfig(patch);
@@ -461,6 +473,7 @@ server.on('error', (err) => {
 // ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
+    await trackBotStart(userId);
     let userName = ctx.from.username || ctx.from.first_name || 'игрок';
     if (ctx.from.username) userName = `@${ctx.from.username}`;
     
@@ -489,6 +502,14 @@ bot.start(async (ctx) => {
 💪 <b>Сила клика:</b> ${safeClickPower}
 🏆 <b>Рейтинг:</b> #${rank}
 👥 <b>Рефералов:</b> ${stats?.referralsCount ?? 0}
+
+🎯 <b>Оффер:</b> Играй 15-30 мин в день, прокачай 10/10 и попади в условия airdrop.
+
+🚀 <b>Первые 2 минуты:</b>
+1) Нажми <b>Играть</b> и зарегистрируйся
+2) Сделай первый тап и забери первое задание
+3) Открой Boost и купи первое улучшение
+4) Пригласи друга по реферальной ссылке
 
 🎮 Нажми на кнопку ниже!
     `, {

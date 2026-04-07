@@ -63,6 +63,14 @@
   </div>
 
   <div class="panel">
+    <h3>Маркетинг-метрики</h3>
+    <div class="row">
+      <button onclick="loadMarketingMetrics()">Загрузить метрики</button>
+    </div>
+    <pre id="marketingOut"></pre>
+  </div>
+
+  <div class="panel">
     <h3>Ручная корректировка пользователя</h3>
     <div class="row">
       <input id="adjustUserId" placeholder="telegram_id" />
@@ -131,6 +139,10 @@
         body: JSON.stringify({ telegramId, patch })
       });
       document.getElementById('adjustOut').textContent = JSON.stringify(data, null, 2);
+    }
+    async function loadMarketingMetrics() {
+      const data = await call('/api/admin/marketing-metrics');
+      document.getElementById('marketingOut').textContent = JSON.stringify(data, null, 2);
     }
   </script>
 </body>

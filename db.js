@@ -59,9 +59,12 @@ export async function initDB() {
                 referrer_id BIGINT,
                 last_daily_bonus DATE,
                 daily_streak INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
 
         // Таблица рефералов
         await pool.query(`
@@ -137,6 +140,15 @@ export async function initDB() {
             )
         `);
 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bot_starts (
+                telegram_id BIGINT PRIMARY KEY,
+                first_started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                starts_count INTEGER DEFAULT 1
+            )
+        `);
+
         // Индексы и ограничения для стабильности/безопасности
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_referrer_id ON users(referrer_id)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
@@ -145,6 +157,9 @@ export async function initDB() {
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at DESC)`);
         await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_invoice_id ON payments(provider_invoice_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_last_seen_at ON users(last_seen_at DESC)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_bot_starts_first_started_at ON bot_starts(first_started_at DESC)`);
 
         console.log('✅ Таблицы готовы');
     } catch (err) {
@@ -292,8 +307,8 @@ export async function createUser(telegramId, username, firstName, referrerId = n
         }
 
         await pool.query(`
-            INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled)
-            VALUES ($1, $2, $3, $4, 100, 100, 1, 100, 1, 200, 0, 500, true)
+            INSERT INTO users (telegram_id, username, first_name, referrer_id, energy, max_energy, click_upgrade_level, click_upgrade_cost, energy_upgrade_level, energy_upgrade_cost, passive_income_level, passive_income_cost, sound_enabled, last_seen_at)
+            VALUES ($1, $2, $3, $4, 100, 100, 1, 100, 1, 200, 0, 500, true, CURRENT_TIMESTAMP)
         `, [telegramId, username, firstName, effectiveReferrerId]);
 
         if (effectiveReferrerId) {
@@ -318,6 +333,21 @@ export async function createUser(telegramId, username, firstName, referrerId = n
     } catch (err) {
         console.error('Ошибка createUser:', err.message);
         return null;
+    }
+}
+
+export async function trackBotStart(telegramId) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        await pool.query(`
+            INSERT INTO bot_starts (telegram_id, first_started_at, last_started_at, starts_count)
+            VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
+            ON CONFLICT (telegram_id) DO UPDATE SET
+                last_started_at = CURRENT_TIMESTAMP,
+                starts_count = bot_starts.starts_count + 1
+        `, [telegramId]);
+    } catch (err) {
+        console.error('Ошибка trackBotStart:', err.message);
     }
 }
 
@@ -417,7 +447,8 @@ export async function updateUserGameData(telegramId, gameData) {
                 has_sun = $13,
                 sound_enabled = $14,
                 premium_level = $15,
-                level = $16
+                level = $16,
+                last_seen_at = CURRENT_TIMESTAMP
             WHERE telegram_id = $17
         `, [
             gameData.coins, gameData.energy, gameData.maxEnergy,
@@ -755,4 +786,35 @@ export async function adjustUserAdmin(telegramId, patch = {}) {
     }
     if (!Object.keys(updates).length) return await getUser(telegramId);
     return await updateUser(telegramId, updates);
+}
+
+export async function getMarketingMetricsAdmin() {
+    try {
+        const [arrivedRes, registeredRes, d1Res, d3Res, invitersRes] = await Promise.all([
+            pool.query('SELECT COUNT(*)::int AS cnt FROM bot_starts'),
+            pool.query('SELECT COUNT(*)::int AS cnt FROM users'),
+            pool.query(`
+                SELECT COUNT(*)::int AS cnt
+                FROM users
+                WHERE last_seen_at >= created_at + INTERVAL '1 day'
+            `),
+            pool.query(`
+                SELECT COUNT(*)::int AS cnt
+                FROM users
+                WHERE last_seen_at >= created_at + INTERVAL '3 day'
+            `),
+            pool.query('SELECT COUNT(*)::int AS cnt FROM users WHERE referrals_count > 0')
+        ]);
+
+        return {
+            arrived: Number(arrivedRes.rows[0]?.cnt || 0),
+            registered: Number(registeredRes.rows[0]?.cnt || 0),
+            returnedD1: Number(d1Res.rows[0]?.cnt || 0),
+            returnedD3: Number(d3Res.rows[0]?.cnt || 0),
+            invitedAtLeastOne: Number(invitersRes.rows[0]?.cnt || 0)
+        };
+    } catch (err) {
+        console.error('Ошибка getMarketingMetricsAdmin:', err.message);
+        return null;
+    }
 }

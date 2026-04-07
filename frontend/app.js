@@ -247,6 +247,17 @@ let dailyTasksClaimed = defaultDailyTasksClaimed();
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
 let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
 
+const TASK_TARGETS = {
+    dailyClick: 1,
+    dailyCoins: 500,
+    dailyEnergy: 200,
+    dailyUpgrade: 1,
+    weeklyClick: 1000,
+    weeklyCoins: 5000,
+    weeklyEnergy: 1000,
+    weeklyUpgrade: 5
+};
+
 /** Минимальный интервал между событиями одного и того же указателя (мс). 0 = каждый палец тратит энергию сразу, независимо от остальных. */
 let clickCooldown = 0;
 /** Кулдаун отдельно на каждый палец / мышь — иначе мультитап блокируется одним lastClickTime */
@@ -829,22 +840,31 @@ function updateUI() {
     document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
     document.getElementById('profileId').textContent = userId || 'Гость';
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
-    document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/100`;
-    document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/500`;
+    document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/${TASK_TARGETS.dailyClick}`;
+    document.getElementById('dailyCoinsProgress').textContent = `${dailyCoinsEarned}/${TASK_TARGETS.dailyCoins}`;
     const dailyEnergyEl = document.getElementById('dailyEnergyProgress');
-    if (dailyEnergyEl) dailyEnergyEl.textContent = `${dailyEnergySpent}/200`;
+    if (dailyEnergyEl) dailyEnergyEl.textContent = `${dailyEnergySpent}/${TASK_TARGETS.dailyEnergy}`;
     const dailyUpgradeEl = document.getElementById('dailyUpgradeProgress');
-    if (dailyUpgradeEl) dailyUpgradeEl.textContent = `${dailyUpgradesBought}/1`;
+    if (dailyUpgradeEl) dailyUpgradeEl.textContent = `${dailyUpgradesBought}/${TASK_TARGETS.dailyUpgrade}`;
     const dailyPassiveEl = document.getElementById('dailyPassiveProgress');
     if (dailyPassiveEl) dailyPassiveEl.textContent = `${Math.min(getPassiveRate(), 10)}/10`;
-    document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/1000`;
-    document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/5000`;
+    document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/${TASK_TARGETS.weeklyClick}`;
+    document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/${TASK_TARGETS.weeklyCoins}`;
     const weeklyEnergyEl = document.getElementById('weeklyEnergyProgress');
-    if (weeklyEnergyEl) weeklyEnergyEl.textContent = `${weeklyEnergySpent}/1000`;
+    if (weeklyEnergyEl) weeklyEnergyEl.textContent = `${weeklyEnergySpent}/${TASK_TARGETS.weeklyEnergy}`;
     const weeklyUpgradeEl = document.getElementById('weeklyUpgradeProgress');
-    if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/5`;
+    if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/${TASK_TARGETS.weeklyUpgrade}`;
     const weeklyPassiveEl = document.getElementById('weeklyPassiveProgress');
     if (weeklyPassiveEl) weeklyPassiveEl.textContent = `${Math.min(getPassiveRate(), 40)}/40`;
+    const nextGoalEl = document.getElementById('nextGoalText');
+    if (nextGoalEl) {
+        const lv = getLevel();
+        const nextThresholds = [10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000];
+        const target = nextThresholds[lv] || null;
+        nextGoalEl.textContent = target
+            ? `🎯 Следующая цель: ${Math.max(0, target - Math.floor(coins)).toLocaleString()} монет до уровня ${lv + 1}`
+            : '🎯 Цель выполнена: максимальный уровень планеты достигнут';
+    }
     updateTaskButtons();
     updatePremiumUI();
     updateMilitaryRankHUD();
@@ -1338,15 +1358,15 @@ function updateTasksDoneMessages() {
 }
 
 function updateTaskButtons() {
-    setTaskClaimButton(document.getElementById('dailyClickClaim'), dailyClickCount >= 100 && !dailyTasksClaimed.click);
-    setTaskClaimButton(document.getElementById('dailyCoinsClaim'), dailyCoinsEarned >= 500 && !dailyTasksClaimed.coins);
-    setTaskClaimButton(document.getElementById('dailyEnergyClaim'), dailyEnergySpent >= 200 && !dailyTasksClaimed.energy);
-    setTaskClaimButton(document.getElementById('dailyUpgradeClaim'), dailyUpgradesBought >= 1 && !dailyTasksClaimed.upgrade);
+    setTaskClaimButton(document.getElementById('dailyClickClaim'), dailyClickCount >= TASK_TARGETS.dailyClick && !dailyTasksClaimed.click);
+    setTaskClaimButton(document.getElementById('dailyCoinsClaim'), dailyCoinsEarned >= TASK_TARGETS.dailyCoins && !dailyTasksClaimed.coins);
+    setTaskClaimButton(document.getElementById('dailyEnergyClaim'), dailyEnergySpent >= TASK_TARGETS.dailyEnergy && !dailyTasksClaimed.energy);
+    setTaskClaimButton(document.getElementById('dailyUpgradeClaim'), dailyUpgradesBought >= TASK_TARGETS.dailyUpgrade && !dailyTasksClaimed.upgrade);
     setTaskClaimButton(document.getElementById('dailyPassiveClaim'), getPassiveRate() >= 10 && !dailyTasksClaimed.passive);
-    setTaskClaimButton(document.getElementById('weeklyClickClaim'), weeklyClickCount >= 1000 && !weeklyTasksClaimed.click);
-    setTaskClaimButton(document.getElementById('weeklyCoinsClaim'), weeklyCoinsEarned >= 5000 && !weeklyTasksClaimed.coins);
-    setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= 1000 && !weeklyTasksClaimed.energy);
-    setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= 5 && !weeklyTasksClaimed.upgrade);
+    setTaskClaimButton(document.getElementById('weeklyClickClaim'), weeklyClickCount >= TASK_TARGETS.weeklyClick && !weeklyTasksClaimed.click);
+    setTaskClaimButton(document.getElementById('weeklyCoinsClaim'), weeklyCoinsEarned >= TASK_TARGETS.weeklyCoins && !weeklyTasksClaimed.coins);
+    setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy && !weeklyTasksClaimed.energy);
+    setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade && !weeklyTasksClaimed.upgrade);
     setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= 40 && !weeklyTasksClaimed.passive);
 
     setTaskCardVisible('[data-daily-task="1"]', !dailyTasksClaimed.click);
@@ -1378,37 +1398,37 @@ function applyTaskReward(reward) {
 }
 
 async function claimTask(taskId, reward, type) {
-    if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= 100) { 
+    if (type === 'daily_click' && !dailyTasksClaimed.click && dailyClickCount >= TASK_TARGETS.dailyClick) { 
         dailyTasksClaimed.click = true; 
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
-    else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= 500) { 
+    else if (type === 'daily_coins' && !dailyTasksClaimed.coins && dailyCoinsEarned >= TASK_TARGETS.dailyCoins) { 
         dailyTasksClaimed.coins = true; 
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
-    else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= 1000) { 
+    else if (type === 'weekly_click' && !weeklyTasksClaimed.click && weeklyClickCount >= TASK_TARGETS.weeklyClick) { 
         weeklyTasksClaimed.click = true; 
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
-    else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= 5000) { 
+    else if (type === 'weekly_coins' && !weeklyTasksClaimed.coins && weeklyCoinsEarned >= TASK_TARGETS.weeklyCoins) { 
         weeklyTasksClaimed.coins = true; 
         showMessage(applyTaskReward(reward)); 
         saveGame();
         updateTaskButtons(); // Обновляем кнопки
     }
-    else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= 200) {
+    else if (type === 'daily_energy' && !dailyTasksClaimed.energy && dailyEnergySpent >= TASK_TARGETS.dailyEnergy) {
         dailyTasksClaimed.energy = true;
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
-    else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= 1) {
+    else if (type === 'daily_upgrade' && !dailyTasksClaimed.upgrade && dailyUpgradesBought >= TASK_TARGETS.dailyUpgrade) {
         dailyTasksClaimed.upgrade = true;
         showMessage(applyTaskReward(reward));
         saveGame();
@@ -1420,13 +1440,13 @@ async function claimTask(taskId, reward, type) {
         saveGame();
         updateTaskButtons();
     }
-    else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= 1000) {
+    else if (type === 'weekly_energy' && !weeklyTasksClaimed.energy && weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy) {
         weeklyTasksClaimed.energy = true;
         showMessage(applyTaskReward(reward));
         saveGame();
         updateTaskButtons();
     }
-    else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= 5) {
+    else if (type === 'weekly_upgrade' && !weeklyTasksClaimed.upgrade && weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade) {
         weeklyTasksClaimed.upgrade = true;
         showMessage(applyTaskReward(reward));
         saveGame();
@@ -1680,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
     document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
     document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
-    document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 100, 'daily_click'));
+    document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 50, 'daily_click'));
     document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
     document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', 300, 'daily_energy'));
     document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', 200, 'daily_upgrade'));
