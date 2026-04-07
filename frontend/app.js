@@ -56,32 +56,6 @@ function setCachedRegistered(value) {
     try { localStorage.setItem(registeredCacheKey(), value ? '1' : '0'); } catch (e) {}
 }
 
-function showServerWakeupOverlay(show, text = '', attemptText = '') {
-    const overlay = document.getElementById('serverWakeupOverlay');
-    const textEl = document.getElementById('serverWakeupText');
-    const attemptEl = document.getElementById('serverWakeupAttempt');
-    if (textEl && text) textEl.textContent = text;
-    if (attemptEl) attemptEl.textContent = attemptText || '';
-    if (overlay) overlay.style.display = show ? 'flex' : 'none';
-}
-
-async function warmupServer(maxAttempts = 5) {
-    showServerWakeupOverlay(true, 'Проверяем подключение к серверу...');
-    for (let i = 1; i <= maxAttempts; i++) {
-        try {
-            showServerWakeupOverlay(true, 'Сервер может быть в sleep, запускаем его...', `Попытка ${i} из ${maxAttempts}`);
-            const res = await fetch(`${API_BASE}/healthz`, { cache: 'no-store' });
-            if (res.ok) {
-                showServerWakeupOverlay(false);
-                return true;
-            }
-        } catch (e) {}
-        await new Promise((resolve) => setTimeout(resolve, 1200 * i));
-    }
-    showServerWakeupOverlay(false);
-    return false;
-}
-
 function tryResolveTelegramUser() {
     if (!tg) return false;
     if (userId) return true;
@@ -134,6 +108,7 @@ function showRegistrationOverlay(show) {
 }
 
 async function checkRegistrationStatus() {
+    if (!userId) await ensureTelegramUserResolved(8, 350);
     if (!userId) return getCachedRegistered();
     for (let attempt = 0; attempt < 4; attempt++) {
         try {
@@ -150,7 +125,8 @@ async function checkRegistrationStatus() {
 }
 
 async function registerCurrentUser() {
-    if (!userId) return { ok: false, message: 'Не удалось определить Telegram пользователя' };
+    if (!userId) await ensureTelegramUserResolved(10, 350);
+    if (!userId) return { ok: false, message: 'Не удалось определить Telegram пользователя. Откройте игру через /start и попробуйте снова.' };
     const referrerId = getLaunchReferrerId();
     const username = tg?.initDataUnsafe?.user?.username || null;
     const firstName = tg?.initDataUnsafe?.user?.first_name || null;
@@ -1820,8 +1796,7 @@ function rechargeEnergy() {
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await warmupServer();
-    await ensureTelegramUserResolved();
+    await ensureTelegramUserResolved(20, 300);
     const registerBtn = document.getElementById('registerProfileBtn');
     const registrationHelp = document.getElementById('registrationHelp');
     const alreadyRegistered = await checkRegistrationStatus();
@@ -1830,8 +1805,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         showRegistrationOverlay(true);
         if (!userId && registerBtn) {
             registerBtn.disabled = true;
-            registerBtn.textContent = 'Откройте игру через Telegram';
-            if (registrationHelp) registrationHelp.textContent = 'Telegram ID не получен. Запустите WebApp из бота через /start.';
+            registerBtn.textContent = 'Ожидаем Telegram...';
+            if (registrationHelp) registrationHelp.textContent = 'Подождите, получаем данные Telegram...';
+            const waitTimer = setInterval(async () => {
+                const ok = await ensureTelegramUserResolved(3, 300);
+                if (!ok) return;
+                clearInterval(waitTimer);
+                window.location.reload();
+            }, 1200);
             return;
         }
         if (registrationHelp) {

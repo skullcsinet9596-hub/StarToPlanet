@@ -670,54 +670,6 @@
             opacity: 0.7;
             cursor: wait;
         }
-        .server-wakeup-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1600;
-            background: rgba(4, 5, 10, 0.9);
-            backdrop-filter: blur(8px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .server-wakeup-card {
-            width: 100%;
-            max-width: 420px;
-            border-radius: 28px;
-            padding: 18px 16px;
-            text-align: center;
-        }
-        .server-wakeup-title {
-            color: #FFD60A;
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        .server-wakeup-text {
-            color: #f2f2f7;
-            font-size: 14px;
-            line-height: 1.45;
-            margin-bottom: 12px;
-        }
-        .server-wakeup-attempt {
-            color: #a7a7b3;
-            font-size: 12px;
-            margin-bottom: 10px;
-        }
-        .server-spinner {
-            width: 28px;
-            height: 28px;
-            border: 3px solid rgba(255, 214, 10, 0.25);
-            border-top-color: #FFD60A;
-            border-radius: 50%;
-            margin: 0 auto;
-            animation: spin 0.9s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
 
         .modal-overlay {
             display: none;
@@ -1074,14 +1026,6 @@
     <script type="module" src="app.js"></script>
 </head>
 <body>
-    <div class="server-wakeup-overlay" id="serverWakeupOverlay">
-        <div class="server-wakeup-card glass-panel">
-            <div class="server-wakeup-title">Пробуждаем сервер</div>
-            <div class="server-wakeup-text" id="serverWakeupText">Подождите несколько секунд...</div>
-            <div class="server-wakeup-attempt" id="serverWakeupAttempt"></div>
-            <div class="server-spinner" aria-hidden="true"></div>
-        </div>
-    </div>
     <div class="registration-overlay" id="registrationOverlay">
         <div class="registration-card glass-panel">
             <div class="registration-title">Регистрация</div>
