@@ -934,13 +934,21 @@ async function buyPremium(type) {
         });
         const data = await res.json();
 
-        if (!res.ok || !data?.ok || !data?.invoiceLink) {
+        if (!res.ok || !data?.ok) {
             showMessage(data?.message || '❌ Не удалось создать платеж', true);
             return;
         }
 
-        if (tg?.openInvoice) tg.openInvoice(data.invoiceLink);
-        else window.open(data.invoiceLink, '_blank');
+        if (data?.provider === 'telegram_stars' && data?.invoiceLink) {
+            if (tg?.openInvoice) tg.openInvoice(data.invoiceLink);
+            else window.open(data.invoiceLink, '_blank');
+            return;
+        }
+        if (data?.paymentUrl) {
+            window.open(data.paymentUrl, '_blank');
+            return;
+        }
+        showMessage('❌ Платежный URL не получен', true);
     } catch (e) {
         showMessage('❌ Ошибка при создании платежа', true);
     }

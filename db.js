@@ -112,6 +112,40 @@ export async function initDB() {
             )
         `);
 
+        // Таблица платежей Premium
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT NOT NULL,
+                product_type TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                provider_invoice_id TEXT UNIQUE NOT NULL,
+                amount_rub INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                metadata JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                paid_at TIMESTAMP
+            )
+        `);
+
+        // Конфиг экономики (для админ-панели)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS app_config (
+                key TEXT PRIMARY KEY,
+                value JSONB NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Индексы и ограничения для стабильности/безопасности
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_referrer_id ON users(referrer_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_telegram_id ON payments(telegram_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at DESC)`);
+        await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_invoice_id ON payments(provider_invoice_id)`);
+
         console.log('✅ Таблицы готовы');
     } catch (err) {
         console.error('❌ Ошибка создания таблиц:', err.message);
@@ -538,4 +572,187 @@ return newState;
 console.error('Ошибка toggleSound:', err.message);
 return false;
 }
+}
+
+// ========== PAYMENTS ==========
+export async function createPaymentInvoice({ telegramId, productType, provider, providerInvoiceId, amountRub, metadata = {} }) {
+    if (!telegramId || !productType || !provider || !providerInvoiceId) return null;
+    try {
+        const res = await pool.query(`
+            INSERT INTO payments (telegram_id, product_type, provider, provider_invoice_id, amount_rub, status, metadata)
+            VALUES ($1, $2, $3, $4, $5, 'pending', $6::jsonb)
+            ON CONFLICT (provider_invoice_id) DO UPDATE SET
+                metadata = EXCLUDED.metadata
+            RETURNING *
+        `, [telegramId, productType, provider, providerInvoiceId, amountRub, JSON.stringify(metadata || {})]);
+        return res.rows[0] || null;
+    } catch (err) {
+        console.error('Ошибка createPaymentInvoice:', err.message);
+        return null;
+    }
+}
+
+export async function getPaymentByProviderInvoiceId(providerInvoiceId) {
+    if (!providerInvoiceId) return null;
+    try {
+        const res = await pool.query('SELECT * FROM payments WHERE provider_invoice_id = $1', [providerInvoiceId]);
+        return res.rows[0] || null;
+    } catch (err) {
+        console.error('Ошибка getPaymentByProviderInvoiceId:', err.message);
+        return null;
+    }
+}
+
+export async function markPaymentPaid(providerInvoiceId, metadataPatch = {}) {
+    if (!providerInvoiceId) return { updated: false, payment: null };
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const currentRes = await client.query('SELECT * FROM payments WHERE provider_invoice_id = $1 FOR UPDATE', [providerInvoiceId]);
+        const current = currentRes.rows[0];
+        if (!current) {
+            await client.query('ROLLBACK');
+            return { updated: false, payment: null };
+        }
+        if (current.status === 'paid') {
+            await client.query('COMMIT');
+            return { updated: false, payment: current };
+        }
+
+        const mergedMetadata = { ...(current.metadata || {}), ...(metadataPatch || {}) };
+        const updRes = await client.query(`
+            UPDATE payments
+            SET status = 'paid', paid_at = CURRENT_TIMESTAMP, metadata = $2::jsonb
+            WHERE provider_invoice_id = $1
+            RETURNING *
+        `, [providerInvoiceId, JSON.stringify(mergedMetadata)]);
+        await client.query('COMMIT');
+        return { updated: true, payment: updRes.rows[0] || null };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Ошибка markPaymentPaid:', err.message);
+        return { updated: false, payment: null };
+    } finally {
+        client.release();
+    }
+}
+
+export async function listPayments(limit = 100) {
+    try {
+        const res = await pool.query(`
+            SELECT p.*, u.username, u.first_name
+            FROM payments p
+            LEFT JOIN users u ON u.telegram_id = p.telegram_id
+            ORDER BY p.created_at DESC
+            LIMIT $1
+        `, [Math.max(1, Math.min(500, Number(limit) || 100))]);
+        return res.rows;
+    } catch (err) {
+        console.error('Ошибка listPayments:', err.message);
+        return [];
+    }
+}
+
+// ========== ADMIN HELPERS ==========
+export async function searchUsersAdmin(query = '', limit = 50) {
+    try {
+        const q = String(query || '').trim();
+        const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+        if (!q) {
+            const res = await pool.query(`
+                SELECT telegram_id, username, first_name, coins, level, referrals_count, referrer_id, created_at
+                FROM users
+                ORDER BY created_at DESC
+                LIMIT $1
+            `, [safeLimit]);
+            return res.rows;
+        }
+        const numeric = Number(q);
+        if (Number.isFinite(numeric)) {
+            const res = await pool.query(`
+                SELECT telegram_id, username, first_name, coins, level, referrals_count, referrer_id, created_at
+                FROM users
+                WHERE telegram_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+            `, [numeric, safeLimit]);
+            return res.rows;
+        }
+        const like = `%${q}%`;
+        const res = await pool.query(`
+            SELECT telegram_id, username, first_name, coins, level, referrals_count, referrer_id, created_at
+            FROM users
+            WHERE username ILIKE $1 OR first_name ILIKE $1
+            ORDER BY coins DESC
+            LIMIT $2
+        `, [like, safeLimit]);
+        return res.rows;
+    } catch (err) {
+        console.error('Ошибка searchUsersAdmin:', err.message);
+        return [];
+    }
+}
+
+export async function getReferralTreeAdmin(rootTelegramId, maxDepth = 4) {
+    if (!rootTelegramId || isNaN(parseInt(rootTelegramId))) return [];
+    try {
+        const res = await pool.query(`
+            WITH RECURSIVE tree AS (
+                SELECT telegram_id, referrer_id, username, first_name, coins, 0 AS depth
+                FROM users
+                WHERE telegram_id = $1
+                UNION ALL
+                SELECT u.telegram_id, u.referrer_id, u.username, u.first_name, u.coins, t.depth + 1
+                FROM users u
+                JOIN tree t ON u.referrer_id = t.telegram_id
+                WHERE t.depth < $2
+            )
+            SELECT * FROM tree ORDER BY depth ASC, coins DESC
+        `, [rootTelegramId, Math.max(1, Math.min(8, Number(maxDepth) || 4))]);
+        return res.rows;
+    } catch (err) {
+        console.error('Ошибка getReferralTreeAdmin:', err.message);
+        return [];
+    }
+}
+
+export async function updateEconomyConfig(configPatch = {}) {
+    try {
+        const key = 'economy_config';
+        const currentRes = await pool.query('SELECT value FROM app_config WHERE key = $1', [key]);
+        const current = currentRes.rows[0]?.value || {};
+        const next = { ...current, ...configPatch, updatedAt: new Date().toISOString() };
+        await pool.query(`
+            INSERT INTO app_config (key, value, updated_at)
+            VALUES ($1, $2::jsonb, CURRENT_TIMESTAMP)
+            ON CONFLICT (key) DO UPDATE SET
+                value = EXCLUDED.value,
+                updated_at = CURRENT_TIMESTAMP
+        `, [key, JSON.stringify(next)]);
+        return next;
+    } catch (err) {
+        console.error('Ошибка updateEconomyConfig:', err.message);
+        return null;
+    }
+}
+
+export async function getEconomyConfig() {
+    try {
+        const res = await pool.query('SELECT value FROM app_config WHERE key = $1', ['economy_config']);
+        return res.rows[0]?.value || null;
+    } catch (err) {
+        console.error('Ошибка getEconomyConfig:', err.message);
+        return null;
+    }
+}
+
+export async function adjustUserAdmin(telegramId, patch = {}) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return null;
+    const allow = ['coins', 'level', 'has_moon', 'has_earth', 'has_sun'];
+    const updates = {};
+    for (const key of allow) {
+        if (patch[key] !== undefined) updates[key] = patch[key];
+    }
+    if (!Object.keys(updates).length) return await getUser(telegramId);
+    return await updateUser(telegramId, updates);
 }

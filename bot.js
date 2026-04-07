@@ -12,7 +12,16 @@ import {
     claimDailyBonus,
     getStats,
     toggleSound,
-    distributeReferralRewards
+    distributeReferralRewards,
+    createPaymentInvoice,
+    markPaymentPaid,
+    getPaymentByProviderInvoiceId,
+    listPayments,
+    searchUsersAdmin,
+    getReferralTreeAdmin,
+    updateEconomyConfig,
+    getEconomyConfig,
+    adjustUserAdmin
 } from './db.js';
 
 dotenv.config();
@@ -27,6 +36,9 @@ if (!Number.isFinite(parsedPort) || parsedPort <= 0) {
 }
 const APP_URL = process.env.WEBAPP_URL || 'https://startoplanet.onrender.com';
 const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
+const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'virtual_wallet').toLowerCase();
+const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET || crypto.createHash('sha256').update(BOT_TOKEN + ':pay').digest('hex').slice(0, 24);
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 
 const PREMIUM_PRODUCTS = {
     moon: { title: 'Уровень 8 · Луна', amountRub: 50, amountXTR: 50, dbField: 'has_moon' },
@@ -49,6 +61,60 @@ const WEBHOOK_PATH = `/tg-hook/${webhookSecret}`;
 
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
+
+const rateBuckets = new Map();
+function rateLimit(key, maxHits, windowMs) {
+    return (req, res, next) => {
+        const now = Date.now();
+        const ip = req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim() || req.ip || 'ip';
+        const id = `${key}:${ip}`;
+        const bucket = rateBuckets.get(id) || { count: 0, resetAt: now + windowMs };
+        if (now > bucket.resetAt) {
+            bucket.count = 0;
+            bucket.resetAt = now + windowMs;
+        }
+        bucket.count += 1;
+        rateBuckets.set(id, bucket);
+        if (bucket.count > maxHits) {
+            res.status(429).json({ success: false, message: 'Слишком много запросов' });
+            return;
+        }
+        next();
+    };
+}
+
+function requireAdmin(req, res, next) {
+    if (!ADMIN_TOKEN) {
+        res.status(503).json({ success: false, message: 'ADMIN_TOKEN не настроен' });
+        return;
+    }
+    const token = req.headers['x-admin-token']?.toString() || req.query?.token?.toString() || '';
+    if (token !== ADMIN_TOKEN) {
+        res.status(403).json({ success: false, message: 'Доступ запрещен' });
+        return;
+    }
+    next();
+}
+
+function validatePremiumPurchase(user, type) {
+    const hasLevel7 = Number(user.coins) >= 10000000000;
+    if (type === 'moon' && !hasLevel7) return '8 уровень доступен только после 7 уровня';
+    if (type === 'earth' && !user.has_moon) return '9 уровень доступен после покупки 8 уровня';
+    if (type === 'sun' && !user.has_earth) return '10 уровень доступен после покупки 9 уровня';
+    return null;
+}
+
+async function grantPremiumLevel(telegramId, type) {
+    const user = await getUser(telegramId);
+    if (!user) return { ok: false, message: 'Пользователь не найден' };
+    const gateErr = validatePremiumPurchase(user, type);
+    if (gateErr) return { ok: false, message: gateErr };
+    const dbField = PREMIUM_PRODUCTS[type]?.dbField;
+    if (!dbField) return { ok: false, message: 'Неизвестный тип продукта' };
+    if (user[dbField]) return { ok: true, message: 'Уровень уже активирован', already: true };
+    await updateUser(telegramId, { [dbField]: true });
+    return { ok: true, message: 'Уровень активирован', already: false };
+}
 
 // ========== API ==========
 app.use(express.json());
@@ -102,7 +168,7 @@ app.get('/api/user/:userId', async (req, res) => {
     }
 });
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', rateLimit('register', 30, 60_000), async (req, res) => {
     try {
         const { userId, username, firstName, referrerId } = req.body || {};
         const telegramId = parseInt(userId);
@@ -127,30 +193,36 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-app.post('/api/save', async (req, res) => {
+app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
     const { userId, gameData } = req.body;
     console.log('📥 POST /api/save:', { userId, coins: gameData?.coins });
     if (userId && gameData) {
         const telegramId = parseInt(userId);
+        if (!telegramId) {
+            res.status(400).json({ success: false, message: 'Неверный userId' });
+            return;
+        }
+        const num = (v, d = 0) => Number.isFinite(Number(v)) ? Number(v) : d;
+        const int = (v, d = 0) => Math.floor(num(v, d));
         const existingUser = await getUser(telegramId);
         const previousCoins = existingUser ? Number(existingUser.coins) : 0;
-        const currentCoins = Math.max(0, Math.floor(Number(gameData.coins) || 0));
+        const currentCoins = Math.max(0, int(gameData.coins, 0));
 
         await updateUser(telegramId, {
             coins: currentCoins,
-            energy: gameData.energy,
-            max_energy: gameData.maxEnergy,
-            click_power: gameData.clickPower,
-            passive_income_level: gameData.passiveIncomeLevel,
-            has_moon: gameData.hasMoon,
-            has_earth: gameData.hasEarth,
-            has_sun: gameData.hasSun,
-            click_upgrade_level: gameData.clickUpgradeLevel,
-            click_upgrade_cost: gameData.clickUpgradeCost,
-            energy_upgrade_level: gameData.energyUpgradeLevel,
-            energy_upgrade_cost: gameData.energyUpgradeCost,
-            passive_income_cost: gameData.passiveIncomeUpgradeCost,
-            sound_enabled: gameData.soundEnabled
+            energy: Math.max(0, int(gameData.energy, 100)),
+            max_energy: Math.max(100, int(gameData.maxEnergy, 100)),
+            click_power: Math.max(1, int(gameData.clickPower, 1)),
+            passive_income_level: Math.max(0, int(gameData.passiveIncomeLevel, 0)),
+            has_moon: Boolean(gameData.hasMoon),
+            has_earth: Boolean(gameData.hasEarth),
+            has_sun: Boolean(gameData.hasSun),
+            click_upgrade_level: Math.max(1, int(gameData.clickUpgradeLevel, 1)),
+            click_upgrade_cost: Math.max(0, int(gameData.clickUpgradeCost, 100)),
+            energy_upgrade_level: Math.max(1, int(gameData.energyUpgradeLevel, 1)),
+            energy_upgrade_cost: Math.max(0, int(gameData.energyUpgradeCost, 200)),
+            passive_income_cost: Math.max(0, int(gameData.passiveIncomeUpgradeCost, 500)),
+            sound_enabled: Boolean(gameData.soundEnabled)
         });
 
         const earnedCoins = Math.max(0, currentCoins - previousCoins);
@@ -174,7 +246,7 @@ app.get('/api/premium/config', (req, res) => {
     });
 });
 
-app.post('/api/premium/invoice-link', async (req, res) => {
+app.post('/api/premium/invoice-link', rateLimit('premium_invoice', 40, 60_000), async (req, res) => {
     try {
         const { userId, type } = req.body || {};
         const telegramId = parseInt(userId);
@@ -196,37 +268,154 @@ app.post('/api/premium/invoice-link', async (req, res) => {
             return;
         }
 
-        const hasLevel7 = Number(user.coins) >= 10000000000;
-        if (type === 'moon' && !hasLevel7) {
-            res.status(400).json({ ok: false, message: '8 уровень доступен только после 7 уровня' });
-            return;
-        }
-        if (type === 'earth' && !user.has_moon) {
-            res.status(400).json({ ok: false, message: '9 уровень доступен после покупки 8 уровня' });
-            return;
-        }
-        if (type === 'sun' && !user.has_earth) {
-            res.status(400).json({ ok: false, message: '10 уровень доступен после покупки 9 уровня' });
+        const gateErr = validatePremiumPurchase(user, type);
+        if (gateErr) {
+            res.status(400).json({ ok: false, message: gateErr });
             return;
         }
 
-        const payload = `premium:${type}:${telegramId}:${Date.now()}`;
-        const invoiceLink = await bot.telegram.createInvoiceLink(
-            product.title,
-            `Покупка ${product.title} в Star to Planet`,
-            payload,
-            '',
-            'XTR',
-            [{ label: product.title, amount: product.amountXTR }]
-        );
+        // Унифицированный адаптер инвойсов с idempotency
+        const providerInvoiceId = `inv_${Date.now()}_${telegramId}_${type}_${Math.random().toString(36).slice(2, 8)}`;
+        const payment = await createPaymentInvoice({
+            telegramId,
+            productType: type,
+            provider: PAYMENT_PROVIDER,
+            providerInvoiceId,
+            amountRub: product.amountRub,
+            metadata: { title: product.title }
+        });
+        if (!payment) {
+            res.status(500).json({ ok: false, message: 'Не удалось создать счет' });
+            return;
+        }
 
-        res.json({ ok: true, invoiceLink });
+        if (PAYMENT_PROVIDER === 'telegram_stars') {
+            const payload = `premium:${type}:${telegramId}:${providerInvoiceId}`;
+            const invoiceLink = await bot.telegram.createInvoiceLink(
+                product.title,
+                `Покупка ${product.title} в Star to Planet`,
+                payload,
+                '',
+                'XTR',
+                [{ label: product.title, amount: product.amountXTR }]
+            );
+            res.json({ ok: true, provider: 'telegram_stars', invoiceLink });
+            return;
+        }
+
+        // Виртуальный кошелек / merchant-провайдер (MVP): отдаём checkout URL.
+        const checkoutUrl = `${APP_URL}/api/pay/mock-pay/${providerInvoiceId}`;
+        res.json({ ok: true, provider: 'virtual_wallet', paymentUrl: checkoutUrl, invoiceId: providerInvoiceId });
     } catch (e) {
         console.error('Ошибка создания invoice-link:', e);
         res.status(500).json({ ok: false, message: 'Не удалось создать платеж' });
     }
 });
 
+app.post('/api/payments/webhook', rateLimit('payments_webhook', 120, 60_000), async (req, res) => {
+    try {
+        const secret = req.headers['x-payment-secret']?.toString() || '';
+        if (secret !== PAYMENT_WEBHOOK_SECRET) {
+            res.status(403).json({ success: false, message: 'Неверная подпись webhook' });
+            return;
+        }
+        const { invoiceId, status, telegramId, productType } = req.body || {};
+        if (!invoiceId || status !== 'paid') {
+            res.status(400).json({ success: false, message: 'Неверные параметры webhook' });
+            return;
+        }
+
+        const marked = await markPaymentPaid(invoiceId, { webhookAt: new Date().toISOString(), source: 'provider_webhook' });
+        if (!marked.payment) {
+            res.status(404).json({ success: false, message: 'Платеж не найден' });
+            return;
+        }
+        if (!marked.updated) {
+            res.json({ success: true, idempotent: true });
+            return;
+        }
+
+        const uid = Number(marked.payment.telegram_id || telegramId);
+        const type = String(marked.payment.product_type || productType || '');
+        const grant = await grantPremiumLevel(uid, type);
+        if (!grant.ok) {
+            res.status(400).json({ success: false, message: grant.message });
+            return;
+        }
+        res.json({ success: true, idempotent: false });
+    } catch (e) {
+        console.error('Ошибка /api/payments/webhook:', e);
+        res.status(500).json({ success: false, message: 'Ошибка webhook' });
+    }
+});
+
+// Тестовый checkout для виртуального кошелька (MVP): имитация успешной оплаты
+app.get('/api/pay/mock-pay/:invoiceId', async (req, res) => {
+    try {
+        const invoiceId = req.params.invoiceId;
+        const payment = await getPaymentByProviderInvoiceId(invoiceId);
+        if (!payment) {
+            res.status(404).send('Invoice not found');
+            return;
+        }
+        const marked = await markPaymentPaid(invoiceId, { mockPaidAt: new Date().toISOString(), source: 'mock_checkout' });
+        if (marked.updated) {
+            await grantPremiumLevel(Number(payment.telegram_id), String(payment.product_type));
+        }
+        res.redirect(`${APP_URL}?paid=1&invoice=${encodeURIComponent(invoiceId)}`);
+    } catch (e) {
+        console.error('Ошибка mock-pay:', e);
+        res.status(500).send('Payment error');
+    }
+});
+
+// ========== ADMIN API ==========
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    const q = req.query.q?.toString() || '';
+    const limit = Number(req.query.limit || 50);
+    const rows = await searchUsersAdmin(q, limit);
+    res.json({ success: true, users: rows });
+});
+
+app.get('/api/admin/referrals/:telegramId', requireAdmin, async (req, res) => {
+    const telegramId = parseInt(req.params.telegramId);
+    const depth = Number(req.query.depth || 4);
+    const tree = await getReferralTreeAdmin(telegramId, depth);
+    res.json({ success: true, tree });
+});
+
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+    const rows = await listPayments(Number(req.query.limit || 100));
+    res.json({ success: true, payments: rows });
+});
+
+app.get('/api/admin/economy', requireAdmin, async (req, res) => {
+    const cfg = await getEconomyConfig();
+    res.json({ success: true, config: cfg || {} });
+});
+
+app.post('/api/admin/economy', requireAdmin, async (req, res) => {
+    const patch = req.body || {};
+    const cfg = await updateEconomyConfig(patch);
+    if (!cfg) {
+        res.status(500).json({ success: false, message: 'Не удалось обновить конфиг' });
+        return;
+    }
+    res.json({ success: true, config: cfg });
+});
+
+app.post('/api/admin/adjust-user', requireAdmin, async (req, res) => {
+    const telegramId = parseInt(req.body?.telegramId);
+    const patch = req.body?.patch || {};
+    if (!telegramId) {
+        res.status(400).json({ success: false, message: 'Неверный telegramId' });
+        return;
+    }
+    const updated = await adjustUserAdmin(telegramId, patch);
+    res.json({ success: true, user: updated });
+});
+
+app.use('/admin', express.static('frontend/admin'));
 app.use(express.static('frontend'));
 
 const HOST = '0.0.0.0';
@@ -311,32 +500,21 @@ bot.on('message', async (ctx) => {
         if (!payment) return;
 
         const payload = payment.invoice_payload || '';
-        const [scope, type, userIdFromPayload] = payload.split(':');
+        const [scope, type, userIdFromPayload, providerInvoiceId] = payload.split(':');
         if (scope !== 'premium' || !PREMIUM_PRODUCTS[type]) return;
 
         const buyerId = ctx.from?.id;
         const targetUserId = parseInt(userIdFromPayload);
         if (!buyerId || !targetUserId || buyerId !== targetUserId) return;
 
-        const user = await getUser(buyerId);
-        if (!user) return;
-
-        const hasLevel7 = Number(user.coins) >= 10000000000;
-        if (type === 'moon' && !hasLevel7) {
-            await ctx.reply('⚠️ Условие 8 уровня не выполнено. Обратитесь в поддержку.');
+        if (providerInvoiceId) {
+            await markPaymentPaid(providerInvoiceId, { source: 'telegram_successful_payment', telegramPaymentChargeId: payment.telegram_payment_charge_id });
+        }
+        const grant = await grantPremiumLevel(buyerId, type);
+        if (!grant.ok) {
+            await ctx.reply(`⚠️ ${grant.message}`);
             return;
         }
-        if (type === 'earth' && !user.has_moon) {
-            await ctx.reply('⚠️ Сначала нужно купить 8 уровень.');
-            return;
-        }
-        if (type === 'sun' && !user.has_earth) {
-            await ctx.reply('⚠️ Сначала нужно купить 9 уровень.');
-            return;
-        }
-
-        const dbField = PREMIUM_PRODUCTS[type].dbField;
-        await updateUser(buyerId, { [dbField]: true });
 
         const labels = { moon: 'Луна', earth: 'Земля', sun: 'Солнце' };
         await ctx.reply(`✅ Оплата получена. Уровень ${labels[type]} активирован.`);

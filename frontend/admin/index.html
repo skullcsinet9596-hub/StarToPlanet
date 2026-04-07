@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Star to Planet Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0f1117; color:#e6edf3; margin:0; padding:16px; }
+    .panel { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px; margin-bottom:12px; }
+    input, button, textarea { border-radius:8px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; padding:8px; }
+    button { cursor:pointer; background:#238636; border:none; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    pre { white-space:pre-wrap; background:#0d1117; border:1px solid #30363d; padding:8px; border-radius:8px; max-height:280px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h2>Admin Panel MVP</h2>
+  <div class="panel">
+    <div class="row">
+      <input id="adminToken" placeholder="ADMIN_TOKEN" style="min-width:280px" />
+      <button onclick="saveToken()">Сохранить токен</button>
+    </div>
+    <small>Токен передается в `x-admin-token`.</small>
+  </div>
+
+  <div class="panel">
+    <h3>Пользователи</h3>
+    <div class="row">
+      <input id="userQuery" placeholder="telegram_id / username / first_name" style="min-width:320px" />
+      <button onclick="loadUsers()">Найти</button>
+    </div>
+    <pre id="usersOut"></pre>
+  </div>
+
+  <div class="panel">
+    <h3>Реферальное дерево</h3>
+    <div class="row">
+      <input id="treeUserId" placeholder="telegram_id" />
+      <input id="treeDepth" placeholder="depth (default 4)" />
+      <button onclick="loadTree()">Загрузить</button>
+    </div>
+    <pre id="treeOut"></pre>
+  </div>
+
+  <div class="panel">
+    <h3>Платежи Premium</h3>
+    <div class="row">
+      <input id="paymentsLimit" placeholder="limit (default 100)" />
+      <button onclick="loadPayments()">Загрузить</button>
+    </div>
+    <pre id="paymentsOut"></pre>
+  </div>
+
+  <div class="panel">
+    <h3>Экономика (JSON patch)</h3>
+    <div class="row">
+      <button onclick="loadEconomy()">Прочитать</button>
+      <button onclick="saveEconomy()">Сохранить</button>
+    </div>
+    <textarea id="economyPatch" rows="8" style="width:100%"></textarea>
+    <pre id="economyOut"></pre>
+  </div>
+
+  <div class="panel">
+    <h3>Ручная корректировка пользователя</h3>
+    <div class="row">
+      <input id="adjustUserId" placeholder="telegram_id" />
+    </div>
+    <textarea id="adjustPatch" rows="6" style="width:100%">{ "coins": 1000 }</textarea>
+    <div class="row">
+      <button onclick="adjustUser()">Применить</button>
+    </div>
+    <pre id="adjustOut"></pre>
+  </div>
+
+  <script>
+    const tokenInput = document.getElementById('adminToken');
+    tokenInput.value = localStorage.getItem('adminToken') || '';
+    function saveToken() { localStorage.setItem('adminToken', tokenInput.value.trim()); }
+    function headers() {
+      return { 'Content-Type': 'application/json', 'x-admin-token': (localStorage.getItem('adminToken') || '').trim() };
+    }
+    async function call(url, opts = {}) {
+      const res = await fetch(url, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+      return data;
+    }
+
+    async function loadUsers() {
+      const q = document.getElementById('userQuery').value.trim();
+      const data = await call(`/api/admin/users?q=${encodeURIComponent(q)}`);
+      document.getElementById('usersOut').textContent = JSON.stringify(data, null, 2);
+    }
+    async function loadTree() {
+      const id = document.getElementById('treeUserId').value.trim();
+      const depth = document.getElementById('treeDepth').value.trim() || '4';
+      const data = await call(`/api/admin/referrals/${encodeURIComponent(id)}?depth=${encodeURIComponent(depth)}`);
+      document.getElementById('treeOut').textContent = JSON.stringify(data, null, 2);
+    }
+    async function loadPayments() {
+      const limit = document.getElementById('paymentsLimit').value.trim() || '100';
+      const data = await call(`/api/admin/payments?limit=${encodeURIComponent(limit)}`);
+      document.getElementById('paymentsOut').textContent = JSON.stringify(data, null, 2);
+    }
+    async function loadEconomy() {
+      const data = await call('/api/admin/economy');
+      document.getElementById('economyOut').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('economyPatch').value = JSON.stringify(data.config || {}, null, 2);
+    }
+    async function saveEconomy() {
+      const patch = JSON.parse(document.getElementById('economyPatch').value || '{}');
+      const data = await call('/api/admin/economy', { method: 'POST', body: JSON.stringify(patch) });
+      document.getElementById('economyOut').textContent = JSON.stringify(data, null, 2);
+    }
+    async function adjustUser() {
+      const telegramId = Number(document.getElementById('adjustUserId').value.trim());
+      const patch = JSON.parse(document.getElementById('adjustPatch').value || '{}');
+      const data = await call('/api/admin/adjust-user', {
+        method: 'POST',
+        body: JSON.stringify({ telegramId, patch })
+      });
+      document.getElementById('adjustOut').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
