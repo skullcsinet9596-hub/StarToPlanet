@@ -755,17 +755,6 @@ function handleClick(event) {
     syncWithBot();
     updateTaskButtons();
     
-    // Принудительная очистка дубликатов
-    if (window.scene && window.scene.children.length > 20) {
-        console.log('🧹 ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ДУБЛИКАТОВ');
-        const objectsToRemove = [...window.scene.children];
-        objectsToRemove.forEach(child => {
-            window.scene.remove(child);
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-        });
-    }
-    
     // Эффект клика с анимацией
     const popup = document.createElement('div');
     popup.textContent = `+${clickPower}`;
@@ -806,18 +795,28 @@ function handleClick(event) {
             }
         }, 100);
     }
-    popup.style.fontWeight = 'bold';
-    popup.style.pointerEvents = 'none';
-    popup.style.zIndex = '1000';
-    popup.style.textShadow = '0 0 5px #000';
-    popup.style.animation = 'popup 0.5s ease-out forwards';
-    document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 500);
 }
 
-const starContainerElem = document.getElementById('star-container');
-if (starContainerElem) {
-    starContainerElem.addEventListener('click', handleClick);
+/** Тап по планете: раньше слушали несуществующий #star-container */
+function bindPlanetTapTargets() {
+    const stage = document.querySelector('.planet-stage');
+    const canvasBox = document.getElementById('canvas-container');
+    const target = stage || canvasBox;
+    if (!target) return;
+    target.style.cursor = 'pointer';
+    target.style.touchAction = 'manipulation';
+
+    let skipNextClick = false;
+    target.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        skipNextClick = true;
+        handleClick(e);
+        setTimeout(() => { skipNextClick = false; }, 450);
+    });
+    target.addEventListener('click', (e) => {
+        if (skipNextClick) return;
+        handleClick(e);
+    });
 }
 
 // ========== БУСТЫ ==========
@@ -1091,6 +1090,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         console.log('⚠️ canvas-container не найден, 3D сцена не инициализирована');
     }
+    bindPlanetTapTargets();
     
     updateReferralLink();
     

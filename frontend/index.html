@@ -109,33 +109,40 @@
             flex-direction: column;
             justify-content: flex-start;
             align-items: center;
-            padding: 8px 16px 16px;
-            min-height: 450px;
+            padding: clamp(6px, 2vw, 14px) clamp(12px, 4vw, 24px) clamp(10px, 2.5vw, 20px);
+            min-height: min(72vh, 560px);
             position: relative;
             overflow: hidden;
             background:
-                radial-gradient(ellipse 120% 80% at 50% 0%, rgba(40, 60, 120, 0.12), transparent 55%),
-                radial-gradient(circle at 20% 30%, rgba(120, 150, 255, 0.06), transparent 35%),
-                radial-gradient(circle at 80% 75%, rgba(120, 150, 255, 0.04), transparent 40%),
-                #02040a;
+                radial-gradient(ellipse 140% 90% at 50% -10%, rgba(50, 70, 140, 0.14), transparent 50%),
+                radial-gradient(ellipse 100% 60% at 50% 100%, rgba(30, 40, 80, 0.08), transparent 45%),
+                #03050c;
         }
 
+        /* Плитка звёзд с repeat — равномерно по всей игровой зоне, не только у планеты */
         .game-area::before {
             content: "";
             position: absolute;
             inset: 0;
             pointer-events: none;
             background-image:
-                radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.55) 100%, transparent 100%),
-                radial-gradient(1px 1px at 25% 75%, rgba(255,255,255,0.5) 100%, transparent 100%),
-                radial-gradient(1.2px 1.2px at 45% 35%, rgba(255,255,255,0.6) 100%, transparent 100%),
-                radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.45) 100%, transparent 100%),
-                radial-gradient(1.1px 1.1px at 72% 52%, rgba(255,255,255,0.6) 100%, transparent 100%),
-                radial-gradient(1px 1px at 85% 85%, rgba(255,255,255,0.55) 100%, transparent 100%);
-            background-size: 200px 200px;
-            opacity: 0.82;
+                radial-gradient(1px 1px at 5% 8%, rgba(255,255,255,0.55) 50%, transparent 52%),
+                radial-gradient(1px 1px at 18% 42%, rgba(255,255,255,0.4) 50%, transparent 52%),
+                radial-gradient(1.2px 1.2px at 33% 15%, rgba(255,255,255,0.65) 50%, transparent 52%),
+                radial-gradient(1px 1px at 48% 78%, rgba(255,255,255,0.45) 50%, transparent 52%),
+                radial-gradient(1px 1px at 62% 33%, rgba(255,255,255,0.5) 50%, transparent 52%),
+                radial-gradient(0.9px 0.9px at 77% 62%, rgba(200,220,255,0.5) 50%, transparent 52%),
+                radial-gradient(1px 1px at 88% 12%, rgba(255,255,255,0.45) 50%, transparent 52%),
+                radial-gradient(1px 1px at 12% 88%, rgba(255,255,255,0.35) 50%, transparent 52%),
+                radial-gradient(1.1px 1.1px at 55% 55%, rgba(255,255,255,0.5) 50%, transparent 52%),
+                radial-gradient(1px 1px at 92% 90%, rgba(255,255,255,0.4) 50%, transparent 52%),
+                radial-gradient(0.8px 0.8px at 28% 65%, rgba(255,255,255,0.35) 50%, transparent 52%),
+                radial-gradient(1px 1px at 72% 8%, rgba(255,255,255,0.4) 50%, transparent 52%);
+            background-size: 96px 96px;
+            background-repeat: repeat;
+            opacity: 0.88;
             z-index: 0;
-            animation: starfieldDrift 120s linear infinite;
+            animation: starfieldDrift 180s linear infinite;
         }
 
         .game-area::after {
@@ -144,35 +151,36 @@
             inset: 0;
             pointer-events: none;
             background-image:
-                radial-gradient(0.8px 0.8px at 15% 45%, rgba(200,220,255,0.45) 100%, transparent 100%),
-                radial-gradient(1px 1px at 55% 22%, rgba(255,255,255,0.35) 100%, transparent 100%),
-                radial-gradient(0.9px 0.9px at 88% 60%, rgba(255,255,255,0.4) 100%, transparent 100%);
-            background-size: 320px 320px;
-            background-position: 40px 80px;
-            opacity: 0.55;
+                radial-gradient(1px 1px at 40% 20%, rgba(255,255,255,0.25) 50%, transparent 52%),
+                radial-gradient(1px 1px at 70% 70%, rgba(180,200,255,0.2) 50%, transparent 52%),
+                radial-gradient(0.9px 0.9px at 15% 50%, rgba(255,255,255,0.22) 50%, transparent 52%);
+            background-size: 180px 180px;
+            background-repeat: repeat;
+            background-position: 24px 40px;
+            opacity: 0.5;
             z-index: 0;
-            animation: starfieldTwinkle 5s ease-in-out infinite alternate;
+            animation: starfieldTwinkle 6s ease-in-out infinite alternate;
         }
 
         @keyframes starfieldDrift {
             from { background-position: 0 0; }
-            to { background-position: 200px 120px; }
+            to { background-position: 96px 64px; }
         }
 
         @keyframes starfieldTwinkle {
-            from { opacity: 0.42; }
-            to { opacity: 0.68; }
+            from { opacity: 0.38; }
+            to { opacity: 0.62; }
         }
 
-        /* Верхний блок: только планета — центрируется, не пересекается с HUD */
+        /* Сцена планеты — кликабельна целиком; HUD прижат к низу игровой зоны */
         .planet-stage {
             position: relative;
             z-index: 1;
             width: 100%;
-            max-width: 400px;
-            flex: 1;
-            min-height: 200px;
-            max-height: 42vh;
+            max-width: min(400px, 92vw);
+            flex: 1 1 auto;
+            min-height: min(28vh, 220px);
+            max-height: min(48vh, 420px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -182,13 +190,15 @@
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 340px;
+            max-width: min(360px, 94vw);
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 0;
             flex-shrink: 0;
-            padding-bottom: 4px;
+            margin-top: auto;
+            padding-top: clamp(8px, 2vh, 20px);
+            padding-bottom: clamp(4px, 1vh, 12px);
         }
 
         #canvas-container {
@@ -664,13 +674,26 @@
             100% { opacity: 0; transform: translateY(-50px) scale(1); }
         }
 
+        @media (min-width: 600px) and (max-width: 1024px) {
+            .planet-stage { max-height: 50vh; min-height: 240px; }
+            #canvas-container { height: 240px; max-width: 380px; }
+            .hud-below { max-width: 400px; }
+        }
+
+        @media (min-width: 1025px) {
+            .planet-stage { max-height: 52vh; min-height: 260px; }
+            #canvas-container { height: 260px; max-width: 400px; }
+            .game-area { min-height: 520px; }
+        }
+
         @media (max-width: 480px) {
             .golden-coin { width: 130px; height: 130px; }
             .coin-star-white { font-size: 48px; }
             .task-card { flex-direction: column; text-align: center; }
             .task-claim-btn { margin-left: 0; margin-top: 10px; width: 100%; }
-            #canvas-container { width: 100%; max-width: 300px; height: 180px; margin: 0 auto; }
-            .planet-stage { min-height: 160px; max-height: 38vh; }
+            #canvas-container { width: 100%; max-width: min(300px, 88vw); height: min(180px, 32vh); margin: 0 auto; }
+            .planet-stage { min-height: 140px; max-height: 44vh; }
+            .hud-below { max-width: min(340px, 92vw); padding-top: 10px; }
             .avatar-img { width: 38px; height: 38px; }
             .profile-avatar-img { width: 45px; height: 45px; }
             .link-box { flex-direction: column; }
