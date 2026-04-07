@@ -114,6 +114,8 @@ let energyUpgradeLevel = 1;
 let passiveIncomeLevel = 0;
 let passiveIncomeUpgradeCost = 500;
 let passiveIncomeRate = 0;
+const ENERGY_MAX_VALUE = 500;
+const ENERGY_MAX_LEVEL = 10;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
@@ -826,8 +828,16 @@ function updateUI() {
     document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
     document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
     document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
-    document.getElementById('energyUpgradeCostDisplay').textContent = `${energyUpgradeCost} 🪙`;
+    const energyCostEl = document.getElementById('energyUpgradeCostDisplay');
+    if (energyCostEl) energyCostEl.textContent = energyUpgradeLevel >= ENERGY_MAX_LEVEL ? '✅ Выполнено' : `${energyUpgradeCost} 🪙`;
     document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
+    const buyEnergyBtn = document.getElementById('buyEnergyUpgrade');
+    if (buyEnergyBtn) {
+        const isDone = energyUpgradeLevel >= ENERGY_MAX_LEVEL;
+        buyEnergyBtn.disabled = isDone;
+        buyEnergyBtn.textContent = isDone ? '✅ Выполнено' : 'Купить';
+        buyEnergyBtn.classList.toggle('disabled', isDone);
+    }
     
     let rate = getPassiveRate();
     passiveIncomeRate = rate;
@@ -1011,9 +1021,18 @@ function normalizeUpgradeCosts() {
         clickUpgradeLevel = clickPower;
         changed = true;
     }
-    const expectedEnergyLevel = clampInt(Math.floor((Math.max(100, maxEnergy) - 100) / 50) + 1, 1, 100);
-    if (energyUpgradeLevel !== expectedEnergyLevel) {
-        energyUpgradeLevel = expectedEnergyLevel;
+    const safeEnergy = Math.max(100, Math.min(ENERGY_MAX_VALUE, maxEnergy));
+    if (safeEnergy !== maxEnergy) {
+        maxEnergy = safeEnergy;
+        if (energy > maxEnergy) energy = maxEnergy;
+        changed = true;
+    }
+    const minEnergyLevelByValue = clampInt(Math.floor((maxEnergy - 100) / 50) + 1, 1, 9);
+    const normalizedEnergyLevel = maxEnergy >= ENERGY_MAX_VALUE
+        ? clampInt(Math.max(energyUpgradeLevel || 1, 9), 1, ENERGY_MAX_LEVEL)
+        : clampInt(Math.max(energyUpgradeLevel || 1, minEnergyLevelByValue), 1, ENERGY_MAX_LEVEL);
+    if (energyUpgradeLevel !== normalizedEnergyLevel) {
+        energyUpgradeLevel = normalizedEnergyLevel;
         changed = true;
     }
     const safePassiveLevel = clampInt(passiveIncomeLevel || 0, 0, 100);
@@ -1302,17 +1321,20 @@ function upgradeClick() {
 function upgradeEnergy() {
     if (ignoreRapidBoostTap()) return;
     const cost = energyUpgradeCost;
-    if (coins >= cost && maxEnergy < 500) {
+    if (coins >= cost && energyUpgradeLevel < ENERGY_MAX_LEVEL) {
         coins -= cost;
-        maxEnergy += 50;
-        energy += 50;
+        if (maxEnergy < ENERGY_MAX_VALUE) {
+            maxEnergy = Math.min(ENERGY_MAX_VALUE, maxEnergy + 50);
+            energy = Math.min(maxEnergy, energy + 50);
+        }
         energyUpgradeLevel++;
         dailyUpgradesBought++;
         weeklyUpgradesBought++;
         energyUpgradeCost = Math.floor(energyUpgradeCost * 1.25);
         updateUI(); saveGame(); syncWithBot();
-        showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
-    } else if (maxEnergy >= 500) showMessage('⚠️ Максимальный уровень!', true);
+        if (energyUpgradeLevel >= ENERGY_MAX_LEVEL) showMessage('✅ Выполнено: энергия прокачана до максимума');
+        else showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
+    } else if (energyUpgradeLevel >= ENERGY_MAX_LEVEL) showMessage('⚠️ Максимальный уровень!', true);
     else showMessage(`❌ Нужно ${cost} монет`, true);
 }
 
