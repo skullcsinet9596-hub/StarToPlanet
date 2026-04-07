@@ -280,7 +280,8 @@
             width: 100%;
             height: 100%;
             border-radius: 20px;
-            transition: width 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+            /* Без transition: при мультитапе ширина = фактическая энергия, без «догоняющей» анимации */
+            transition: none;
             box-shadow: 0 0 12px rgba(255, 214, 10, 0.25);
         }
 

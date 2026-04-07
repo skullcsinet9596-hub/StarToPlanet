@@ -73,9 +73,28 @@ let dailyTasksClaimed = defaultDailyTasksClaimed();
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
 let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
 
-let clickCooldown = 30;
+/** Минимальный интервал между событиями одного и того же указателя (мс). 0 = каждый палец тратит энергию сразу, независимо от остальных. */
+let clickCooldown = 0;
 /** Кулдаун отдельно на каждый палец / мышь — иначе мультитап блокируется одним lastClickTime */
 const lastTapByPointer = new Map();
+let tapPersistTimer = null;
+
+function schedulePersistAfterTap() {
+    if (tapPersistTimer) clearTimeout(tapPersistTimer);
+    tapPersistTimer = setTimeout(() => {
+        tapPersistTimer = null;
+        saveGame();
+        syncWithBot();
+    }, 48);
+}
+
+function flushTapPersistIfPending() {
+    if (!tapPersistTimer) return;
+    clearTimeout(tapPersistTimer);
+    tapPersistTimer = null;
+    saveGame();
+    syncWithBot();
+}
 
 // ========== ЗВУК ==========
 let soundEnabled = true;
@@ -760,8 +779,7 @@ function handleClick(event) {
     weeklyEnergySpent += clickPower;
     
     updateUI();
-    saveGame();
-    syncWithBot();
+    schedulePersistAfterTap();
     updateTaskButtons();
     
     // Эффект клика с анимацией
@@ -1158,6 +1176,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const gameArea = document.getElementById('gameArea');
     if (gameArea) gameArea.style.display = 'flex';
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flushTapPersistIfPending();
+    });
+    window.addEventListener('pagehide', flushTapPersistIfPending);
     
     if(!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
