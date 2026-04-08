@@ -1245,7 +1245,9 @@ function normalizeUpgradeCosts() {
 }
 
 function loadGame() {
-    const saved = localStorage.getItem(gameStorageKey()) || localStorage.getItem('starToPlanet');
+    const saved = userId
+        ? localStorage.getItem(gameStorageKey())
+        : (localStorage.getItem(gameStorageKey()) || localStorage.getItem('starToPlanet'));
     let normalized = false;
     if (saved) {
         try {
@@ -1920,39 +1922,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const registerIntent = isRegisterIntentLaunch();
     const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered();
     isRegistered = canBypassRegistrationOverlay;
-    if (!canBypassRegistrationOverlay && unknownRegistrationState && userId) {
-        showRegistrationOverlay(true);
-        if (registerBtn) {
-            registerBtn.disabled = true;
-            registerBtn.textContent = 'Проверяем профиль...';
-        }
-        if (registrationHelp) registrationHelp.textContent = 'Сервер просыпается, проверяем ваш профиль...';
-        let attempts = 0;
-        const probe = setInterval(async () => {
-            attempts += 1;
-            const retryStatus = await checkRegistrationStatus(1, 350);
-            if (retryStatus === true) {
-                clearInterval(probe);
-                setCachedRegistered(true);
-                window.location.reload();
-                return;
-            }
-            if (retryStatus === false || attempts >= 10) {
-                clearInterval(probe);
-                if (registerBtn) {
-                    registerBtn.disabled = false;
-                    registerBtn.textContent = 'Регистрация';
-                }
-                if (registrationHelp) {
-                    const refId = getLaunchReferrerId();
-                    registrationHelp.textContent = refId
-                        ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
-                        : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
-                }
-            }
-        }, 1200);
-    }
-    if (!canBypassRegistrationOverlay) {
+    const shouldShowRegistrationOverlay = !canBypassRegistrationOverlay && (registerIntent || registrationStatus === false);
+    if (shouldShowRegistrationOverlay) {
         showRegistrationOverlay(true);
         if (!userId && registerBtn) {
             registerBtn.disabled = true;
@@ -2028,6 +1999,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     showRegistrationOverlay(false);
+
+    // При неопределенном статусе (cold start) не блокируем UI: тихо перепроверяем профиль в фоне.
+    if (!canBypassRegistrationOverlay && unknownRegistrationState && userId) {
+        let attempts = 0;
+        const probe = setInterval(async () => {
+            attempts += 1;
+            const retryStatus = await checkRegistrationStatus(1, 350);
+            if (retryStatus === true) {
+                clearInterval(probe);
+                setCachedRegistered(true);
+                window.location.reload();
+                return;
+            }
+            if (retryStatus === false || attempts >= 8) {
+                clearInterval(probe);
+            }
+        }, 1200);
+    }
 
     loadGame();
     setupTabs();
