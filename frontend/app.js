@@ -52,13 +52,9 @@ const registeredCacheKey = () => (userId ? `stp_registered_${userId}` : null);
 const gameStorageKey = () => (userId ? `starToPlanet_${userId}` : 'starToPlanet_guest');
 function hasAnyLocalProgress() {
     try {
-        if (userId && localStorage.getItem(`starToPlanet_${userId}`)) return true;
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('starToPlanet_') && localStorage.getItem(key)) return true;
-        }
+        if (!userId) return false;
+        if (localStorage.getItem(`starToPlanet_${userId}`)) return true;
         if (localStorage.getItem('starToPlanet')) return true;
-        if (localStorage.getItem('starToPlanet_guest')) return true;
         return false;
     } catch (e) {
         return false;
@@ -1888,6 +1884,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     await ensureTelegramUserResolved(20, 300);
     const registerBtn = document.getElementById('registerProfileBtn');
     const registrationHelp = document.getElementById('registrationHelp');
+    if (!userId) {
+        showRegistrationOverlay(true);
+        if (registerBtn) {
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Ожидаем Telegram...';
+        }
+        if (registrationHelp) registrationHelp.textContent = 'Получаем данные Telegram. Если долго, закройте и откройте игру снова.';
+        const waitTimer = setInterval(async () => {
+            const ok = await ensureTelegramUserResolved(3, 350);
+            if (!ok) return;
+            clearInterval(waitTimer);
+            window.location.reload();
+        }, 1200);
+        return;
+    }
     const registrationStatus = await checkRegistrationStatus(6, 800);
     const alreadyRegistered = registrationStatus === true;
     const unknownRegistrationState = registrationStatus === null;
