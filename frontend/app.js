@@ -1353,7 +1353,19 @@ async function syncWithBot() {
         energyUpgradeLevel: energyUpgradeLevel,
         energyUpgradeCost: energyUpgradeCost,
         passiveIncomeUpgradeCost: passiveIncomeUpgradeCost,
-        soundEnabled: soundEnabled
+        soundEnabled: soundEnabled,
+        dailyClickCount,
+        dailyCoinsEarned,
+        dailyEnergySpent,
+        dailyUpgradesBought,
+        weeklyClickCount,
+        weeklyCoinsEarned,
+        weeklyEnergySpent,
+        weeklyUpgradesBought,
+        dailyTasksClaimed,
+        weeklyTasksClaimed,
+        lastDailyCycleKey,
+        lastWeeklyCycleKey
     };
     
     // В Mini App запуске через menu/start кнопки частый sendData может приводить к закрытию WebApp.
@@ -1411,6 +1423,21 @@ async function loadFromServer() {
                 passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
                 taskPassiveBonusRate = data.taskPassiveBonusRate || taskPassiveBonusRate || 0;
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
+                const taskState = (data.taskState && typeof data.taskState === 'object') ? data.taskState : null;
+                if (taskState) {
+                    dailyClickCount = Number(taskState.dailyClickCount || 0);
+                    dailyCoinsEarned = Number(taskState.dailyCoinsEarned || 0);
+                    dailyEnergySpent = Number(taskState.dailyEnergySpent || 0);
+                    dailyUpgradesBought = Number(taskState.dailyUpgradesBought || 0);
+                    weeklyClickCount = Number(taskState.weeklyClickCount || 0);
+                    weeklyCoinsEarned = Number(taskState.weeklyCoinsEarned || 0);
+                    weeklyEnergySpent = Number(taskState.weeklyEnergySpent || 0);
+                    weeklyUpgradesBought = Number(taskState.weeklyUpgradesBought || 0);
+                    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...(taskState.dailyTasksClaimed || {}) };
+                    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...(taskState.weeklyTasksClaimed || {}) };
+                    lastDailyCycleKey = typeof taskState.lastDailyCycleKey === 'string' ? taskState.lastDailyCycleKey : todayKey();
+                    lastWeeklyCycleKey = typeof taskState.lastWeeklyCycleKey === 'string' ? taskState.lastWeeklyCycleKey : weekKey();
+                }
                 
                 if (energy > maxEnergy) energy = maxEnergy;
                 normalizeUpgradeCosts();

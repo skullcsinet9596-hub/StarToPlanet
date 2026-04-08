@@ -180,7 +180,8 @@ app.get('/api/user/:userId', async (req, res) => {
             energyUpgradeLevel: user.energy_upgrade_level,
             energyUpgradeCost: user.energy_upgrade_cost,
             passiveIncomeUpgradeCost: user.passive_income_cost,
-            soundEnabled: user.sound_enabled
+            soundEnabled: user.sound_enabled,
+            taskState: user.task_state || {}
         });
     } catch (e) {
         res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
@@ -271,7 +272,21 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
             energy_upgrade_level: Math.max(1, int(gameData.energyUpgradeLevel, 1)),
             energy_upgrade_cost: Math.max(0, int(gameData.energyUpgradeCost, 200)),
             passive_income_cost: Math.max(0, int(gameData.passiveIncomeUpgradeCost, 500)),
-            sound_enabled: Boolean(gameData.soundEnabled)
+            sound_enabled: Boolean(gameData.soundEnabled),
+            task_state: {
+                dailyClickCount: int(gameData.dailyClickCount, 0),
+                dailyCoinsEarned: int(gameData.dailyCoinsEarned, 0),
+                dailyEnergySpent: int(gameData.dailyEnergySpent, 0),
+                dailyUpgradesBought: int(gameData.dailyUpgradesBought, 0),
+                weeklyClickCount: int(gameData.weeklyClickCount, 0),
+                weeklyCoinsEarned: int(gameData.weeklyCoinsEarned, 0),
+                weeklyEnergySpent: int(gameData.weeklyEnergySpent, 0),
+                weeklyUpgradesBought: int(gameData.weeklyUpgradesBought, 0),
+                dailyTasksClaimed: gameData.dailyTasksClaimed || {},
+                weeklyTasksClaimed: gameData.weeklyTasksClaimed || {},
+                lastDailyCycleKey: typeof gameData.lastDailyCycleKey === 'string' ? gameData.lastDailyCycleKey : null,
+                lastWeeklyCycleKey: typeof gameData.lastWeeklyCycleKey === 'string' ? gameData.lastWeeklyCycleKey : null
+            }
         });
 
         const earnedCoins = Math.max(0, currentCoins - previousCoins);

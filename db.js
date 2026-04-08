@@ -59,12 +59,14 @@ export async function initDB() {
                 referrer_id BIGINT,
                 last_daily_bonus DATE,
                 daily_streak INTEGER DEFAULT 0,
+                task_state JSONB DEFAULT '{}'::jsonb,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS task_state JSONB DEFAULT '{}'::jsonb`);
 
         // Таблица рефералов
         await pool.query(`
