@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 
+// Канонизируем домен, чтобы все сценарии запуска использовали один origin и общее localStorage.
+if (window.location.hostname === 'star-to-planet-bot.onrender.com') {
+    const target = `https://startoplanet.onrender.com${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(target);
+}
+
 // ========== API БЭКЕНДА ==========
 const API_BASE = window.API_BASE || 'https://startoplanet.onrender.com';
 
@@ -44,13 +50,26 @@ function applyViewportHeight() {
     const safeTop = Number(tg?.safeAreaInset?.top || tg?.contentSafeAreaInset?.top || 0);
     document.documentElement.style.setProperty('--tg-safe-top', `${Math.max(0, safeTop)}px`);
 }
+function applyTopHudVisibilityFix() {
+    const topBar = document.querySelector('.top-bar');
+    if (!topBar) return;
+    const rect = topBar.getBoundingClientRect();
+    const minTopClearance = 52; // запас под верхнюю панель Telegram (close/menu)
+    const fixTop = rect.top < minTopClearance ? Math.ceil(minTopClearance - rect.top) : 0;
+    document.documentElement.style.setProperty('--hud-fix-top', `${fixTop}px`);
+}
 applyViewportHeight();
+setTimeout(applyTopHudVisibilityFix, 40);
 window.addEventListener('resize', applyViewportHeight);
+window.addEventListener('resize', applyTopHudVisibilityFix);
 if (tg?.onEvent) {
     tg.onEvent('viewportChanged', applyViewportHeight);
+    tg.onEvent('viewportChanged', applyTopHudVisibilityFix);
 }
 setTimeout(applyViewportHeight, 150);
 setTimeout(applyViewportHeight, 600);
+setTimeout(applyTopHudVisibilityFix, 180);
+setTimeout(applyTopHudVisibilityFix, 700);
 
 // Элементы профиля
 const userNameElem = document.getElementById('userName');
@@ -437,8 +456,9 @@ function setCycleClaim(scope, taskKey, value) {
 function hydrateClaimStateFromCycleCache() {
     const d = getCycleClaimMap('daily');
     const w = getCycleClaimMap('weekly');
-    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...d };
-    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...w };
+    // Если cycle-cache пустой в конкретном launch-контексте, сохраняем флаги из сейва текущего цикла.
+    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...dailyTasksClaimed, ...d };
+    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...weeklyTasksClaimed, ...w };
 }
 
 /** Минимальный интервал между событиями одного и того же указателя (мс). 0 = каждый палец тратит энергию сразу, независимо от остальных. */
