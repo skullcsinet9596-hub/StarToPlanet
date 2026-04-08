@@ -24,7 +24,7 @@ npm --prefix desktop-admin run start
 
 ## 3) Первичная настройка внутри приложения
 
-1. Введите `BASE_URL` (например, `https://star-to-planet-bot.onrender.com`)
+1. Введите `BASE_URL` (например, `https://startoplanet.onrender.com`)
 2. Введите `ADMIN_TOKEN`
 3. Введите `ADMIN_TELEGRAM_ID`
 4. Нажмите `Сохранить`

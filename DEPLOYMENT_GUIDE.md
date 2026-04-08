@@ -133,22 +133,22 @@ star-to-planet-bot/
 
 ### 5.1 Скопируйте URL вашего сервиса
 1. В панели Render найдите ваш Web Service
-2. Скопируйте URL (выглядит так: `https://star-to-planet-bot.onrender.com`)
+2. Скопируйте URL (выглядит так: `https://startoplanet.onrender.com`)
 
 ### 5.2 Настройте Web App в Telegram
 1. Вернитесь в @BotFather
 2. Отправьте `/mybots` → выберите бота → "Menu Button" → "Web App"
-3. Введите URL: `https://star-to-planet-bot.onrender.com`
+3. Введите URL: `https://startoplanet.onrender.com`
 4. Нажмите "Save"
 
 ## 🧪 Шаг 6: Тестирование
 
 ### 6.1 Проверка сервера
-1. Откройте в браузере: `https://star-to-planet-bot.onrender.com`
+1. Откройте в браузере: `https://startoplanet.onrender.com`
 2. Вы должны увидеть страницу игры
 
 ### 6.2 Проверка API
-1. Проверьте: `https://star-to-planet-bot.onrender.com/api/leaderboard`
+1. Проверьте: `https://startoplanet.onrender.com/api/leaderboard`
 2. Должен вернуться JSON с пустым массивом `[]`
 
 ### 6.3 Проверка бота

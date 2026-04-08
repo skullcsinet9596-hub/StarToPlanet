@@ -135,7 +135,14 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
 });
-app.get('/healthz', (req, res) => res.status(200).send('ok'));
+app.get('/healthz', (req, res) => {
+    res.status(200).json({
+        ok: true,
+        service: 'star-to-planet-bot',
+        uptimeSec: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString()
+    });
+});
 
 if (useWebhookMode) {
     app.post(WEBHOOK_PATH, (req, res) => {
