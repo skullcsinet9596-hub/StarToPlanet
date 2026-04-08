@@ -4,7 +4,10 @@
   "type": "module",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "desktop-admin:start": "npm --prefix desktop-admin run start",
+    "desktop-admin:dev": "npm --prefix desktop-admin run dev",
+    "desktop-admin:build": "npm --prefix desktop-admin run build:win"
   },
   "dependencies": {
     "telegraf": "^4.15.3",

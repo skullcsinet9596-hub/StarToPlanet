@@ -22,6 +22,7 @@ import {
     updateEconomyConfig,
     getEconomyConfig,
     adjustUserAdmin,
+    deleteUserAdmin,
     trackBotStart,
     getMarketingMetricsAdmin
 } from './db.js';
@@ -192,6 +193,12 @@ app.post('/api/register', rateLimit('register', 30, 60_000), async (req, res) =>
         if (!user) {
             const ref = referrerId && !isNaN(parseInt(referrerId)) ? parseInt(referrerId) : null;
             user = await createUser(telegramId, username || null, firstName || null, ref);
+            const playUrl = APP_URL;
+            bot.telegram.sendMessage(telegramId, '✅ Профиль создан. Теперь можете играть.', {
+                reply_markup: {
+                    inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: playUrl } }]]
+                }
+            }).catch(() => {});
             res.json({ success: true, registered: true, created: true, userId: telegramId, message: 'Профиль создан' });
             return;
         }
@@ -457,6 +464,20 @@ app.post('/api/admin/adjust-user', requireAdmin, async (req, res) => {
     }
     const updated = await adjustUserAdmin(telegramId, patch);
     res.json({ success: true, user: updated });
+});
+
+app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {
+    const telegramId = parseInt(req.body?.telegramId);
+    if (!telegramId) {
+        res.status(400).json({ success: false, message: 'Неверный telegramId' });
+        return;
+    }
+    const result = await deleteUserAdmin(telegramId);
+    if (!result?.ok) {
+        res.status(400).json({ success: false, message: result?.message || 'Не удалось удалить пользователя' });
+        return;
+    }
+    res.json({ success: true, deletedTelegramId: result.deletedTelegramId });
 });
 
 app.use('/admin', express.static('frontend/admin'));

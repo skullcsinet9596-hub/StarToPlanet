@@ -788,6 +788,54 @@ export async function adjustUserAdmin(telegramId, patch = {}) {
     return await updateUser(telegramId, updates);
 }
 
+export async function deleteUserAdmin(telegramId) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return { ok: false, message: 'Неверный telegramId' };
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const targetRes = await client.query('SELECT telegram_id FROM users WHERE telegram_id = $1 FOR UPDATE', [telegramId]);
+        if (!targetRes.rows.length) {
+            await client.query('ROLLBACK');
+            return { ok: false, message: 'Пользователь не найден' };
+        }
+
+        await client.query('UPDATE users SET referrer_id = NULL WHERE referrer_id = $1', [telegramId]);
+        await client.query('DELETE FROM referrals WHERE referrer_id = $1 OR referred_id = $1', [telegramId]);
+        await client.query('DELETE FROM leaderboard WHERE telegram_id = $1', [telegramId]);
+        await client.query('DELETE FROM daily_tasks WHERE telegram_id = $1', [telegramId]);
+        await client.query('DELETE FROM weekly_tasks WHERE telegram_id = $1', [telegramId]);
+        await client.query('DELETE FROM payments WHERE telegram_id = $1', [telegramId]);
+        await client.query('DELETE FROM bot_starts WHERE telegram_id = $1', [telegramId]);
+        await client.query('DELETE FROM users WHERE telegram_id = $1', [telegramId]);
+
+        await client.query(`
+            UPDATE users u
+            SET referrals_count = COALESCE(x.cnt, 0)
+            FROM (
+                SELECT referrer_id, COUNT(*)::int AS cnt
+                FROM referrals
+                GROUP BY referrer_id
+            ) x
+            WHERE u.telegram_id = x.referrer_id
+        `);
+        await client.query(`
+            UPDATE users
+            SET referrals_count = 0
+            WHERE telegram_id NOT IN (SELECT DISTINCT referrer_id FROM referrals)
+        `);
+
+        await client.query('COMMIT');
+        return { ok: true, deletedTelegramId: Number(telegramId) };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Ошибка deleteUserAdmin:', err.message);
+        return { ok: false, message: 'Ошибка удаления пользователя' };
+    } finally {
+        client.release();
+    }
+}
+
 export async function getMarketingMetricsAdmin() {
     try {
         const [arrivedRes, registeredRes, d1Res, d3Res, invitersRes] = await Promise.all([

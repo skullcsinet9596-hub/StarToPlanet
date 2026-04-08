@@ -1,0 +1,38 @@
+{
+  "name": "star-to-planet-desktop-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop admin app for Star to Planet",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build:win": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0"
+  },
+  "optionalDependencies": {
+    "keytar": "^7.9.0"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.startoplanet.desktopadmin",
+    "productName": "StarToPlanet Admin",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

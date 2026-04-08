@@ -46,13 +46,16 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 16px;
-            margin: 12px 16px 0 16px;
+            margin: max(6px, env(safe-area-inset-top)) 16px 0 16px;
+            gap: 10px;
         }
 
         .user-info {
             display: flex;
             align-items: center;
             gap: 12px;
+            min-width: 0;
+            flex: 1;
         }
 
         .avatar-img {
@@ -66,18 +69,27 @@
         .user-details {
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
 
         #userName {
             font-weight: 590;
             font-size: 15px;
             letter-spacing: -0.2px;
+            display: block;
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         #userLevel {
             font-size: 11px;
             opacity: 0.7;
             color: #98989E;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .balance {
@@ -102,6 +114,14 @@
             cursor: pointer;
             color: #FFD60A;
             backdrop-filter: blur(8px);
+        }
+        #nextGoalText {
+            min-height: 32px;
+            line-height: 1.2;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .game-area {

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarToPlanet Desktop Admin</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>StarToPlanet Desktop Admin</h1>
+    <p id="statusLine">Готово к настройке</p>
+  </header>
+
+  <main class="layout">
+    <section class="card">
+      <h2>Доступ</h2>
+      <div class="grid3">
+        <label>BASE_URL
+          <input id="baseUrl" placeholder="https://star-to-planet-bot.onrender.com" />
+        </label>
+        <label>ADMIN_TOKEN
+          <input id="adminToken" type="password" placeholder="секретный токен" />
+        </label>
+        <label>ADMIN_TELEGRAM_ID
+          <input id="adminTelegramId" placeholder="123456789" />
+        </label>
+      </div>
+      <div class="row">
+        <button id="saveCredsBtn">Сохранить</button>
+        <button id="verifyBtn" class="secondary">Проверить доступ</button>
+        <button id="clearCredsBtn" class="danger">Сбросить</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="playerTab">Игрок</button>
+        <button class="tab" data-tab="referralsTab">Referrals</button>
+        <button class="tab" data-tab="paymentsTab">Payments</button>
+        <button class="tab" data-tab="economyTab">Economy</button>
+      </div>
+
+      <div id="playerTab" class="tabPanel active">
+        <h2>Поиск и изменение игрока</h2>
+        <div class="row">
+          <input id="playerTelegramId" placeholder="Telegram ID игрока" />
+          <button id="loadPlayerBtn">Загрузить</button>
+        </div>
+        <div class="grid3">
+          <label>coins<input id="coinsInput" type="number" /></label>
+          <label>level<input id="levelInput" type="number" min="1" /></label>
+          <label>has_moon
+            <select id="moonInput"><option value="false">false</option><option value="true">true</option></select>
+          </label>
+          <label>has_earth
+            <select id="earthInput"><option value="false">false</option><option value="true">true</option></select>
+          </label>
+          <label>has_sun
+            <select id="sunInput"><option value="false">false</option><option value="true">true</option></select>
+          </label>
+        </div>
+        <div class="row">
+          <button id="savePlayerBtn">Применить изменения</button>
+          <button id="deletePlayerBtn" class="danger">Удалить профиль</button>
+        </div>
+        <pre id="playerOut"></pre>
+      </div>
+
+      <div id="referralsTab" class="tabPanel">
+        <h2>Реферальное дерево</h2>
+        <div class="row">
+          <input id="referralTelegramId" placeholder="telegram_id" />
+          <input id="referralDepth" type="number" min="1" max="8" value="4" />
+          <button id="loadReferralsBtn">Загрузить</button>
+        </div>
+        <pre id="referralsOut"></pre>
+      </div>
+
+      <div id="paymentsTab" class="tabPanel">
+        <h2>Платежи</h2>
+        <div class="row">
+          <input id="paymentsLimit" type="number" min="1" max="500" value="100" />
+          <button id="loadPaymentsBtn">Загрузить</button>
+        </div>
+        <pre id="paymentsOut"></pre>
+      </div>
+
+      <div id="economyTab" class="tabPanel">
+        <h2>Экономика</h2>
+        <div class="row">
+          <button id="loadEconomyBtn">Прочитать</button>
+          <button id="saveEconomyBtn">Сохранить patch</button>
+        </div>
+        <textarea id="economyPatch" rows="10" placeholder="{ }"></textarea>
+        <pre id="economyOut"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
