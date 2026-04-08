@@ -50,6 +50,20 @@ if (profileAvatarElem) profileAvatarElem.src = userAvatar;
 let isRegistered = false;
 const registeredCacheKey = () => (userId ? `stp_registered_${userId}` : null);
 const gameStorageKey = () => (userId ? `starToPlanet_${userId}` : 'starToPlanet_guest');
+function hasAnyLocalProgress() {
+    try {
+        if (userId && localStorage.getItem(`starToPlanet_${userId}`)) return true;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('starToPlanet_') && localStorage.getItem(key)) return true;
+        }
+        if (localStorage.getItem('starToPlanet')) return true;
+        if (localStorage.getItem('starToPlanet_guest')) return true;
+        return false;
+    } catch (e) {
+        return false;
+    }
+}
 function getCachedRegistered() {
     try {
         const key = registeredCacheKey();
@@ -121,13 +135,24 @@ function showRegistrationOverlay(show) {
     if (nav) nav.style.display = show ? 'none' : 'flex';
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const merged = { ...options, signal: controller.signal };
+        return await fetch(url, merged);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 async function checkRegistrationStatus(maxAttempts = 4, baseDelayMs = 700) {
     if (!userId) await ensureTelegramUserResolved(8, 350);
     if (!userId) return getCachedRegistered();
     let hadNetworkError = false;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-            const res = await fetch(`${API_BASE}/api/user/${userId}`);
+            const res = await fetchWithTimeout(`${API_BASE}/api/user/${userId}`, {}, 7000);
             if (!res.ok) {
                 hadNetworkError = true;
                 await new Promise((resolve) => setTimeout(resolve, baseDelayMs + attempt * 400));
@@ -155,11 +180,11 @@ async function registerCurrentUser() {
     const firstName = tg?.initDataUnsafe?.user?.first_name || null;
     for (let attempt = 0; attempt < 4; attempt++) {
         try {
-            const res = await fetch(`${API_BASE}/api/register`, {
+            const res = await fetchWithTimeout(`${API_BASE}/api/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, username, firstName, referrerId })
-            });
+            }, 9000);
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data?.success) {
                 if (attempt < 3) {
@@ -1867,7 +1892,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const alreadyRegistered = registrationStatus === true;
     const unknownRegistrationState = registrationStatus === null;
     const registerIntent = isRegisterIntentLaunch();
-    const hasLocalProgress = Boolean(userId && localStorage.getItem(gameStorageKey()));
+    const hasLocalProgress = hasAnyLocalProgress();
     const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered() || hasLocalProgress;
     isRegistered = canBypassRegistrationOverlay;
     if (!canBypassRegistrationOverlay && unknownRegistrationState && !registerIntent && userId) {
@@ -1924,6 +1949,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isRegistering = true;
                 registerBtn.disabled = true;
                 registerBtn.textContent = 'Создаем профиль...';
+                const preCheck = await checkRegistrationStatus(2, 450);
+                if (preCheck === true) {
+                    showMessage('ℹ️ Профиль уже зарегистрирован');
+                    setCachedRegistered(true);
+                    window.location.reload();
+                    return;
+                }
                 const result = await registerCurrentUser();
                 if (!result.ok) {
                     let fallbackRegistered = await checkRegistrationStatus(2, 500);
@@ -1931,7 +1963,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         await new Promise((resolve) => setTimeout(resolve, 1200));
                         fallbackRegistered = await checkRegistrationStatus(1, 400);
                     }
-                    if (fallbackRegistered || Boolean(userId && localStorage.getItem(gameStorageKey()))) {
+                    if (fallbackRegistered || hasAnyLocalProgress()) {
                         showMessage('ℹ️ Профиль найден, продолжаем вход');
                         setCachedRegistered(true);
                         window.location.reload();
@@ -1953,11 +1985,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     showRegistrationOverlay(false);
 
     loadGame();
-    await loadFromServer();
-    await loadPremiumConfig();
-    updateUI();
     setupTabs();
     setupTasksTabs();
+
+    // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
+    Promise.resolve().then(async () => {
+        await loadFromServer();
+        await loadPremiumConfig();
+        updateUI();
+        fillRanksPreviewGrid();
+        updateMilitaryRankHUD();
+    }).catch((e) => console.log('Отложенная серверная инициализация:', e));
     
     // Инициализируем 3D только если canvas-container существует
     const container = document.getElementById('canvas-container');
