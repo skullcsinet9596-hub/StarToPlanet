@@ -381,6 +381,8 @@ let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgrad
 let dailyTasksClaimed = defaultDailyTasksClaimed();
 let weeklyClickCount = 0, weeklyCoinsEarned = 0, weeklyEnergySpent = 0, weeklyUpgradesBought = 0;
 let weeklyTasksClaimed = defaultWeeklyTasksClaimed();
+let lastDailyCycleKey = todayKey();
+let lastWeeklyCycleKey = weekKey();
 const claimInFlight = new Set();
 
 const TASK_TARGETS = {
@@ -435,8 +437,8 @@ function setCycleClaim(scope, taskKey, value) {
 function hydrateClaimStateFromCycleCache() {
     const d = getCycleClaimMap('daily');
     const w = getCycleClaimMap('weekly');
-    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...dailyTasksClaimed, ...d };
-    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...weeklyTasksClaimed, ...w };
+    dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...d };
+    weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...w };
 }
 
 /** Минимальный интервал между событиями одного и того же указателя (мс). 0 = каждый палец тратит энергию сразу, независимо от остальных. */
@@ -1182,6 +1184,7 @@ function saveGame() {
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost, taskPassiveBonusRate,
         dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
         weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
+        lastDailyCycleKey, lastWeeklyCycleKey,
         hasMoon, hasEarth, hasSun, soundEnabled,
         ownedRankLevel,
         lastSeenAtMs: Date.now()
@@ -1273,6 +1276,8 @@ function loadGame() {
             weeklyEnergySpent = data.weeklyEnergySpent || 0;
             weeklyUpgradesBought = data.weeklyUpgradesBought || 0;
             weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...(data.weeklyTasksClaimed || {}) };
+            lastDailyCycleKey = typeof data.lastDailyCycleKey === 'string' ? data.lastDailyCycleKey : todayKey();
+            lastWeeklyCycleKey = typeof data.lastWeeklyCycleKey === 'string' ? data.lastWeeklyCycleKey : weekKey();
             hasMoon = data.hasMoon || false;
             hasEarth = data.hasEarth || false;
             hasSun = data.hasSun || false;
@@ -1282,6 +1287,24 @@ function loadGame() {
             if (energy > maxEnergy) energy = maxEnergy;
             normalized = normalizeUpgradeCosts();
         } catch(e) { console.log(e); }
+    }
+    const currentDailyKey = todayKey();
+    const currentWeeklyKey = weekKey();
+    if (lastDailyCycleKey !== currentDailyKey) {
+        dailyClickCount = 0;
+        dailyCoinsEarned = 0;
+        dailyEnergySpent = 0;
+        dailyUpgradesBought = 0;
+        dailyTasksClaimed = defaultDailyTasksClaimed();
+        lastDailyCycleKey = currentDailyKey;
+    }
+    if (lastWeeklyCycleKey !== currentWeeklyKey) {
+        weeklyClickCount = 0;
+        weeklyCoinsEarned = 0;
+        weeklyEnergySpent = 0;
+        weeklyUpgradesBought = 0;
+        weeklyTasksClaimed = defaultWeeklyTasksClaimed();
+        lastWeeklyCycleKey = currentWeeklyKey;
     }
     hydrateClaimStateFromCycleCache();
     // Оффлайн начисление (до 3 часов)
@@ -1313,8 +1336,8 @@ async function syncWithBot() {
         soundEnabled: soundEnabled
     };
     
-    // Отправка через Telegram WebApp
-    tg.sendData(JSON.stringify(gameData));
+    // В Mini App запуске через menu/start кнопки частый sendData может приводить к закрытию WebApp.
+    // Сохраняем прогресс только через backend API.
     
     // Сохранение через API
     try {
