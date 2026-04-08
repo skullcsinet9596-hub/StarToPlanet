@@ -41,6 +41,8 @@ function applyViewportHeight() {
     const h = tg?.viewportStableHeight || tg?.viewportHeight || window.innerHeight || 0;
     if (!h) return;
     document.documentElement.style.setProperty('--app-vh', `${h * 0.01}px`);
+    const safeTop = Number(tg?.safeAreaInset?.top || tg?.contentSafeAreaInset?.top || 0);
+    document.documentElement.style.setProperty('--tg-safe-top', `${Math.max(0, safeTop)}px`);
 }
 applyViewportHeight();
 window.addEventListener('resize', applyViewportHeight);
@@ -1916,8 +1918,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const alreadyRegistered = registrationStatus === true;
     const unknownRegistrationState = registrationStatus === null;
     const registerIntent = isRegisterIntentLaunch();
-    const hasLocalProgress = hasAnyLocalProgress();
-    const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered() || hasLocalProgress;
+    const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered();
     isRegistered = canBypassRegistrationOverlay;
     if (!canBypassRegistrationOverlay && unknownRegistrationState && userId) {
         showRegistrationOverlay(true);
@@ -1926,26 +1927,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             registerBtn.textContent = 'Проверяем профиль...';
         }
         if (registrationHelp) registrationHelp.textContent = 'Сервер просыпается, проверяем ваш профиль...';
-        for (let i = 0; i < 10; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 1200));
+        let attempts = 0;
+        const probe = setInterval(async () => {
+            attempts += 1;
             const retryStatus = await checkRegistrationStatus(1, 350);
             if (retryStatus === true) {
+                clearInterval(probe);
                 setCachedRegistered(true);
                 window.location.reload();
                 return;
             }
-            if (retryStatus === false) break;
-        }
-        if (registerBtn) {
-            registerBtn.disabled = false;
-            registerBtn.textContent = 'Регистрация';
-        }
-        if (registrationHelp) {
-            const refId = getLaunchReferrerId();
-            registrationHelp.textContent = refId
-                ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
-                : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
-        }
+            if (retryStatus === false || attempts >= 10) {
+                clearInterval(probe);
+                if (registerBtn) {
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Регистрация';
+                }
+                if (registrationHelp) {
+                    const refId = getLaunchReferrerId();
+                    registrationHelp.textContent = refId
+                        ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
+                        : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
+                }
+            }
+        }, 1200);
+        return;
     }
     if (!canBypassRegistrationOverlay) {
         showRegistrationOverlay(true);
@@ -2003,7 +2009,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         await new Promise((resolve) => setTimeout(resolve, 1200));
                         fallbackRegistered = await checkRegistrationStatus(1, 400);
                     }
-                    if (fallbackRegistered || hasAnyLocalProgress()) {
+                    if (fallbackRegistered || getCachedRegistered()) {
                         showMessage('ℹ️ Профиль найден, продолжаем вход');
                         setCachedRegistered(true);
                         window.location.reload();
