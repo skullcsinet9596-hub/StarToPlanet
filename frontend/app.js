@@ -37,6 +37,19 @@ if (window.Telegram && window.Telegram.WebApp) {
     }
 }
 
+function applyViewportHeight() {
+    const h = tg?.viewportStableHeight || tg?.viewportHeight || window.innerHeight || 0;
+    if (!h) return;
+    document.documentElement.style.setProperty('--app-vh', `${h * 0.01}px`);
+}
+applyViewportHeight();
+window.addEventListener('resize', applyViewportHeight);
+if (tg?.onEvent) {
+    tg.onEvent('viewportChanged', applyViewportHeight);
+}
+setTimeout(applyViewportHeight, 150);
+setTimeout(applyViewportHeight, 600);
+
 // Элементы профиля
 const userNameElem = document.getElementById('userName');
 const profileNameElem = document.getElementById('profileName');
@@ -1906,16 +1919,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hasLocalProgress = hasAnyLocalProgress();
     const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered() || hasLocalProgress;
     isRegistered = canBypassRegistrationOverlay;
-    if (!canBypassRegistrationOverlay && unknownRegistrationState && !registerIntent && userId) {
-        if (registrationHelp) registrationHelp.textContent = 'Пробуждаем сервер и проверяем профиль...';
-        for (let i = 0; i < 6; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 1400));
-            const retryStatus = await checkRegistrationStatus(1, 300);
+    if (!canBypassRegistrationOverlay && unknownRegistrationState && userId) {
+        showRegistrationOverlay(true);
+        if (registerBtn) {
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Проверяем профиль...';
+        }
+        if (registrationHelp) registrationHelp.textContent = 'Сервер просыпается, проверяем ваш профиль...';
+        for (let i = 0; i < 10; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            const retryStatus = await checkRegistrationStatus(1, 350);
             if (retryStatus === true) {
                 setCachedRegistered(true);
                 window.location.reload();
                 return;
             }
+            if (retryStatus === false) break;
+        }
+        if (registerBtn) {
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Регистрация';
+        }
+        if (registrationHelp) {
+            const refId = getLaunchReferrerId();
+            registrationHelp.textContent = refId
+                ? `Вы приглашены игроком #${refId}. Нажмите «Регистрация», чтобы попасть в его линию и начать игру.`
+                : 'Нажмите «Регистрация», чтобы создать профиль и начать игру.';
         }
     }
     if (!canBypassRegistrationOverlay) {
@@ -2001,11 +2030,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
     Promise.resolve().then(async () => {
-        await loadFromServer();
+        let hydrated = false;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            hydrated = await loadFromServer();
+            if (hydrated) break;
+            await new Promise((resolve) => setTimeout(resolve, 1200 + attempt * 600));
+        }
         await loadPremiumConfig();
         updateUI();
         fillRanksPreviewGrid();
         updateMilitaryRankHUD();
+        // После догрузки профиля повторяем сетевые вкладки.
+        if (hydrated) {
+            loadLeaderboard();
+            loadFriends();
+        }
     }).catch((e) => console.log('Отложенная серверная инициализация:', e));
     
     // Инициализируем 3D только если canvas-container существует
