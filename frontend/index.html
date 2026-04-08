@@ -70,14 +70,15 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
+            flex: 1;
         }
 
         #userName {
             font-weight: 590;
-            font-size: 15px;
+            font-size: 14px;
             letter-spacing: -0.2px;
             display: block;
-            max-width: 220px;
+            max-width: 180px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -87,6 +88,8 @@
             font-size: 11px;
             opacity: 0.7;
             color: #98989E;
+            display: block;
+            max-width: 230px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -806,7 +809,7 @@
 
         .referral-stats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 20px;
         }
@@ -815,6 +818,7 @@
             border-radius: 24px;
             padding: 12px;
             text-align: center;
+            min-width: 0;
         }
         .stat-value { font-size: 22px; font-weight: 700; color: #FFD60A; }
         .level-card {
@@ -823,7 +827,7 @@
             padding: 14px;
             margin-bottom: 12px;
         }
-        .level-title { font-weight: 590; margin-bottom: 8px; color: #FFD60A; }
+        .level-title { font-weight: 590; margin-bottom: 8px; color: #FFD60A; overflow-wrap: anywhere; }
         .level-list { font-size: 12px; }
         .level-item {
             padding: 6px 0;
@@ -847,9 +851,13 @@
             display: flex;
             gap: 10px;
             margin-bottom: 12px;
+            flex-wrap: wrap;
+            min-width: 0;
         }
         .link-box input {
             flex: 1;
+            min-width: 0;
+            width: 100%;
             background: rgba(0,0,0,0.5);
             border: 0.5px solid rgba(255,215,0,0.3);
             border-radius: 36px;
@@ -862,7 +870,8 @@
             background: #FFD60A;
             border: none;
             border-radius: 36px;
-            padding: 0 20px;
+            width: 100%;
+            padding: 10px 14px;
             font-weight: 590;
             cursor: pointer;
         }
@@ -909,19 +918,44 @@
 
         .leaderboard-list { padding: 8px; }
         .leaderboard-item {
-            display: flex;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) minmax(88px, auto) minmax(84px, auto);
             align-items: center;
+            column-gap: 10px;
             padding: 10px;
             background: rgba(44,44,48,0.5);
             border-radius: 24px;
             margin-bottom: 8px;
         }
-        .leaderboard-rank { width: 48px; font-size: 18px; font-weight: 600; }
+        .leaderboard-rank {
+            width: 44px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
         .leaderboard-rank.top-1 { color: #ffd700; }
         .leaderboard-rank.top-2 { color: #c0c0c0; }
         .leaderboard-rank.top-3 { color: #cd7f32; }
-        .leaderboard-name { flex: 1; }
-        .leaderboard-coins { font-weight: 600; color: #FFD60A; }
+        .leaderboard-name {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .leaderboard-coins {
+            font-weight: 600;
+            color: #FFD60A;
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .leaderboard-level {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            color: #d2d2d7;
+            font-size: 13px;
+        }
 
         .airdrop-content { text-align: center; padding: 30px 16px; }
         .golden-coin {
@@ -1031,6 +1065,14 @@
             .profile-avatar-img { width: 45px; height: 45px; }
             .link-box { flex-direction: column; }
             .link-box button { padding: 10px; }
+            .leaderboard-item {
+                grid-template-columns: 38px minmax(0, 1fr) minmax(78px, auto) minmax(74px, auto);
+                column-gap: 8px;
+                padding: 8px 9px;
+            }
+            .leaderboard-rank { width: 38px; font-size: 16px; }
+            .leaderboard-name { font-size: 13px; }
+            .leaderboard-coins, .leaderboard-level { font-size: 12px; }
             .nav-bar { margin: 0 12px 12px 12px; }
             .sound-btn { padding: 4px 8px; font-size: 14px; }
         }
@@ -1063,7 +1105,7 @@
                     <span id="userLevel">Уровень 0 · Звезда</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="top-controls" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                 <button class="sound-btn" id="soundToggle">🔊</button>
                 <div class="balance">🪙 <span id="coins">0</span></div>
             </div>
@@ -1078,7 +1120,7 @@
                     <span class="rank-strip-label">Звание</span>
                     <div class="rank-shoulder-row" id="hudShoulderRow" role="img" aria-hidden="true"></div>
                     <div class="rank-strip-title" id="hudRankTitle">Младший лейтенант</div>
-                    <div class="rank-strip-hint" id="rankStripHint">Уровень игры <span id="hudRankLevelNum">0</span></div>
+                    <div class="rank-strip-hint" id="rankStripHint">Уровень планеты <span id="hudRankLevelNum">0</span> · Статус: не куплено</div>
                 </div>
                 <button type="button" class="boost-btn" id="boostBtn">
                     <span class="boost-icon">⚡</span>

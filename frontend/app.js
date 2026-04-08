@@ -121,20 +121,29 @@ function showRegistrationOverlay(show) {
     if (nav) nav.style.display = show ? 'none' : 'flex';
 }
 
-async function checkRegistrationStatus() {
+async function checkRegistrationStatus(maxAttempts = 4, baseDelayMs = 700) {
     if (!userId) await ensureTelegramUserResolved(8, 350);
     if (!userId) return getCachedRegistered();
-    for (let attempt = 0; attempt < 4; attempt++) {
+    let hadNetworkError = false;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
             const res = await fetch(`${API_BASE}/api/user/${userId}`);
-            if (!res.ok) continue;
+            if (!res.ok) {
+                hadNetworkError = true;
+                await new Promise((resolve) => setTimeout(resolve, baseDelayMs + attempt * 400));
+                continue;
+            }
             const data = await res.json();
             const registered = Boolean(data?.registered);
             if (registered) setCachedRegistered(true);
             return registered;
-        } catch (e) {}
-        await new Promise((resolve) => setTimeout(resolve, 700 + attempt * 500));
+        } catch (e) {
+            hadNetworkError = true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, baseDelayMs + attempt * 400));
     }
+    // null = не удалось достоверно проверить (например, cold start/сеть)
+    if (hadNetworkError) return getCachedRegistered() ? true : null;
     return getCachedRegistered();
 }
 
@@ -144,19 +153,31 @@ async function registerCurrentUser() {
     const referrerId = getLaunchReferrerId();
     const username = tg?.initDataUnsafe?.user?.username || null;
     const firstName = tg?.initDataUnsafe?.user?.first_name || null;
-    try {
-        const res = await fetch(`${API_BASE}/api/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, username, firstName, referrerId })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.success) return { ok: false, message: data?.message || 'Ошибка регистрации' };
-        setCachedRegistered(true);
-        return { ok: true, created: Boolean(data?.created), message: data?.message || '' };
-    } catch (e) {
-        return { ok: false, message: 'Ошибка сети при регистрации' };
+    for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+            const res = await fetch(`${API_BASE}/api/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, username, firstName, referrerId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data?.success) {
+                if (attempt < 3) {
+                    await new Promise((resolve) => setTimeout(resolve, 700 + attempt * 500));
+                    continue;
+                }
+                return { ok: false, message: data?.message || 'Ошибка регистрации' };
+            }
+            setCachedRegistered(true);
+            return { ok: true, created: Boolean(data?.created), message: data?.message || '' };
+        } catch (e) {
+            if (attempt < 3) {
+                await new Promise((resolve) => setTimeout(resolve, 700 + attempt * 500));
+                continue;
+            }
+        }
     }
+    return { ok: false, message: 'Сервер временно недоступен. Повторите через 10-20 секунд.' };
 }
 
 function renderFriendsFallback() {
@@ -487,13 +508,13 @@ function updateMilitaryRankHUD() {
     const rank = MILITARY_RANKS[displayLevel] || MILITARY_RANKS[0];
     // В HUD показываем один погон (горизонтально)
     row.innerHTML = shoulderBoardHTMLHorizontal(rank);
-    title.textContent = boughtLevel >= 0 ? rank.name : `${rank.name} (не куплено)`;
+    title.textContent = rank.name;
     if (num) num.textContent = String(displayLevel);
     const hint = document.getElementById('rankStripHint');
     if (hint) {
         const currentPlanetLevel = getLevel();
-        const ownedName = boughtLevel >= 0 ? (MILITARY_RANKS[boughtLevel]?.name || `Уровень ${boughtLevel}`) : 'не куплено';
-        hint.textContent = `Уровень планеты ${currentPlanetLevel} · Статус: ${ownedName}`;
+        const statusText = boughtLevel >= 0 ? 'куплено' : 'не куплено';
+        hint.textContent = `Уровень планеты ${currentPlanetLevel} · Статус: ${statusText}`;
     }
     document.querySelectorAll('.ranks-preview-row').forEach((el) => {
         const lv = parseInt(el.getAttribute('data-rank-level'), 10);
@@ -1842,11 +1863,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     await ensureTelegramUserResolved(20, 300);
     const registerBtn = document.getElementById('registerProfileBtn');
     const registrationHelp = document.getElementById('registrationHelp');
-    const alreadyRegistered = await checkRegistrationStatus();
+    const registrationStatus = await checkRegistrationStatus(6, 800);
+    const alreadyRegistered = registrationStatus === true;
+    const unknownRegistrationState = registrationStatus === null;
     const registerIntent = isRegisterIntentLaunch();
     const hasLocalProgress = Boolean(userId && localStorage.getItem(gameStorageKey()));
     const canBypassRegistrationOverlay = alreadyRegistered || getCachedRegistered() || hasLocalProgress;
     isRegistered = canBypassRegistrationOverlay;
+    if (!canBypassRegistrationOverlay && unknownRegistrationState && !registerIntent && userId) {
+        if (registrationHelp) registrationHelp.textContent = 'Пробуждаем сервер и проверяем профиль...';
+        for (let i = 0; i < 6; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 1400));
+            const retryStatus = await checkRegistrationStatus(1, 300);
+            if (retryStatus === true) {
+                setCachedRegistered(true);
+                window.location.reload();
+                return;
+            }
+        }
+    }
     if (!canBypassRegistrationOverlay) {
         showRegistrationOverlay(true);
         if (!userId && registerBtn) {
@@ -1891,7 +1926,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 registerBtn.textContent = 'Создаем профиль...';
                 const result = await registerCurrentUser();
                 if (!result.ok) {
-                    const fallbackRegistered = await checkRegistrationStatus();
+                    let fallbackRegistered = await checkRegistrationStatus(2, 500);
+                    for (let i = 0; i < 4 && fallbackRegistered === null; i++) {
+                        await new Promise((resolve) => setTimeout(resolve, 1200));
+                        fallbackRegistered = await checkRegistrationStatus(1, 400);
+                    }
                     if (fallbackRegistered || Boolean(userId && localStorage.getItem(gameStorageKey()))) {
                         showMessage('ℹ️ Профиль найден, продолжаем вход');
                         setCachedRegistered(true);
