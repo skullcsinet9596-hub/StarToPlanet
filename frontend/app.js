@@ -1914,7 +1914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1200);
         return;
     }
-    const registrationStatus = await checkRegistrationStatus(6, 800);
+    const registrationStatus = await checkRegistrationStatus(1, 250);
     const alreadyRegistered = registrationStatus === true;
     const unknownRegistrationState = registrationStatus === null;
     const registerIntent = isRegisterIntentLaunch();
@@ -1951,7 +1951,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         }, 1200);
-        return;
     }
     if (!canBypassRegistrationOverlay) {
         showRegistrationOverlay(true);
