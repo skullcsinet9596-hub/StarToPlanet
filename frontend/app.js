@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // ========== API БЭКЕНДА ==========
-const API_BASE = window.API_BASE || window.location.origin || 'https://startoplanet.onrender.com';
+const API_BASE = window.API_BASE || 'https://startoplanet.onrender.com';
 
 // ========== Telegram WebApp ==========
 let tg = null;
