@@ -1575,7 +1575,14 @@ async function loadFromServer() {
                 energyUpgradeCost = data.energyUpgradeCost || 200;
                 passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
                 taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate)) ? Number(data.taskPassiveBonusRate) : (taskPassiveBonusRate || 0);
-                ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : ownedRankLevel;
+                if (Number.isFinite(Number(data.ownedRankLevel))) {
+                    const serverOwnedRank = clampInt(data.ownedRankLevel, -1, 10);
+                    // Защита от случайного отката звания: не понижаем локально купленное звание,
+                    // если сервер вернул устаревшее состояние.
+                    if (ownedRankLevel < 0 || serverOwnedRank >= ownedRankLevel) {
+                        ownedRankLevel = serverOwnedRank;
+                    }
+                }
                 if (Number.isFinite(Number(data.lastSeenAtMs))) lastSeenAtMs = Number(data.lastSeenAtMs);
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                 const taskState = (data.taskState && typeof data.taskState === 'object') ? data.taskState : null;
@@ -2173,6 +2180,9 @@ function restoreActivePanelView() {
     };
     const activeBtn = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-tab="game"]');
     const activeTab = activeBtn?.dataset?.tab || 'game';
+    if (!document.querySelector('.nav-btn.active')) {
+        document.querySelector('.nav-btn[data-tab="game"]')?.classList.add('active');
+    }
     Object.values(panels).forEach((p) => {
         if (!p) return;
         p.style.display = 'none';
@@ -2183,6 +2193,18 @@ function restoreActivePanelView() {
         target.style.display = activeTab === 'game' ? 'flex' : 'block';
         target.classList.add('active');
     }
+}
+
+function ensureUiRecoveredOrReload() {
+    const panels = document.querySelectorAll('.tab-panel.active, .game-area.active');
+    if (panels.length > 0) return;
+    restoreActivePanelView();
+    updateUI();
+    // Крайний fallback, если после возврата Telegram все равно оставил черный экран.
+    setTimeout(() => {
+        const stillEmpty = document.querySelectorAll('.tab-panel.active, .game-area.active').length === 0;
+        if (stillEmpty) window.location.reload();
+    }, 450);
 }
 
 function setupTasksTabs() {
@@ -2452,12 +2474,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyTopHudVisibilityFix();
         restoreActivePanelView();
         updateUI();
+        setTimeout(ensureUiRecoveredOrReload, 220);
     });
     window.addEventListener('pagehide', flushTapPersistIfPending);
     window.addEventListener('focus', () => {
         boostModal?.classList.remove('active');
         restoreActivePanelView();
         updateUI();
+        setTimeout(ensureUiRecoveredOrReload, 220);
     });
     
     if(!document.querySelector('#popup-animation')) {
