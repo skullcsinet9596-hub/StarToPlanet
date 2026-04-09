@@ -418,11 +418,114 @@ const TASK_TARGETS = {
     dailyCoins: 500,
     dailyEnergy: 200,
     dailyUpgrade: 1,
+    dailyPassive: 80,
     weeklyClick: 1000,
     weeklyCoins: 5000,
     weeklyEnergy: 1000,
-    weeklyUpgrade: 5
+    weeklyUpgrade: 5,
+    weeklyPassive: 120
 };
+
+let DAILY_REWARDS = {
+    click: 50,
+    coins: 500,
+    energy: 300,
+    upgrade: 200,
+    passive: 5
+};
+
+const WEEKLY_REWARDS = {
+    click: 1000,
+    coins: 2500,
+    energy: 1500,
+    upgrade: 2000,
+    passive: 12
+};
+
+const DAILY_TASK_VARIANTS = {
+    click: [
+        { target: 1, reward: 50, name: '🎯 Сделать 1 клик' },
+        { target: 25, reward: 120, name: '🎯 Сделать 25 кликов' },
+        { target: 50, reward: 180, name: '🎯 Сделать 50 кликов' },
+        { target: 80, reward: 260, name: '🎯 Сделать 80 кликов' }
+    ],
+    coins: [
+        { target: 500, reward: 500, name: '💰 Заработать 500 монет' },
+        { target: 1200, reward: 800, name: '💰 Заработать 1 200 монет' },
+        { target: 2000, reward: 1200, name: '💰 Заработать 2 000 монет' },
+        { target: 3500, reward: 1800, name: '💰 Заработать 3 500 монет' }
+    ],
+    energy: [
+        { target: 200, reward: 300, name: '⚡ Потратить 200 энергии' },
+        { target: 300, reward: 420, name: '⚡ Потратить 300 энергии' },
+        { target: 450, reward: 650, name: '⚡ Потратить 450 энергии' },
+        { target: 600, reward: 900, name: '⚡ Потратить 600 энергии' }
+    ],
+    upgrade: [
+        { target: 1, reward: 200, name: '🔧 Купить 1 улучшение' },
+        { target: 2, reward: 420, name: '🔧 Купить 2 улучшения' },
+        { target: 3, reward: 700, name: '🔧 Купить 3 улучшения' }
+    ],
+    passive: [
+        { target: 80, reward: 5, name: '📈 Пассивный доход 80/мин' },
+        { target: 120, reward: 6, name: '📈 Пассивный доход 120/мин' },
+        { target: 180, reward: 8, name: '📈 Пассивный доход 180/мин' },
+        { target: 240, reward: 10, name: '📈 Пассивный доход 240/мин' }
+    ]
+};
+
+function hashSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return Math.abs(h >>> 0);
+}
+
+function pickVariant(list, seed) {
+    if (!Array.isArray(list) || !list.length) return null;
+    return list[seed % list.length];
+}
+
+function applyDailyTaskConfig() {
+    const seedBase = `${todayKey()}_${userId || 'guest'}`;
+    const clickCfg = pickVariant(DAILY_TASK_VARIANTS.click, hashSeed(`${seedBase}_click`));
+    const coinsCfg = pickVariant(DAILY_TASK_VARIANTS.coins, hashSeed(`${seedBase}_coins`));
+    const energyCfg = pickVariant(DAILY_TASK_VARIANTS.energy, hashSeed(`${seedBase}_energy`));
+    const upgradeCfg = pickVariant(DAILY_TASK_VARIANTS.upgrade, hashSeed(`${seedBase}_upgrade`));
+    const passiveCfg = pickVariant(DAILY_TASK_VARIANTS.passive, hashSeed(`${seedBase}_passive`));
+    if (!clickCfg || !coinsCfg || !energyCfg || !upgradeCfg || !passiveCfg) return;
+
+    TASK_TARGETS.dailyClick = clickCfg.target;
+    TASK_TARGETS.dailyCoins = coinsCfg.target;
+    TASK_TARGETS.dailyEnergy = energyCfg.target;
+    TASK_TARGETS.dailyUpgrade = upgradeCfg.target;
+    TASK_TARGETS.dailyPassive = passiveCfg.target;
+
+    DAILY_REWARDS.click = clickCfg.reward;
+    DAILY_REWARDS.coins = coinsCfg.reward;
+    DAILY_REWARDS.energy = energyCfg.reward;
+    DAILY_REWARDS.upgrade = upgradeCfg.reward;
+    DAILY_REWARDS.passive = passiveCfg.reward;
+
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    setText('dailyClickName', clickCfg.name);
+    setText('dailyCoinsName', coinsCfg.name);
+    setText('dailyEnergyName', energyCfg.name);
+    setText('dailyUpgradeName', upgradeCfg.name);
+    setText('dailyPassiveName', passiveCfg.name);
+    setText('dailyClickClaim', `${DAILY_REWARDS.click} 🪙`);
+    setText('dailyCoinsClaim', `${DAILY_REWARDS.coins} 🪙`);
+    setText('dailyEnergyClaim', `${DAILY_REWARDS.energy} 🪙`);
+    setText('dailyUpgradeClaim', `${DAILY_REWARDS.upgrade} 🪙`);
+    setText('dailyPassiveClaim', `+${DAILY_REWARDS.passive}/мин`);
+    setText('weeklyPassiveClaim', `+${WEEKLY_REWARDS.passive}/мин`);
+}
 
 function todayKey() {
     const d = new Date();
@@ -1072,7 +1175,7 @@ function updateUI() {
     const dailyUpgradeEl = document.getElementById('dailyUpgradeProgress');
     if (dailyUpgradeEl) dailyUpgradeEl.textContent = `${dailyUpgradesBought}/${TASK_TARGETS.dailyUpgrade}`;
     const dailyPassiveEl = document.getElementById('dailyPassiveProgress');
-    if (dailyPassiveEl) dailyPassiveEl.textContent = `${Math.min(getPassiveRate(), 10)}/10`;
+    if (dailyPassiveEl) dailyPassiveEl.textContent = `${Math.min(getPassiveRate(), TASK_TARGETS.dailyPassive)}/${TASK_TARGETS.dailyPassive}`;
     document.getElementById('weeklyClickProgress').textContent = `${weeklyClickCount}/${TASK_TARGETS.weeklyClick}`;
     document.getElementById('weeklyCoinsProgress').textContent = `${weeklyCoinsEarned}/${TASK_TARGETS.weeklyCoins}`;
     const weeklyEnergyEl = document.getElementById('weeklyEnergyProgress');
@@ -1080,7 +1183,7 @@ function updateUI() {
     const weeklyUpgradeEl = document.getElementById('weeklyUpgradeProgress');
     if (weeklyUpgradeEl) weeklyUpgradeEl.textContent = `${weeklyUpgradesBought}/${TASK_TARGETS.weeklyUpgrade}`;
     const weeklyPassiveEl = document.getElementById('weeklyPassiveProgress');
-    if (weeklyPassiveEl) weeklyPassiveEl.textContent = `${Math.min(getPassiveRate(), 40)}/40`;
+    if (weeklyPassiveEl) weeklyPassiveEl.textContent = `${Math.min(getPassiveRate(), TASK_TARGETS.weeklyPassive)}/${TASK_TARGETS.weeklyPassive}`;
     const nextGoalEl = document.getElementById('nextGoalText');
     if (nextGoalEl) {
         const lv = getLevel();
@@ -1360,6 +1463,7 @@ function ensureTaskCyclesCurrent() {
         dailyUpgradesBought = 0;
         dailyTasksClaimed = defaultDailyTasksClaimed();
         lastDailyCycleKey = currentDailyKey;
+        applyDailyTaskConfig();
         changed = true;
     }
     if (lastWeeklyCycleKey !== currentWeeklyKey) {
@@ -1373,6 +1477,7 @@ function ensureTaskCyclesCurrent() {
     }
     if (changed) {
         hydrateClaimStateFromCycleCache();
+        applyDailyTaskConfig();
         updateTaskButtons();
         saveGame();
         syncWithBot();
@@ -1701,23 +1806,29 @@ function updateTaskButtons() {
     setTaskClaimButton(document.getElementById('dailyCoinsClaim'), dailyCoinsEarned >= TASK_TARGETS.dailyCoins && !dailyTasksClaimed.coins);
     setTaskClaimButton(document.getElementById('dailyEnergyClaim'), dailyEnergySpent >= TASK_TARGETS.dailyEnergy && !dailyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('dailyUpgradeClaim'), dailyUpgradesBought >= TASK_TARGETS.dailyUpgrade && !dailyTasksClaimed.upgrade);
-    setTaskClaimButton(document.getElementById('dailyPassiveClaim'), getPassiveRate() >= 10 && !dailyTasksClaimed.passive);
+    setTaskClaimButton(document.getElementById('dailyPassiveClaim'), getPassiveRate() >= TASK_TARGETS.dailyPassive && !dailyTasksClaimed.passive);
     setTaskClaimButton(document.getElementById('weeklyClickClaim'), weeklyClickCount >= TASK_TARGETS.weeklyClick && !weeklyTasksClaimed.click);
     setTaskClaimButton(document.getElementById('weeklyCoinsClaim'), weeklyCoinsEarned >= TASK_TARGETS.weeklyCoins && !weeklyTasksClaimed.coins);
     setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy && !weeklyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade && !weeklyTasksClaimed.upgrade);
-    setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= 40 && !weeklyTasksClaimed.passive);
+    setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= TASK_TARGETS.weeklyPassive && !weeklyTasksClaimed.passive);
     const canClaimInstantChannel = !instantTasksClaimed.channel && instantTaskChannelOpened;
     setTaskClaimButton(document.getElementById('boostInstantClaimInfoChannelBtn'), canClaimInstantChannel);
     const instantClaimBtn = document.getElementById('boostInstantClaimInfoChannelBtn');
     const instantStatusEl = document.getElementById('boostInstantChannelStatus');
+    const instantOpenBtn = document.getElementById('boostInstantOpenInfoChannelBtn');
+    const instantActionsWrap = document.getElementById('boostInstantChannelActions');
     if (instantClaimBtn) {
         if (instantTasksClaimed.channel) {
             instantClaimBtn.textContent = '✅ Выполнено';
             instantClaimBtn.disabled = true;
             instantClaimBtn.classList.add('disabled');
+            if (instantOpenBtn) instantOpenBtn.style.display = 'none';
+            if (instantActionsWrap) instantActionsWrap.classList.add('single');
         } else {
             instantClaimBtn.textContent = '+20/мин';
+            if (instantOpenBtn) instantOpenBtn.style.display = '';
+            if (instantActionsWrap) instantActionsWrap.classList.remove('single');
         }
     }
     if (instantStatusEl) {
@@ -1861,7 +1972,7 @@ async function claimTask(taskId, reward, type) {
         saveGame();
         updateTaskButtons();
     }
-    else if (type === 'daily_passive' && !dailyTasksClaimed.passive && getPassiveRate() >= 10) {
+    else if (type === 'daily_passive' && !dailyTasksClaimed.passive && getPassiveRate() >= TASK_TARGETS.dailyPassive) {
         dailyTasksClaimed.passive = true;
         setCycleClaim('daily', 'passive', true);
         showMessage(applyTaskReward(reward));
@@ -1882,7 +1993,7 @@ async function claimTask(taskId, reward, type) {
         saveGame();
         updateTaskButtons();
     }
-    else if (type === 'weekly_passive' && !weeklyTasksClaimed.passive && getPassiveRate() >= 40) {
+    else if (type === 'weekly_passive' && !weeklyTasksClaimed.passive && getPassiveRate() >= TASK_TARGETS.weeklyPassive) {
         weeklyTasksClaimed.passive = true;
         setCycleClaim('weekly', 'passive', true);
         showMessage(applyTaskReward(reward));
@@ -2201,6 +2312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loadGame();
+    applyDailyTaskConfig();
     setupTabs();
     setupTasksTabs();
 
@@ -2244,16 +2356,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('boostInstantIncomeX2Btn')?.addEventListener('click', () => showMessage('⏳ Скоро: x2 доход через рекламу'));
     document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
     document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
-    document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 50, 'daily_click'));
-    document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', 500, 'daily_coins'));
-    document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', 300, 'daily_energy'));
-    document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', 200, 'daily_upgrade'));
-    document.getElementById('dailyPassiveClaim')?.addEventListener('click', () => claimTask('dailyPassiveClaim', { type: 'passive', value: 10 }, 'daily_passive'));
-    document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', 1000, 'weekly_click'));
-    document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', 2500, 'weekly_coins'));
-    document.getElementById('weeklyEnergyClaim')?.addEventListener('click', () => claimTask('weeklyEnergyClaim', 1500, 'weekly_energy'));
-    document.getElementById('weeklyUpgradeClaim')?.addEventListener('click', () => claimTask('weeklyUpgradeClaim', 2000, 'weekly_upgrade'));
-    document.getElementById('weeklyPassiveClaim')?.addEventListener('click', () => claimTask('weeklyPassiveClaim', { type: 'passive', value: 25 }, 'weekly_passive'));
+    document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', DAILY_REWARDS.click, 'daily_click'));
+    document.getElementById('dailyCoinsClaim')?.addEventListener('click', () => claimTask('dailyCoinsClaim', DAILY_REWARDS.coins, 'daily_coins'));
+    document.getElementById('dailyEnergyClaim')?.addEventListener('click', () => claimTask('dailyEnergyClaim', DAILY_REWARDS.energy, 'daily_energy'));
+    document.getElementById('dailyUpgradeClaim')?.addEventListener('click', () => claimTask('dailyUpgradeClaim', DAILY_REWARDS.upgrade, 'daily_upgrade'));
+    document.getElementById('dailyPassiveClaim')?.addEventListener('click', () => claimTask('dailyPassiveClaim', { type: 'passive', value: DAILY_REWARDS.passive }, 'daily_passive'));
+    document.getElementById('weeklyClickClaim')?.addEventListener('click', () => claimTask('weeklyClickClaim', WEEKLY_REWARDS.click, 'weekly_click'));
+    document.getElementById('weeklyCoinsClaim')?.addEventListener('click', () => claimTask('weeklyCoinsClaim', WEEKLY_REWARDS.coins, 'weekly_coins'));
+    document.getElementById('weeklyEnergyClaim')?.addEventListener('click', () => claimTask('weeklyEnergyClaim', WEEKLY_REWARDS.energy, 'weekly_energy'));
+    document.getElementById('weeklyUpgradeClaim')?.addEventListener('click', () => claimTask('weeklyUpgradeClaim', WEEKLY_REWARDS.upgrade, 'weekly_upgrade'));
+    document.getElementById('weeklyPassiveClaim')?.addEventListener('click', () => claimTask('weeklyPassiveClaim', { type: 'passive', value: WEEKLY_REWARDS.passive }, 'weekly_passive'));
     document.getElementById('buyMoon')?.addEventListener('click', () => buyPremium('moon'));
     document.getElementById('buyEarth')?.addEventListener('click', () => buyPremium('earth'));
     document.getElementById('buySun')?.addEventListener('click', () => buyPremium('sun'));

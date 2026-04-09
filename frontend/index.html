@@ -808,11 +808,14 @@
             cursor: pointer;
         }
         .task-actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
             align-items: center;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            width: min(260px, 100%);
+        }
+        .task-actions.single {
+            grid-template-columns: 1fr;
         }
         .task-progress.done {
             color: #7dff9e;
@@ -938,6 +941,13 @@
             font-size: 14px;
         }
         .auth-buttons { display: flex; gap: 12px; justify-content: center; }
+        #profilePanel { padding-bottom: 18px; }
+        #profilePanel .profile-card, #profilePanel .auth-section {
+            margin-bottom: 10px;
+            padding: 14px;
+        }
+        #profilePanel .info-row { padding: 8px 0; font-size: 13px; }
+        #openInfoChannelProfileBtn { min-width: 180px; }
 
         .leaderboard-list { padding: 8px; }
         .leaderboard-item {
@@ -1193,7 +1203,7 @@
                                 <div class="boost-desc">Откройте канал и заберите +20/мин</div>
                                 <div class="task-progress" id="boostInstantChannelStatus">Статус: активно</div>
                             </div>
-                            <div class="task-actions">
+                            <div class="task-actions" id="boostInstantChannelActions">
                                 <button class="task-action-btn" id="boostInstantOpenInfoChannelBtn">Открыть</button>
                                 <button class="boost-buy-btn disabled" id="boostInstantClaimInfoChannelBtn" disabled>+20/мин</button>
                             </div>
@@ -1235,11 +1245,11 @@
                 <button class="tasks-tab" data-tasks-tab="premium">💎 Премиум</button>
             </div>
             <div class="tasks-content active" id="dailyTasks">
-                <div class="task-card glass-panel" data-daily-task="1"><div class="task-info"><div class="task-name">🎯 Сделать 1 клик</div><div class="task-progress" id="dailyClickProgress">0/1</div></div><button class="task-claim-btn" id="dailyClickClaim">50 🪙</button></div>
-                <div class="task-card glass-panel" data-daily-task="2"><div class="task-info"><div class="task-name">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
-                <div class="task-card glass-panel" data-daily-task="3"><div class="task-info"><div class="task-name">⚡ Потратить 200 энергии</div><div class="task-progress" id="dailyEnergyProgress">0/200</div></div><button class="task-claim-btn" id="dailyEnergyClaim">300 🪙</button></div>
-                <div class="task-card glass-panel" data-daily-task="4"><div class="task-info"><div class="task-name">🔧 Купить улучшение</div><div class="task-progress" id="dailyUpgradeProgress">0/1</div></div><button class="task-claim-btn" id="dailyUpgradeClaim">200 🪙</button></div>
-                <div class="task-card glass-panel" data-daily-task="5"><div class="task-info"><div class="task-name">📈 Пассивный доход 10/мин</div><div class="task-progress" id="dailyPassiveProgress">0/10</div></div><button class="task-claim-btn" id="dailyPassiveClaim">+10/мин</button></div>
+                <div class="task-card glass-panel" data-daily-task="1"><div class="task-info"><div class="task-name" id="dailyClickName">🎯 Сделать 1 клик</div><div class="task-progress" id="dailyClickProgress">0/1</div></div><button class="task-claim-btn" id="dailyClickClaim">50 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="2"><div class="task-info"><div class="task-name" id="dailyCoinsName">💰 Заработать 500 монет</div><div class="task-progress" id="dailyCoinsProgress">0/500</div></div><button class="task-claim-btn" id="dailyCoinsClaim">500 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="3"><div class="task-info"><div class="task-name" id="dailyEnergyName">⚡ Потратить 200 энергии</div><div class="task-progress" id="dailyEnergyProgress">0/200</div></div><button class="task-claim-btn" id="dailyEnergyClaim">300 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="4"><div class="task-info"><div class="task-name" id="dailyUpgradeName">🔧 Купить улучшение</div><div class="task-progress" id="dailyUpgradeProgress">0/1</div></div><button class="task-claim-btn" id="dailyUpgradeClaim">200 🪙</button></div>
+                <div class="task-card glass-panel" data-daily-task="5"><div class="task-info"><div class="task-name" id="dailyPassiveName">📈 Пассивный доход 10/мин</div><div class="task-progress" id="dailyPassiveProgress">0/10</div></div><button class="task-claim-btn" id="dailyPassiveClaim">+10/мин</button></div>
                 <div class="task-completed" id="dailyTasksDoneMessage" style="display:none">✅ Задания на сегодня закончились, приходите завтра</div>
             </div>
             <div class="tasks-content" id="weeklyTasks">
@@ -1326,7 +1336,7 @@
             </div>
             <div class="auth-section glass-panel">
                 <div class="auth-title">📣 Канал проекта</div>
-                <div class="auth-buttons"><button class="boost-buy-btn" id="openInfoChannelProfileBtn">t.me/Startoplanet_info</button></div>
+                <div class="auth-buttons"><button class="boost-buy-btn" id="openInfoChannelProfileBtn">Перейти</button></div>
             </div>
         </div>
 
