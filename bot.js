@@ -290,6 +290,7 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
                 weeklyUpgradesBought: int(gameData.weeklyUpgradesBought, 0),
                 dailyTasksClaimed: gameData.dailyTasksClaimed || {},
                 weeklyTasksClaimed: gameData.weeklyTasksClaimed || {},
+                instantTasksClaimed: gameData.instantTasksClaimed || {},
                 lastDailyCycleKey: typeof gameData.lastDailyCycleKey === 'string' ? gameData.lastDailyCycleKey : null,
                 lastWeeklyCycleKey: typeof gameData.lastWeeklyCycleKey === 'string' ? gameData.lastWeeklyCycleKey : null
             }

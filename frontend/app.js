@@ -1859,13 +1859,33 @@ function updateTaskButtons() {
 
 function openInfoChannel(markOpened = false) {
     if (markOpened) instantTaskChannelOpened = true;
+    const boostModal = document.getElementById('boostModal');
+    boostModal?.classList.remove('active');
     try {
         if (tg?.openTelegramLink) tg.openTelegramLink(INFO_CHANNEL_URL);
         else window.open(INFO_CHANNEL_URL, '_blank');
     } catch (e) {
         window.open(INFO_CHANNEL_URL, '_blank');
     }
+    // Страхуемся от "черного экрана" после возврата из внешней ссылки.
+    setTimeout(() => {
+        restoreActivePanelView();
+        updateUI();
+    }, 350);
+    setTimeout(() => {
+        restoreActivePanelView();
+        updateUI();
+    }, 1400);
     updateTaskButtons();
+}
+
+function ensurePanelVisibleHeartbeat() {
+    const activePanel = document.querySelector('.tab-panel.active, .game-area.active');
+    const gameArea = document.getElementById('gameArea');
+    if (!activePanel && gameArea) {
+        restoreActivePanelView();
+        updateUI();
+    }
 }
 
 function claimInstantChannelTask() {
@@ -2412,6 +2432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(applyPassiveIncome, 60000);
     setInterval(rechargeEnergy, 1000);
     setInterval(ensureTaskCyclesCurrent, 30000);
+    setInterval(ensurePanelVisibleHeartbeat, 2000);
     
     const raysContainer = document.getElementById('raysContainer');
     if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
