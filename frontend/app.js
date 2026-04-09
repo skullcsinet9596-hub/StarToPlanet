@@ -8,6 +8,7 @@ if (window.location.hostname === 'star-to-planet-bot.onrender.com') {
 
 // ========== API БЭКЕНДА ==========
 const API_BASE = window.API_BASE || 'https://startoplanet.onrender.com';
+const INFO_CHANNEL_URL = 'https://t.me/Startoplanet_info';
 
 // ========== Telegram WebApp ==========
 let tg = null;
@@ -259,6 +260,8 @@ let passiveIncomeLevel = 0;
 let passiveIncomeUpgradeCost = 500;
 let passiveIncomeRate = 0;
 let taskPassiveBonusRate = 0;
+let instantTaskChannelOpened = false;
+let instantTasksClaimed = { channel: false };
 const ENERGY_MAX_VALUE = 500;
 const ENERGY_MAX_LEVEL = 10;
 const ONLINE_ENERGY_REGEN_PER_SEC = 2;
@@ -400,6 +403,7 @@ let currentVisualLevel = null;
 
 const defaultDailyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false, passive: false });
 const defaultWeeklyTasksClaimed = () => ({ click: false, coins: false, energy: false, upgrade: false, passive: false });
+const defaultInstantTasksClaimed = () => ({ channel: false });
 
 let dailyClickCount = 0, dailyCoinsEarned = 0, dailyEnergySpent = 0, dailyUpgradesBought = 0;
 let dailyTasksClaimed = defaultDailyTasksClaimed();
@@ -622,18 +626,23 @@ function fillRanksPreviewGrid() {
 function setupBoostModalTabs() {
     const tabs = document.querySelectorAll('.boost-modal-tab');
     const panels = {
+        instant: document.getElementById('boostTabInstant'),
         upgrades: document.getElementById('boostTabUpgrades'),
         ranks: document.getElementById('boostTabRanks')
+    };
+    const activate = (id) => {
+        tabs.forEach((x) => x.classList.toggle('active', x.dataset.boostTab === id));
+        Object.entries(panels).forEach(([k, p]) => {
+            if (p) p.classList.toggle('active', k === id);
+        });
     };
     tabs.forEach((t) => {
         t.addEventListener('click', () => {
             const id = t.dataset.boostTab;
-            tabs.forEach((x) => x.classList.toggle('active', x === t));
-            Object.entries(panels).forEach(([k, p]) => {
-                if (p) p.classList.toggle('active', k === id);
-            });
+            activate(id);
         });
     });
+    activate('upgrades');
 }
 let tapPersistTimer = null;
 
@@ -1209,6 +1218,7 @@ function saveGame() {
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost, taskPassiveBonusRate,
         dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
         weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
+        instantTasksClaimed,
         lastDailyCycleKey, lastWeeklyCycleKey,
         hasMoon, hasEarth, hasSun, soundEnabled,
         ownedRankLevel,
@@ -1301,6 +1311,7 @@ function loadGame() {
             weeklyEnergySpent = data.weeklyEnergySpent || 0;
             weeklyUpgradesBought = data.weeklyUpgradesBought || 0;
             weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...(data.weeklyTasksClaimed || {}) };
+            instantTasksClaimed = { ...defaultInstantTasksClaimed(), ...(data.instantTasksClaimed || {}) };
             lastDailyCycleKey = typeof data.lastDailyCycleKey === 'string' ? data.lastDailyCycleKey : todayKey();
             lastWeeklyCycleKey = typeof data.lastWeeklyCycleKey === 'string' ? data.lastWeeklyCycleKey : weekKey();
             hasMoon = data.hasMoon || false;
@@ -1337,6 +1348,38 @@ function loadGame() {
     if (normalized) saveGame();
 }
 
+function ensureTaskCyclesCurrent() {
+    const currentDailyKey = todayKey();
+    const currentWeeklyKey = weekKey();
+    let changed = false;
+
+    if (lastDailyCycleKey !== currentDailyKey) {
+        dailyClickCount = 0;
+        dailyCoinsEarned = 0;
+        dailyEnergySpent = 0;
+        dailyUpgradesBought = 0;
+        dailyTasksClaimed = defaultDailyTasksClaimed();
+        lastDailyCycleKey = currentDailyKey;
+        changed = true;
+    }
+    if (lastWeeklyCycleKey !== currentWeeklyKey) {
+        weeklyClickCount = 0;
+        weeklyCoinsEarned = 0;
+        weeklyEnergySpent = 0;
+        weeklyUpgradesBought = 0;
+        weeklyTasksClaimed = defaultWeeklyTasksClaimed();
+        lastWeeklyCycleKey = currentWeeklyKey;
+        changed = true;
+    }
+    if (changed) {
+        hydrateClaimStateFromCycleCache();
+        updateTaskButtons();
+        saveGame();
+        syncWithBot();
+        showMessage('🔄 Задания обновлены по новому циклу');
+    }
+}
+
 // ========== СИНХРОНИЗАЦИЯ С БОТОМ ==========
 async function syncWithBot() {
     if (!tg) return;
@@ -1368,6 +1411,7 @@ async function syncWithBot() {
         weeklyUpgradesBought,
         dailyTasksClaimed,
         weeklyTasksClaimed,
+        instantTasksClaimed,
         lastDailyCycleKey,
         lastWeeklyCycleKey
     };
@@ -1441,6 +1485,7 @@ async function loadFromServer() {
                     weeklyUpgradesBought = Number(taskState.weeklyUpgradesBought || 0);
                     dailyTasksClaimed = { ...defaultDailyTasksClaimed(), ...(taskState.dailyTasksClaimed || {}) };
                     weeklyTasksClaimed = { ...defaultWeeklyTasksClaimed(), ...(taskState.weeklyTasksClaimed || {}) };
+                    instantTasksClaimed = { ...defaultInstantTasksClaimed(), ...(taskState.instantTasksClaimed || {}) };
                     lastDailyCycleKey = typeof taskState.lastDailyCycleKey === 'string' ? taskState.lastDailyCycleKey : todayKey();
                     lastWeeklyCycleKey = typeof taskState.lastWeeklyCycleKey === 'string' ? taskState.lastWeeklyCycleKey : weekKey();
                 }
@@ -1662,6 +1707,31 @@ function updateTaskButtons() {
     setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy && !weeklyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade && !weeklyTasksClaimed.upgrade);
     setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= 40 && !weeklyTasksClaimed.passive);
+    const canClaimInstantChannel = !instantTasksClaimed.channel && instantTaskChannelOpened;
+    setTaskClaimButton(document.getElementById('boostInstantClaimInfoChannelBtn'), canClaimInstantChannel);
+    const instantClaimBtn = document.getElementById('boostInstantClaimInfoChannelBtn');
+    const instantStatusEl = document.getElementById('boostInstantChannelStatus');
+    if (instantClaimBtn) {
+        if (instantTasksClaimed.channel) {
+            instantClaimBtn.textContent = '✅ Выполнено';
+            instantClaimBtn.disabled = true;
+            instantClaimBtn.classList.add('disabled');
+        } else {
+            instantClaimBtn.textContent = '+20/мин';
+        }
+    }
+    if (instantStatusEl) {
+        if (instantTasksClaimed.channel) {
+            instantStatusEl.textContent = 'Статус: выполнено';
+            instantStatusEl.classList.add('done');
+        } else if (instantTaskChannelOpened) {
+            instantStatusEl.textContent = 'Статус: можно получить награду';
+            instantStatusEl.classList.remove('done');
+        } else {
+            instantStatusEl.textContent = 'Статус: активно';
+            instantStatusEl.classList.remove('done');
+        }
+    }
 
     setTaskCardVisible('[data-daily-task="1"]', !dailyTasksClaimed.click);
     setTaskCardVisible('[data-daily-task="2"]', !dailyTasksClaimed.coins);
@@ -1674,6 +1744,33 @@ function updateTaskButtons() {
     setTaskCardVisible('[data-weekly-task="4"]', !weeklyTasksClaimed.upgrade);
     setTaskCardVisible('[data-weekly-task="5"]', !weeklyTasksClaimed.passive);
     updateTasksDoneMessages();
+}
+
+function openInfoChannel(markOpened = false) {
+    if (markOpened) instantTaskChannelOpened = true;
+    try {
+        if (tg?.openTelegramLink) tg.openTelegramLink(INFO_CHANNEL_URL);
+        else window.open(INFO_CHANNEL_URL, '_blank');
+    } catch (e) {
+        window.open(INFO_CHANNEL_URL, '_blank');
+    }
+    updateTaskButtons();
+}
+
+function claimInstantChannelTask() {
+    if (instantTasksClaimed.channel) {
+        showMessage('ℹ️ Награда за подписку уже получена');
+        return;
+    }
+    if (!instantTaskChannelOpened) {
+        showMessage('ℹ️ Сначала откройте канал. Без выполнения награда не выдается.', true);
+        return;
+    }
+    instantTasksClaimed.channel = true;
+    showMessage(applyTaskReward({ type: 'passive', value: 20 }));
+    updateUI();
+    saveGame();
+    syncWithBot();
 }
 
 function applyTaskReward(reward) {
@@ -1936,7 +2033,11 @@ function setupTabs() {
 
 function setupTasksTabs() {
     const tabs = document.querySelectorAll('.tasks-tab');
-    const contents = { daily: document.getElementById('dailyTasks'), weekly: document.getElementById('weeklyTasks'), premium: document.getElementById('premiumTasks') };
+    const contents = {
+        daily: document.getElementById('dailyTasks'),
+        weekly: document.getElementById('weeklyTasks'),
+        premium: document.getElementById('premiumTasks')
+    };
     tabs.forEach(t => {
         t.addEventListener('click', () => {
             const target = t.dataset.tasksTab;
@@ -2136,6 +2237,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
     document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
     document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
+    document.getElementById('openInfoChannelProfileBtn')?.addEventListener('click', () => openInfoChannel(false));
+    document.getElementById('boostInstantOpenInfoChannelBtn')?.addEventListener('click', () => openInfoChannel(true));
+    document.getElementById('boostInstantClaimInfoChannelBtn')?.addEventListener('click', claimInstantChannelTask);
+    document.getElementById('boostInstantRestoreEnergyBtn')?.addEventListener('click', () => showMessage('⏳ Скоро: восстановление энергии через рекламу'));
+    document.getElementById('boostInstantIncomeX2Btn')?.addEventListener('click', () => showMessage('⏳ Скоро: x2 доход через рекламу'));
     document.getElementById('copyLinkBtn')?.addEventListener('click', copyReferralLink);
     document.getElementById('shareLinkBtn')?.addEventListener('click', shareReferralLink);
     document.getElementById('dailyClickClaim')?.addEventListener('click', () => claimTask('dailyClickClaim', 50, 'daily_click'));
@@ -2159,12 +2265,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     fillRanksPreviewGrid();
     updateMilitaryRankHUD();
 
-    if (boostBtn) boostBtn.onclick = () => boostModal.classList.add('active');
+    if (boostBtn) boostBtn.onclick = () => {
+        document.querySelectorAll('.boost-modal-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.boostTab === 'upgrades'));
+        document.querySelectorAll('.boost-tab-panel').forEach((panel) => panel.classList.remove('active'));
+        document.getElementById('boostTabUpgrades')?.classList.add('active');
+        boostModal.classList.add('active');
+    };
     if (closeBoost) closeBoost.onclick = () => boostModal.classList.remove('active');
     if (boostModal) boostModal.onclick = (e) => { if (e.target === boostModal) boostModal.classList.remove('active'); };
     
     setInterval(applyPassiveIncome, 60000);
     setInterval(rechargeEnergy, 1000);
+    setInterval(ensureTaskCyclesCurrent, 30000);
     
     const raysContainer = document.getElementById('raysContainer');
     if(raysContainer) for(let i=0;i<12;i++) { const ray = document.createElement('div'); ray.className = 'ray'; raysContainer.appendChild(ray); }
