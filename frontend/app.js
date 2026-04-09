@@ -2142,6 +2142,29 @@ function setupTabs() {
     });
 }
 
+function restoreActivePanelView() {
+    const panels = {
+        game: document.getElementById('gameArea'),
+        tasks: document.getElementById('tasksPanel'),
+        friends: document.getElementById('friendsPanel'),
+        profile: document.getElementById('profilePanel'),
+        leaderboard: document.getElementById('leaderboardPanel'),
+        airdrop: document.getElementById('airdropPanel')
+    };
+    const activeBtn = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-tab="game"]');
+    const activeTab = activeBtn?.dataset?.tab || 'game';
+    Object.values(panels).forEach((p) => {
+        if (!p) return;
+        p.style.display = 'none';
+        p.classList.remove('active');
+    });
+    const target = panels[activeTab] || panels.game;
+    if (target) {
+        target.style.display = activeTab === 'game' ? 'flex' : 'block';
+        target.classList.add('active');
+    }
+}
+
 function setupTasksTabs() {
     const tabs = document.querySelectorAll('.tasks-tab');
     const contents = {
@@ -2397,9 +2420,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (gameArea) gameArea.style.display = 'flex';
 
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') flushTapPersistIfPending();
+        if (document.visibilityState === 'hidden') {
+            flushTapPersistIfPending();
+            return;
+        }
+        // После возврата из Telegram-ссылок иногда остается "черный экран":
+        // принудительно восстанавливаем активную панель и закрываем оверлеи.
+        boostModal?.classList.remove('active');
+        applyViewportHeight();
+        applyTopHudVisibilityFix();
+        restoreActivePanelView();
+        updateUI();
     });
     window.addEventListener('pagehide', flushTapPersistIfPending);
+    window.addEventListener('focus', () => {
+        boostModal?.classList.remove('active');
+        restoreActivePanelView();
+        updateUI();
+    });
     
     if(!document.querySelector('#popup-animation')) {
         const style = document.createElement('style');
