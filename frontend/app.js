@@ -261,6 +261,8 @@ let passiveIncomeRate = 0;
 let taskPassiveBonusRate = 0;
 const ENERGY_MAX_VALUE = 500;
 const ENERGY_MAX_LEVEL = 10;
+const ONLINE_ENERGY_REGEN_PER_SEC = 2;
+const OFFLINE_ENERGY_REGEN_PER_MIN = 120;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
@@ -379,7 +381,7 @@ function applyOfflineEarnings() {
     coins += offlineCoins;
     dailyCoinsEarned += offlineCoins;
     weeklyCoinsEarned += offlineCoins;
-    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * 60);
+    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * OFFLINE_ENERGY_REGEN_PER_MIN);
     if (offlineEnergyRecover > 0) energy += offlineEnergyRecover;
     showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${(offlineMinutes * perMinute).toLocaleString()} 🪙`);
 }
@@ -1969,7 +1971,7 @@ function applyPassiveIncome() {
 function rechargeEnergy() { 
     if (energy < maxEnergy) { 
         // Плавное восстановление энергии
-        const energyToAdd = Math.min(1, maxEnergy - energy);
+        const energyToAdd = Math.min(ONLINE_ENERGY_REGEN_PER_SEC, maxEnergy - energy);
         energy += energyToAdd;
         updateUI(); 
     }
