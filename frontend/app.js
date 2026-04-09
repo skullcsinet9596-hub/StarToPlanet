@@ -265,6 +265,7 @@ const ENERGY_MAX_LEVEL = 10;
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
 let lastSeenAtMs = Date.now();
+let offlineAppliedOnBoot = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let isRegistering = false;
 let lastBoostTapAt = 0;
@@ -299,7 +300,9 @@ function getLevelForCoins(coinsValue) {
 
 function getEffectiveRankLevel() {
     const owned = clampInt(ownedRankLevel, -1, 10);
-    return owned;
+    if (owned < 0) return -1;
+    const currentPlanetLevel = clampInt(getLevel(), 0, 10);
+    return Math.max(0, Math.min(owned, currentPlanetLevel));
 }
 
 function getRankCost(level) {
@@ -365,7 +368,7 @@ function applyOfflineEarnings() {
     if (offlineMinutes <= 0) return;
 
     // Считаем пассивку по состоянию ДО оффлайн начисления (чтобы не разгонять уровень «сам из себя»).
-    const effRank = clampInt(ownedRankLevel, -1, 10);
+    const effRank = getEffectiveRankLevel();
     let perMinute = passiveIncomeLevel * 5 + taskPassiveBonusRate;
     if (hasSun) perMinute += 100000;
     else if (hasEarth) perMinute += 50000;
@@ -1327,9 +1330,6 @@ function loadGame() {
         lastWeeklyCycleKey = currentWeeklyKey;
     }
     hydrateClaimStateFromCycleCache();
-    // Оффлайн начисление (до 3 часов)
-    applyOfflineEarnings();
-    lastSeenAtMs = Date.now();
     updateUI();
     fillRanksPreviewGrid();
     if (normalized) saveGame();
@@ -1345,6 +1345,8 @@ async function syncWithBot() {
         maxEnergy: maxEnergy,
         clickPower: clickPower,
         passiveIncomeLevel: passiveIncomeLevel,
+        taskPassiveBonusRate: taskPassiveBonusRate,
+        ownedRankLevel: ownedRankLevel,
         hasMoon: hasMoon,
         hasEarth: hasEarth,
         hasSun: hasSun,
@@ -1421,7 +1423,9 @@ async function loadFromServer() {
                 energyUpgradeLevel = data.energyUpgradeLevel || 1;
                 energyUpgradeCost = data.energyUpgradeCost || 200;
                 passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
-                taskPassiveBonusRate = data.taskPassiveBonusRate || taskPassiveBonusRate || 0;
+                taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate)) ? Number(data.taskPassiveBonusRate) : (taskPassiveBonusRate || 0);
+                ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : ownedRankLevel;
+                if (Number.isFinite(Number(data.lastSeenAtMs))) lastSeenAtMs = Number(data.lastSeenAtMs);
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                 const taskState = (data.taskState && typeof data.taskState === 'object') ? data.taskState : null;
                 if (taskState) {
@@ -1441,6 +1445,11 @@ async function loadFromServer() {
                 
                 if (energy > maxEnergy) energy = maxEnergy;
                 normalizeUpgradeCosts();
+                if (!offlineAppliedOnBoot) {
+                    applyOfflineEarnings();
+                    offlineAppliedOnBoot = true;
+                    lastSeenAtMs = Date.now();
+                }
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
                 loaded = true;

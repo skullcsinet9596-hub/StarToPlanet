@@ -49,6 +49,8 @@ export async function initDB() {
                 energy_upgrade_cost INTEGER DEFAULT 200,
                 passive_income_level INTEGER DEFAULT 0,
                 passive_income_cost INTEGER DEFAULT 500,
+                task_passive_bonus_rate INTEGER DEFAULT 0,
+                owned_rank_level INTEGER DEFAULT -1,
                 level INTEGER DEFAULT 1,
                 referrals_count INTEGER DEFAULT 0,
                 premium_level INTEGER DEFAULT 0,
@@ -67,6 +69,8 @@ export async function initDB() {
 
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS task_state JSONB DEFAULT '{}'::jsonb`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS task_passive_bonus_rate INTEGER DEFAULT 0`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS owned_rank_level INTEGER DEFAULT -1`);
 
         // Таблица рефералов
         await pool.query(`

@@ -163,6 +163,7 @@ app.get('/api/user/:userId', async (req, res) => {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
+        const lastSeenAtMs = user.last_seen_at ? new Date(user.last_seen_at).getTime() : Date.now();
         await updateUser(telegramId, { last_seen_at: new Date() });
         
         res.json({
@@ -180,6 +181,9 @@ app.get('/api/user/:userId', async (req, res) => {
             energyUpgradeLevel: user.energy_upgrade_level,
             energyUpgradeCost: user.energy_upgrade_cost,
             passiveIncomeUpgradeCost: user.passive_income_cost,
+            taskPassiveBonusRate: Number(user.task_passive_bonus_rate || 0),
+            ownedRankLevel: Number(user.owned_rank_level ?? -1),
+            lastSeenAtMs,
             soundEnabled: user.sound_enabled,
             taskState: user.task_state || {}
         });
@@ -264,6 +268,8 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
             max_energy: Math.max(100, int(gameData.maxEnergy, 100)),
             click_power: Math.max(1, int(gameData.clickPower, 1)),
             passive_income_level: Math.max(0, int(gameData.passiveIncomeLevel, 0)),
+            task_passive_bonus_rate: Math.max(0, int(gameData.taskPassiveBonusRate, 0)),
+            owned_rank_level: Math.max(-1, Math.min(10, int(gameData.ownedRankLevel, -1))),
             has_moon: Boolean(gameData.hasMoon),
             has_earth: Boolean(gameData.hasEarth),
             has_sun: Boolean(gameData.hasSun),
