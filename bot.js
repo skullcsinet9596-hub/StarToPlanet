@@ -531,41 +531,41 @@ app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {
 app.use('/admin', express.static('frontend/admin'));
 app.use(express.static('frontend'));
 
-const HOST = '0.0.0.0';
-const server = app.listen(PORT, HOST, () => {
-    console.log(`✅ Веб-сервер слушает http://${HOST}:${PORT} (env PORT=${process.env.PORT ?? 'not-set'})`);
-});
-server.on('error', (err) => {
-    console.error('❌ Ошибка веб-сервера:', err);
+// ========== КОМАНДЫ БОТА (регистрация до listen, чтобы не терять апдейты) ==========
+bot.catch((err, ctx) => {
+    console.error('❌ Telegraf:', err?.message || err, ctx?.update?.update_id);
+    const reply = ctx?.reply?.bind(ctx);
+    if (reply) {
+        reply('⚠️ Сервис временно недоступен. Нажмите /start ещё раз через минуту.').catch(() => {});
+    }
 });
 
-// ========== КОМАНДЫ БОТА ==========
 bot.start(async (ctx) => {
     const userId = ctx.from.id;
-    await trackBotStart(userId);
-    let userName = ctx.from.username || ctx.from.first_name || 'игрок';
-    if (ctx.from.username) userName = `@${ctx.from.username}`;
-    
-    // Проверяем реферальный код (нужен для передачи в WebApp).
-    const payloadRaw = ctx.startPayload || '';
-    let user = await getUser(userId);
-    if (user) {
-        await updateUser(userId, { username: ctx.from.username, first_name: ctx.from.first_name });
-    }
-    
-    const rank = user ? await getPlayerRank(userId) : '—';
-    const stats = user ? await getStats(userId) : { referralsCount: 0 };
-    const safeCoins = user ? Number(user.coins).toLocaleString() : '0';
-    const safeEnergy = user ? `${user.energy}/${user.max_energy}` : '100/100';
-    const safeClickPower = user ? user.click_power : 1;
-    const baseUrl = payloadRaw
-        ? `${APP_URL}?startapp=${encodeURIComponent(payloadRaw)}`
-        : APP_URL;
-    const registerUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}register=1`;
-    const webAppUrl = user ? baseUrl : registerUrl;
-    const actionText = user ? '✨ ИГРАТЬ ✨' : '📝 РЕГИСТРАЦИЯ';
-    
-    await ctx.replyWithHTML(`
+    try {
+        await trackBotStart(userId);
+        let userName = ctx.from.username || ctx.from.first_name || 'игрок';
+        if (ctx.from.username) userName = `@${ctx.from.username}`;
+
+        const payloadRaw = ctx.startPayload || '';
+        let user = await getUser(userId);
+        if (user) {
+            await updateUser(userId, { username: ctx.from.username, first_name: ctx.from.first_name });
+        }
+
+        const rank = user ? await getPlayerRank(userId) : '—';
+        const stats = user ? await getStats(userId) : { referralsCount: 0 };
+        const safeCoins = user ? Number(user.coins).toLocaleString() : '0';
+        const safeEnergy = user ? `${user.energy}/${user.max_energy}` : '100/100';
+        const safeClickPower = user ? user.click_power : 1;
+        const baseUrl = payloadRaw
+            ? `${APP_URL}?startapp=${encodeURIComponent(payloadRaw)}`
+            : APP_URL;
+        const registerUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}register=1`;
+        const webAppUrl = user ? baseUrl : registerUrl;
+        const actionText = user ? '✨ ИГРАТЬ ✨' : '📝 РЕГИСТРАЦИЯ';
+
+        await ctx.replyWithHTML(`
 🌟 <b>Star to Planet</b> 🌟
 
 👤 <b>Игрок:</b> ${userName}
@@ -589,6 +589,17 @@ bot.start(async (ctx) => {
             inline_keyboard: [[{ text: actionText, web_app: { url: webAppUrl } }]]
         }
     });
+    } catch (e) {
+        console.error('Ошибка /start:', e?.message || e);
+        await ctx.reply(
+            '🌟 Star to Planet\n\nНе удалось загрузить профиль (БД или сеть). Попробуйте /start снова через минуту.',
+            {
+                reply_markup: {
+                    inline_keyboard: [[{ text: '✨ Открыть игру', web_app: { url: APP_URL } }]]
+                }
+            }
+        );
+    }
 });
 
 bot.command('rating', async (ctx) => {
@@ -650,16 +661,25 @@ bot.on('message', async (ctx) => {
 });
 
 // ========== ЗАПУСК ==========
-await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-console.log('✅ Старый webhook снят');
-
+// Сначала БД, потом HTTP — иначе webhook может прийти до initDB и /start упадёт молча.
 await initDB();
+
+const HOST = '0.0.0.0';
+const server = app.listen(PORT, HOST, () => {
+    console.log(`✅ Веб-сервер слушает http://${HOST}:${PORT} (env PORT=${process.env.PORT ?? 'not-set'})`);
+});
+server.on('error', (err) => {
+    console.error('❌ Ошибка веб-сервера:', err);
+});
 
 if (useWebhookMode) {
     const hookUrl = `${publicUrl}${WEBHOOK_PATH}`;
+    // setWebhook заменяет предыдущий URL; не вызываем deleteWebhook(drop_pending_updates: true) —
+    // иначе на время долгого initDB апдейты теряются и пользователи «нажимают /start — тишина».
     await bot.telegram.setWebhook(hookUrl);
-    console.log(`✅ Режим webhook (нет конфликта getUpdates). URL зарегистрирован в Telegram.`);
+    console.log(`✅ Webhook: ${hookUrl}`);
 } else {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false });
     await bot.launch();
     console.log('🤖 Бот в режиме long polling (убедись, что нет второго инстанса с тем же BOT_TOKEN)');
 }
