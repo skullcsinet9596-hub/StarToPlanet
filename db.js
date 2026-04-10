@@ -184,6 +184,59 @@ export async function getUser(telegramId) {
     }
 }
 
+/** Восстанавливает строку лидерборда, если профиль есть в users, а в leaderboard — нет (после частичного сбоя createUser и т.п.). */
+export async function ensureLeaderboardRow(telegramId) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        const user = await getUser(telegramId);
+        if (!user) return;
+        const exists = await pool.query('SELECT 1 FROM leaderboard WHERE telegram_id = $1', [telegramId]);
+        if (exists.rows.length) return;
+        const coins = Math.max(0, Math.floor(Number(user.coins) || 0));
+        await pool.query('INSERT INTO leaderboard (telegram_id, coins) VALUES ($1, $2)', [telegramId, coins]);
+    } catch (err) {
+        console.error('Ошибка ensureLeaderboardRow:', err.message);
+    }
+}
+
+/**
+ * Привязка реферера для уже существующего пользователя без referrer_id (например, после сбоя регистрации по ссылке).
+ */
+export async function attachReferrerForExistingUser(telegramId, referrerId) {
+    if (!telegramId || !referrerId || isNaN(parseInt(telegramId)) || isNaN(parseInt(referrerId))) {
+        return { ok: false, reason: 'invalid' };
+    }
+    const tid = parseInt(telegramId);
+    const rid = parseInt(referrerId);
+    if (tid === rid) return { ok: false, reason: 'self' };
+
+    try {
+        const user = await getUser(tid);
+        if (!user) return { ok: false, reason: 'no_user' };
+        if (user.referrer_id != null) return { ok: false, reason: 'already_has_referrer' };
+
+        const canAttach = await canAttachToReferrer(rid);
+        if (!canAttach) return { ok: false, reason: 'referrer_limit' };
+
+        await pool.query('UPDATE users SET referrer_id = $1 WHERE telegram_id = $2', [rid, tid]);
+
+        const existingReferral = await pool.query(
+            'SELECT 1 FROM referrals WHERE referrer_id = $1 AND referred_id = $2',
+            [rid, tid]
+        );
+        if (existingReferral.rows.length === 0) {
+            await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [rid, tid]);
+            await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [rid]);
+            await addCoins(rid, 1000);
+            await addCoins(tid, 500);
+        }
+        return { ok: true };
+    } catch (err) {
+        console.error('Ошибка attachReferrerForExistingUser:', err.message);
+        return { ok: false, reason: 'error' };
+    }
+}
+
 export async function getReferralAncestors(telegramId, maxDepth = 8) {
     if (!telegramId || isNaN(parseInt(telegramId))) return [];
     try {
@@ -294,7 +347,10 @@ export async function createUser(telegramId, username, firstName, referrerId = n
     if (!telegramId || isNaN(parseInt(telegramId))) return null;
     
     const existing = await getUser(telegramId);
-    if (existing) return existing;
+    if (existing) {
+        await ensureLeaderboardRow(telegramId);
+        return existing;
+    }
 
     try {
         let effectiveReferrerId = null;

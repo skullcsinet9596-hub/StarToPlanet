@@ -24,7 +24,9 @@ import {
     adjustUserAdmin,
     deleteUserAdmin,
     trackBotStart,
-    getMarketingMetricsAdmin
+    getMarketingMetricsAdmin,
+    ensureLeaderboardRow,
+    attachReferrerForExistingUser
 } from './db.js';
 
 dotenv.config();
@@ -163,9 +165,9 @@ app.get('/api/user/:userId', async (req, res) => {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
+        await ensureLeaderboardRow(telegramId);
         const lastSeenAtMs = user.last_seen_at ? new Date(user.last_seen_at).getTime() : Date.now();
-        await updateUser(telegramId, { last_seen_at: new Date() });
-        
+
         res.json({
             registered: true,
             coins: Number(user.coins),
@@ -216,6 +218,22 @@ app.post('/api/register', rateLimit('register', 30, 60_000), async (req, res) =>
         }
 
         await updateUser(telegramId, { username: username || user.username, first_name: firstName || user.first_name });
+        await ensureLeaderboardRow(telegramId);
+        const ref = referrerId && !isNaN(parseInt(referrerId)) ? parseInt(referrerId) : null;
+        if (ref) {
+            const attached = await attachReferrerForExistingUser(telegramId, ref);
+            if (attached.ok) {
+                res.json({
+                    success: true,
+                    registered: true,
+                    created: false,
+                    userId: telegramId,
+                    referrerAttached: true,
+                    message: 'Профиль уже был; реферер по ссылке привязан'
+                });
+                return;
+            }
+        }
         res.json({ success: true, registered: true, created: false, userId: telegramId, message: 'Вы уже зарегистрированы' });
     } catch (e) {
         console.error('Ошибка /api/register:', e);
@@ -263,6 +281,7 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
         const currentCoins = Math.max(0, int(gameData.coins, 0));
 
         await updateUser(telegramId, {
+            last_seen_at: new Date(),
             coins: currentCoins,
             energy: Math.max(0, int(gameData.energy, 100)),
             max_energy: Math.max(100, int(gameData.maxEnergy, 100)),
