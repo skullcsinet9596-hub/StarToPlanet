@@ -540,14 +540,15 @@ bot.catch((err, ctx) => {
     }
 });
 
-bot.start(async (ctx) => {
+/** Общая логика приветствия /start (кнопка «Start», ручной ввод, реф-параметр). */
+async function sendStartWelcome(ctx, startPayloadRaw = '') {
     const userId = ctx.from.id;
     try {
         await trackBotStart(userId);
         let userName = ctx.from.username || ctx.from.first_name || 'игрок';
         if (ctx.from.username) userName = `@${ctx.from.username}`;
 
-        const payloadRaw = ctx.startPayload || '';
+        const payloadRaw = String(startPayloadRaw || '').trim();
         let user = await getUser(userId);
         if (user) {
             await updateUser(userId, { username: ctx.from.username, first_name: ctx.from.first_name });
@@ -585,10 +586,10 @@ bot.start(async (ctx) => {
 
 🎮 Нажми на кнопку ниже!
     `, {
-        reply_markup: {
-            inline_keyboard: [[{ text: actionText, web_app: { url: webAppUrl } }]]
-        }
-    });
+            reply_markup: {
+                inline_keyboard: [[{ text: actionText, web_app: { url: webAppUrl } }]]
+            }
+        });
     } catch (e) {
         console.error('Ошибка /start:', e?.message || e);
         await ctx.reply(
@@ -600,6 +601,45 @@ bot.start(async (ctx) => {
             }
         );
     }
+}
+
+bot.start(async (ctx) => {
+    await sendStartWelcome(ctx, ctx.startPayload || '');
+});
+
+/**
+ * Telegraf обрабатывает /start только если сущность bot_command с offset === 0.
+ * Если перед командой пробел/символ (часто при вводе с клавиатуры или вставке), штатный handler пропускает — тишина.
+ */
+bot.use(async (ctx, next) => {
+    const msg = ctx.message;
+    if (!msg?.text || ctx.chat?.type !== 'private') return next();
+
+    const text = msg.text;
+    const entities = msg.entities || [];
+
+    let payload = '';
+    const startEntity = entities.find((e) => {
+        if (e.type !== 'bot_command') return false;
+        const part = text.slice(e.offset, e.offset + e.length);
+        const cmd = part.split('@')[0].toLowerCase();
+        return cmd === '/start';
+    });
+
+    if (startEntity) {
+        const part = text.slice(startEntity.offset, startEntity.offset + startEntity.length);
+        const atBot = part.split('@')[1];
+        if (atBot && atBot.toLowerCase() !== ctx.me.toLowerCase()) return next();
+        payload = text.slice(startEntity.offset + startEntity.length).trim();
+    } else {
+        const trimmed = text.trimStart();
+        const m = trimmed.match(/^\/start(?:@([\w]+))?(?:\s+(.+))?$/i);
+        if (!m) return next();
+        if (m[1] && m[1].toLowerCase() !== ctx.me.toLowerCase()) return next();
+        payload = (m[2] || '').trim();
+    }
+
+    await sendStartWelcome(ctx, payload);
 });
 
 bot.command('rating', async (ctx) => {
