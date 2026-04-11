@@ -258,6 +258,8 @@ let energyUpgradeCost = 200;
 let energyUpgradeLevel = 1;
 let passiveIncomeLevel = 0;
 let passiveIncomeUpgradeCost = 500;
+let energyRegenSpeedLevel = 0;
+let energyRegenSpeedCost = ENERGY_REGEN_SPEED_BASE_COST;
 let passiveIncomeRate = 0;
 let taskPassiveBonusRate = 0;
 let instantTaskChannelOpened = false;
@@ -266,12 +268,15 @@ const ENERGY_MAX_VALUE = 500;
 const ENERGY_MAX_LEVEL = 10;
 const ONLINE_ENERGY_REGEN_PER_SEC = 2;
 const OFFLINE_ENERGY_REGEN_PER_MIN = 120;
+const ENERGY_REGEN_SPEED_MAX = 10;
+const ENERGY_REGEN_SPEED_BASE_COST = 250;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
 let lastSeenAtMs = Date.now();
 let offlineAppliedOnBoot = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
+let energyRegenIntervalId = null;
 let isRegistering = false;
 let lastBoostTapAt = 0;
 
@@ -1179,6 +1184,27 @@ function updateUI() {
     const energyCostEl = document.getElementById('energyUpgradeCostDisplay');
     if (energyCostEl) energyCostEl.textContent = energyUpgradeLevel >= ENERGY_MAX_LEVEL ? '✅ Выполнено' : `${formatCompactCoins(energyUpgradeCost)} 🪙`;
     document.getElementById('passiveUpgradeCostDisplay').textContent = `${formatCompactCoins(passiveIncomeUpgradeCost)} 🪙`;
+    const regenLvEl = document.getElementById('energyRegenSpeedLevelDisplay');
+    const regenMaxEl = document.getElementById('energyRegenSpeedMaxDisplay');
+    const regenIntEl = document.getElementById('energyRegenIntervalDisplay');
+    const regenCostEl = document.getElementById('energyRegenSpeedCostDisplay');
+    if (regenLvEl) regenLvEl.textContent = String(energyRegenSpeedLevel);
+    if (regenMaxEl) regenMaxEl.textContent = String(ENERGY_REGEN_SPEED_MAX);
+    if (regenIntEl) {
+        const sec = getEnergyRegenIntervalMs() / 1000;
+        regenIntEl.textContent = sec < 1 ? String(sec.toFixed(1)).replace('.', ',') : sec.toFixed(1).replace('.', ',');
+    }
+    if (regenCostEl) {
+        regenCostEl.textContent =
+            energyRegenSpeedLevel >= ENERGY_REGEN_SPEED_MAX ? '✅ Макс.' : `${formatCompactCoins(energyRegenSpeedCost)} 🪙`;
+    }
+    const buyRegenBtn = document.getElementById('buyEnergyRegenSpeedUpgrade');
+    if (buyRegenBtn) {
+        const done = energyRegenSpeedLevel >= ENERGY_REGEN_SPEED_MAX;
+        buyRegenBtn.disabled = done;
+        buyRegenBtn.textContent = done ? '✅ Выполнено' : 'Купить';
+        buyRegenBtn.classList.toggle('disabled', done);
+    }
     const buyEnergyBtn = document.getElementById('buyEnergyUpgrade');
     if (buyEnergyBtn) {
         const isDone = energyUpgradeLevel >= ENERGY_MAX_LEVEL;
@@ -1348,7 +1374,8 @@ async function buyPremium(type) {
 function saveGame() {
     const gameData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
-        energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost, taskPassiveBonusRate,
+        energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
+        energyRegenSpeedLevel, energyRegenSpeedCost, taskPassiveBonusRate,
         dailyClickCount, dailyCoinsEarned, dailyEnergySpent, dailyUpgradesBought, dailyTasksClaimed,
         weeklyClickCount, weeklyCoinsEarned, weeklyEnergySpent, weeklyUpgradesBought, weeklyTasksClaimed,
         instantTasksClaimed,
@@ -1395,10 +1422,16 @@ function normalizeUpgradeCosts() {
         passiveIncomeLevel = safePassiveLevel;
         changed = true;
     }
+    const safeRegenSpeed = clampInt(energyRegenSpeedLevel || 0, 0, ENERGY_REGEN_SPEED_MAX);
+    if (safeRegenSpeed !== energyRegenSpeedLevel) {
+        energyRegenSpeedLevel = safeRegenSpeed;
+        changed = true;
+    }
 
     const expectedClickCost = Math.floor(100 * Math.pow(1.3, Math.max(0, clickUpgradeLevel - 1)));
     const expectedEnergyCost = Math.floor(200 * Math.pow(1.25, Math.max(0, energyUpgradeLevel - 1)));
     const expectedPassiveCost = Math.floor(500 * Math.pow(1.25, Math.max(0, passiveIncomeLevel)));
+    const expectedRegenSpeedCost = Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
 
     if (!Number.isFinite(clickUpgradeCost) || clickUpgradeCost !== expectedClickCost) {
         clickUpgradeCost = expectedClickCost;
@@ -1410,6 +1443,10 @@ function normalizeUpgradeCosts() {
     }
     if (!Number.isFinite(passiveIncomeUpgradeCost) || passiveIncomeUpgradeCost !== expectedPassiveCost) {
         passiveIncomeUpgradeCost = expectedPassiveCost;
+        changed = true;
+    }
+    if (!Number.isFinite(energyRegenSpeedCost) || energyRegenSpeedCost !== expectedRegenSpeedCost) {
+        energyRegenSpeedCost = expectedRegenSpeedCost;
         changed = true;
     }
     return changed;
@@ -1433,6 +1470,10 @@ function loadGame() {
             energyUpgradeLevel = data.energyUpgradeLevel || 1;
             passiveIncomeLevel = data.passiveIncomeLevel || 0;
             passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+            energyRegenSpeedLevel = clampInt(data.energyRegenSpeedLevel ?? 0, 0, ENERGY_REGEN_SPEED_MAX);
+            energyRegenSpeedCost = Number.isFinite(Number(data.energyRegenSpeedCost))
+                ? Math.floor(Number(data.energyRegenSpeedCost))
+                : ENERGY_REGEN_SPEED_BASE_COST;
             taskPassiveBonusRate = data.taskPassiveBonusRate || 0;
             dailyClickCount = data.dailyClickCount || 0;
             dailyCoinsEarned = data.dailyCoinsEarned || 0;
@@ -1477,6 +1518,7 @@ function loadGame() {
     }
     hydrateClaimStateFromCycleCache();
     updateUI();
+    rescheduleEnergyRegen();
     fillRanksPreviewGrid();
     if (normalized) saveGame();
 }
@@ -1535,6 +1577,8 @@ async function syncWithBot() {
         energyUpgradeLevel: energyUpgradeLevel,
         energyUpgradeCost: energyUpgradeCost,
         passiveIncomeUpgradeCost: passiveIncomeUpgradeCost,
+        energyRegenSpeedLevel: clampInt(energyRegenSpeedLevel, 0, ENERGY_REGEN_SPEED_MAX),
+        energyRegenSpeedCost: energyRegenSpeedCost,
         soundEnabled: soundEnabled,
         dailyClickCount,
         dailyCoinsEarned,
@@ -1604,6 +1648,12 @@ async function loadFromServer() {
                 energyUpgradeLevel = data.energyUpgradeLevel || 1;
                 energyUpgradeCost = data.energyUpgradeCost || 200;
                 passiveIncomeUpgradeCost = data.passiveIncomeUpgradeCost || 500;
+                energyRegenSpeedLevel = Number.isFinite(Number(data.energyRegenSpeedLevel))
+                    ? clampInt(Number(data.energyRegenSpeedLevel), 0, ENERGY_REGEN_SPEED_MAX)
+                    : 0;
+                energyRegenSpeedCost = Number.isFinite(Number(data.energyRegenSpeedCost))
+                    ? Math.floor(Number(data.energyRegenSpeedCost))
+                    : Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
                 taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate)) ? Number(data.taskPassiveBonusRate) : (taskPassiveBonusRate || 0);
                 if (Number.isFinite(Number(data.ownedRankLevel))) {
                     const serverOwnedRank = clampInt(data.ownedRankLevel, -1, 10);
@@ -1634,6 +1684,7 @@ async function loadFromServer() {
                 
                 if (energy > maxEnergy) energy = maxEnergy;
                 normalizeUpgradeCosts();
+                rescheduleEnergyRegen();
                 if (!offlineAppliedOnBoot) {
                     applyOfflineEarnings();
                     offlineAppliedOnBoot = true;
@@ -1809,6 +1860,25 @@ function upgradePassive() {
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
     } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
+    else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
+}
+
+function upgradeEnergyRegenSpeed() {
+    if (ignoreRapidBoostTap()) return;
+    const cost = energyRegenSpeedCost;
+    if (coins >= cost && energyRegenSpeedLevel < ENERGY_REGEN_SPEED_MAX) {
+        coins -= cost;
+        energyRegenSpeedLevel++;
+        dailyUpgradesBought++;
+        weeklyUpgradesBought++;
+        energyRegenSpeedCost = Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
+        rescheduleEnergyRegen();
+        updateUI();
+        saveGame();
+        syncWithBot();
+        const s = (getEnergyRegenIntervalMs() / 1000).toFixed(1).replace('.', ',');
+        showMessage(`✅ Скорость энергии: шаг каждые ${s} с`);
+    } else if (energyRegenSpeedLevel >= ENERGY_REGEN_SPEED_MAX) showMessage('⚠️ Максимальный уровень!', true);
     else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
 
@@ -2275,12 +2345,31 @@ function applyPassiveIncome() {
     } 
 }
 
-function rechargeEnergy() { 
-    if (energy < maxEnergy) { 
-        // Плавное восстановление энергии
-        const energyToAdd = Math.min(ONLINE_ENERGY_REGEN_PER_SEC, maxEnergy - energy);
+/** Интервал тика онлайн-регена: 0 ур. = 1 с; с 1 ур. 1000/(1+9*L) мс, минимум 0,1 с (ур. 1 → 0,1 с). */
+function getEnergyRegenIntervalMs() {
+    const lv = clampInt(energyRegenSpeedLevel, 0, ENERGY_REGEN_SPEED_MAX);
+    if (lv <= 0) return 1000;
+    return Math.max(100, Math.round(1000 / (1 + 9 * lv)));
+}
+
+function getEnergyRegenTickAmount() {
+    const ms = getEnergyRegenIntervalMs();
+    return Math.max(1, Math.ceil((ONLINE_ENERGY_REGEN_PER_SEC * ms) / 1000));
+}
+
+function rescheduleEnergyRegen() {
+    if (energyRegenIntervalId != null) {
+        clearInterval(energyRegenIntervalId);
+        energyRegenIntervalId = null;
+    }
+    energyRegenIntervalId = setInterval(rechargeEnergy, getEnergyRegenIntervalMs());
+}
+
+function rechargeEnergy() {
+    if (energy < maxEnergy) {
+        const energyToAdd = Math.min(getEnergyRegenTickAmount(), maxEnergy - energy);
         energy += energyToAdd;
-        updateUI(); 
+        updateUI();
     }
 }
 
@@ -2443,6 +2532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.getElementById('buyClickUpgrade')?.addEventListener('click', upgradeClick);
     document.getElementById('buyEnergyUpgrade')?.addEventListener('click', upgradeEnergy);
+    document.getElementById('buyEnergyRegenSpeedUpgrade')?.addEventListener('click', upgradeEnergyRegenSpeed);
     document.getElementById('buyPassiveUpgrade')?.addEventListener('click', upgradePassive);
     document.getElementById('openInfoChannelProfileBtn')?.addEventListener('click', () => openInfoChannel(false));
     document.getElementById('boostInstantOpenInfoChannelBtn')?.addEventListener('click', () => openInfoChannel(true));
@@ -2482,7 +2572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (boostModal) boostModal.onclick = (e) => { if (e.target === boostModal) boostModal.classList.remove('active'); };
     
     setInterval(applyPassiveIncome, 60000);
-    setInterval(rechargeEnergy, 1000);
+    rescheduleEnergyRegen();
     setInterval(ensureTaskCyclesCurrent, 30000);
     setInterval(ensurePanelVisibleHeartbeat, 2000);
     
