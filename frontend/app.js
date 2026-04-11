@@ -288,6 +288,36 @@ function clampInt(n, min, max) {
     return Math.max(min, Math.min(max, v));
 }
 
+/** UI монет: вариант A — &lt;1 000 целое число, далее K/M/B/T, десятичная запятая. */
+function formatCompactCoins(value) {
+    const x = Math.max(0, Math.floor(Number(value) || 0));
+    if (x < 1000) return String(x);
+    const tiers = [
+        { min: 1e12, div: 1e12, s: 'T' },
+        { min: 1e9, div: 1e9, s: 'B' },
+        { min: 1e6, div: 1e6, s: 'M' },
+        { min: 1e3, div: 1e3, s: 'K' }
+    ];
+    for (const { min, div, s } of tiers) {
+        if (x >= min) {
+            const d = x / div;
+            let num;
+            if (d >= 100) {
+                num = String(Math.floor(d));
+            } else {
+                const r = Math.round(d * 10) / 10;
+                if (Number.isInteger(r)) num = String(r);
+                else {
+                    num = r.toFixed(1);
+                    if (num.endsWith('.0')) num = num.slice(0, -2);
+                }
+            }
+            return num.replace('.', ',') + s;
+        }
+    }
+    return String(x);
+}
+
 function getLevelForCoins(coinsValue) {
     if (hasSun) return 10;
     if (hasEarth) return 9;
@@ -386,7 +416,7 @@ function applyOfflineEarnings() {
     weeklyCoinsEarned += offlineCoins;
     const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * OFFLINE_ENERGY_REGEN_PER_MIN);
     if (offlineEnergyRecover > 0) energy += offlineEnergyRecover;
-    showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${(offlineMinutes * perMinute).toLocaleString()} 🪙`);
+    showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${formatCompactCoins(offlineMinutes * perMinute)} 🪙`);
 }
 
 // Делаем функцию глобальной
@@ -705,14 +735,14 @@ function fillRanksPreviewGrid() {
         const lockedByPlanet = currentPlanetLevel < lv;
         const canBuy = !owned && !lockedByOrder && !lockedByPlanet && coins >= cost;
         const status = owned ? 'owned' : (canBuy ? 'can' : 'locked');
-        const btnText = owned ? '✅ Куплено' : (lockedByOrder || lockedByPlanet ? '🔒 Недоступно' : `Купить · ${cost.toLocaleString()} 🪙`);
+        const btnText = owned ? '✅ Куплено' : (lockedByOrder || lockedByPlanet ? '🔒 Недоступно' : `Купить · ${formatCompactCoins(cost)} 🪙`);
         return `
         <div class="ranks-preview-row ranks-preview-row--${status}" data-rank-level="${lv}">
             <div class="ranks-preview-pair">${shoulderPairHTML(r)}</div>
             <div class="ranks-preview-meta">
                 <div class="ranks-preview-level">Уровень ${lv}</div>
                 <div class="ranks-preview-name">${r.name}</div>
-                <div class="ranks-preview-salary">Пассивный доход: <b>+${salary.toLocaleString()}</b> / мин</div>
+                <div class="ranks-preview-salary">Пассивный доход: <b>+${formatCompactCoins(salary)}</b> / мин</div>
             </div>
             <button type="button" class="ranks-buy-btn ${owned || !canBuy ? 'disabled' : ''}" data-buy-rank="${lv}" ${owned || !canBuy ? 'disabled' : ''}>${btnText}</button>
         </div>`;
@@ -1137,7 +1167,7 @@ function updateUI() {
     const userLevelElem = document.getElementById('userLevel');
     if (userLevelElem) userLevelElem.textContent = `Уровень ${level} · ${levelNames[level]}`;
     
-    document.getElementById('coins').textContent = Math.floor(coins);
+    document.getElementById('coins').textContent = formatCompactCoins(coins);
     document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
     document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
     document.getElementById('clickPower').textContent = clickPower;
@@ -1145,10 +1175,10 @@ function updateUI() {
     document.getElementById('upgradeLevel').textContent = clickPower;
     document.getElementById('energyUpgradeLevel').textContent = energyUpgradeLevel;
     document.getElementById('passiveUpgradeLevel').textContent = passiveIncomeLevel;
-    document.getElementById('clickUpgradeCostDisplay').textContent = `${clickUpgradeCost} 🪙`;
+    document.getElementById('clickUpgradeCostDisplay').textContent = `${formatCompactCoins(clickUpgradeCost)} 🪙`;
     const energyCostEl = document.getElementById('energyUpgradeCostDisplay');
-    if (energyCostEl) energyCostEl.textContent = energyUpgradeLevel >= ENERGY_MAX_LEVEL ? '✅ Выполнено' : `${energyUpgradeCost} 🪙`;
-    document.getElementById('passiveUpgradeCostDisplay').textContent = `${passiveIncomeUpgradeCost} 🪙`;
+    if (energyCostEl) energyCostEl.textContent = energyUpgradeLevel >= ENERGY_MAX_LEVEL ? '✅ Выполнено' : `${formatCompactCoins(energyUpgradeCost)} 🪙`;
+    document.getElementById('passiveUpgradeCostDisplay').textContent = `${formatCompactCoins(passiveIncomeUpgradeCost)} 🪙`;
     const buyEnergyBtn = document.getElementById('buyEnergyUpgrade');
     if (buyEnergyBtn) {
         const isDone = energyUpgradeLevel >= ENERGY_MAX_LEVEL;
@@ -1162,7 +1192,7 @@ function updateUI() {
     document.getElementById('passiveIncomeRate').textContent = rate;
     updatePlanetByLevel();
     
-    document.getElementById('profileCoins').textContent = Math.floor(coins);
+    document.getElementById('profileCoins').textContent = formatCompactCoins(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
     document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
@@ -1190,7 +1220,7 @@ function updateUI() {
         const nextThresholds = [10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000];
         const target = nextThresholds[lv] || null;
         nextGoalEl.textContent = target
-            ? `🎯 Следующая цель: ${Math.max(0, target - Math.floor(coins)).toLocaleString()} монет до уровня ${lv + 1}`
+            ? `🎯 Следующая цель: ${formatCompactCoins(Math.max(0, target - Math.floor(coins)))} монет до уровня ${lv + 1}`
             : '🎯 Цель выполнена: максимальный уровень планеты достигнут';
     }
     updateTaskButtons();
@@ -1744,7 +1774,7 @@ function upgradeClick() {
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Сила клика +1 (${clickPower})`);
     } else if (clickPower >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage(`❌ Нужно ${cost} монет`, true);
+    else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
 
 function upgradeEnergy() {
@@ -1764,7 +1794,7 @@ function upgradeEnergy() {
         if (energyUpgradeLevel >= ENERGY_MAX_LEVEL) showMessage('✅ Выполнено: энергия прокачана до максимума');
         else showMessage(`✅ Макс. энергия +50 (${maxEnergy})`);
     } else if (energyUpgradeLevel >= ENERGY_MAX_LEVEL) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage(`❌ Нужно ${cost} монет`, true);
+    else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
 
 function upgradePassive() {
@@ -1779,7 +1809,7 @@ function upgradePassive() {
         updateUI(); saveGame(); syncWithBot();
         showMessage(`✅ Пассивный доход +5/мин (${getPassiveRate()}/мин)`);
     } else if (passiveIncomeLevel >= 100) showMessage('⚠️ Максимальный уровень!', true);
-    else showMessage(`❌ Нужно ${cost} монет`, true);
+    else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
 
 // ========== ЗАДАНИЯ ==========
@@ -1914,7 +1944,7 @@ function claimInstantChannelTask() {
 function applyTaskReward(reward) {
     if (typeof reward === 'number') {
         coins += reward;
-        return `🎉 +${reward} монет!`;
+        return `🎉 +${formatCompactCoins(reward)} монет!`;
     }
     if (reward?.type === 'passive') {
         const gained = Math.max(0, Number(reward.value) || 0);
@@ -2059,7 +2089,7 @@ async function loadLeaderboard() {
             const tid = p.telegram_id != null ? p.telegram_id : p.id;
             const isCurrent = userId != null && String(tid) === String(userId);
             if (isCurrent) currentRankText = `#${i + 1}`;
-            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i + 1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${coinsVal.toLocaleString()} 🪙</div><div class="leaderboard-level">Уровень ${lvl}</div></div>`;
+            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i + 1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${formatCompactCoins(coinsVal)} 🪙</div><div class="leaderboard-level">Уровень ${lvl}</div></div>`;
         }).join('');
         const profileRankEl = document.getElementById('profileRank');
         const friendsRankEl = document.getElementById('leaderboardRank');
@@ -2102,8 +2132,8 @@ async function loadFriends() {
         }
         container.innerHTML = refs.map((u) => {
             const name = (u.username && `@${u.username}`) || u.first_name || `ID ${u.telegram_id}`;
-            const coinsVal = Number(u.coins || 0).toLocaleString();
-            return `<div class="level-item"><span>${name}</span><span>${coinsVal} 🪙</span></div>`;
+            const coinsVal = Number(u.coins || 0);
+            return `<div class="level-item"><span>${name}</span><span>${formatCompactCoins(coinsVal)} 🪙</span></div>`;
         }).join('');
     } catch (e) {
         renderFriendsFallback();

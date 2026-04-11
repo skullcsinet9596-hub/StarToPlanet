@@ -607,6 +607,35 @@ app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {
 app.use('/admin', express.static('frontend/admin'));
 app.use(express.static('frontend'));
 
+/** Как во фронте: K/M/B/T, запятая как десятичный разделитель. */
+function formatCompactCoins(value) {
+    const x = Math.max(0, Math.floor(Number(value) || 0));
+    if (x < 1000) return String(x);
+    const tiers = [
+        { min: 1e12, div: 1e12, s: 'T' },
+        { min: 1e9, div: 1e9, s: 'B' },
+        { min: 1e6, div: 1e6, s: 'M' },
+        { min: 1e3, div: 1e3, s: 'K' }
+    ];
+    for (const { min, div, s } of tiers) {
+        if (x >= min) {
+            const d = x / div;
+            let num;
+            if (d >= 100) num = String(Math.floor(d));
+            else {
+                const r = Math.round(d * 10) / 10;
+                if (Number.isInteger(r)) num = String(r);
+                else {
+                    num = r.toFixed(1);
+                    if (num.endsWith('.0')) num = num.slice(0, -2);
+                }
+            }
+            return num.replace('.', ',') + s;
+        }
+    }
+    return String(x);
+}
+
 // ========== КОМАНДЫ БОТА (регистрация до listen, чтобы не терять апдейты) ==========
 bot.catch((err, ctx) => {
     console.error('❌ Telegraf:', err?.message || err, ctx?.update?.update_id);
@@ -632,7 +661,7 @@ async function sendStartWelcome(ctx, startPayloadRaw = '') {
 
         const rank = user ? await getPlayerRank(userId) : '—';
         const stats = user ? await getStats(userId) : { referralsCount: 0 };
-        const safeCoins = user ? Number(user.coins).toLocaleString() : '0';
+        const safeCoins = user ? formatCompactCoins(user.coins) : '0';
         const safeEnergy = user ? `${user.energy}/${user.max_energy}` : '100/100';
         const safeClickPower = user ? user.click_power : 1;
         const baseUrl = payloadRaw
@@ -724,7 +753,7 @@ bot.command('rating', async (ctx) => {
     for (let i = 0; i < top.length; i++) {
         const name = top[i].username || top[i].first_name || 'Аноним';
         const level = top[i].level || 1;
-        msg += `${i+1}. ${name} — ${Number(top[i].coins).toLocaleString()} 🪙 (Уровень ${level})\n`;
+        msg += `${i+1}. ${name} — ${formatCompactCoins(top[i].coins)} 🪙 (Уровень ${level})\n`;
     }
     await ctx.reply(msg, { parse_mode: 'HTML' });
 });
