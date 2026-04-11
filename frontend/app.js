@@ -247,6 +247,23 @@ function renderFriendsFallback() {
     if (profileReferrals) profileReferrals.textContent = '0';
 }
 
+// ========== ИГРОВЫЕ КОНСТАНТЫ (выше let: инициализаторы не могут ссылаться на const до объявления) ==========
+const ENERGY_MAX_VALUE = 500;
+const ENERGY_MAX_LEVEL = 10;
+const ONLINE_ENERGY_REGEN_PER_SEC = 2;
+/** База без прокачки: 2 энерг/с = 120/мин (офлайн считается через getEnergyRegenPerSecond()). */
+const OFFLINE_ENERGY_REGEN_PER_MIN = 120;
+/**
+ * Уровней прокачки скорости регенa: линейный рост от 2 энерг/с до цели на макс. уровне.
+ * При maxEnergy=500 и ур.=MAX: время 0→полной шкалы ≈ ENERGY_REGEN_FULL_TARGET_SEC (~2¾ мин, вилка ~2–5 мин).
+ */
+const ENERGY_REGEN_SPEED_MAX = 30;
+const ENERGY_REGEN_SPEED_BASE_COST = 250;
+/** Рост цены за уровень. */
+const ENERGY_REGEN_SPEED_COST_MULT = 1.06;
+/** Целевое время полного восстановления (сек) при maxEnergy = ENERGY_MAX_VALUE на макс. уровне прокачки. */
+const ENERGY_REGEN_FULL_TARGET_SEC = 165;
+
 // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
 let coins = 0;
 let energy = 100;
@@ -264,21 +281,6 @@ let passiveIncomeRate = 0;
 let taskPassiveBonusRate = 0;
 let instantTaskChannelOpened = false;
 let instantTasksClaimed = { channel: false };
-const ENERGY_MAX_VALUE = 500;
-const ENERGY_MAX_LEVEL = 10;
-const ONLINE_ENERGY_REGEN_PER_SEC = 2;
-/** База без прокачки: 2 энерг/с = 120/мин (офлайн считается через getEnergyRegenPerSecond()). */
-const OFFLINE_ENERGY_REGEN_PER_MIN = 120;
-/**
- * Уровней прокачки скорости регенa: линейный рост от 2 энерг/с до цели на макс. уровне.
- * При maxEnergy=500 и ур.=MAX: время 0→полной шкалы ≈ ENERGY_REGEN_FULL_TARGET_SEC (~2¾ мин, вилка ~2–5 мин).
- */
-const ENERGY_REGEN_SPEED_MAX = 30;
-const ENERGY_REGEN_SPEED_BASE_COST = 250;
-/** Рост цены за уровень. */
-const ENERGY_REGEN_SPEED_COST_MULT = 1.06;
-/** Целевое время полного восстановления (сек) при maxEnergy = ENERGY_MAX_VALUE на макс. уровне прокачки. */
-const ENERGY_REGEN_FULL_TARGET_SEC = 165;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
