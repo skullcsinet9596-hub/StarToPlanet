@@ -938,11 +938,11 @@ export async function getMarketingMetricsAdmin() {
 export async function getUsersEligibleForInactivityReminders({
     inactiveAfterHours = 4,
     reminderCooldownHours = 5,
-    limit = 25
+    limit = 500
 } = {}) {
     const h1 = Math.max(1, Math.min(168, Number(inactiveAfterHours) || 4));
     const h2 = Math.max(1, Math.min(168, Number(reminderCooldownHours) || 5));
-    const lim = Math.max(1, Math.min(100, Number(limit) || 25));
+    const lim = Math.max(1, Math.min(2000, Number(limit) || 500));
     try {
         const res = await pool.query(
             `

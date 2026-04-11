@@ -52,7 +52,7 @@ const ADMIN_TELEGRAM_ID = Number(process.env.ADMIN_TELEGRAM_ID || 0) || null;
 const INACTIVITY_REMINDER_ENABLED = process.env.INACTIVITY_REMINDER_ENABLED !== 'false';
 const INACTIVITY_REMINDER_AFTER_HOURS = Number(process.env.INACTIVITY_REMINDER_AFTER_HOURS || 4);
 const INACTIVITY_REMINDER_COOLDOWN_HOURS = Number(process.env.INACTIVITY_REMINDER_COOLDOWN_HOURS || 5);
-const INACTIVITY_REMINDER_BATCH = Number(process.env.INACTIVITY_REMINDER_BATCH || 25);
+const INACTIVITY_REMINDER_BATCH = Number(process.env.INACTIVITY_REMINDER_BATCH || 500);
 /** Секрет для GET /api/cron/inactivity-reminders — внешний cron (Render sleep) будет будить сервис */
 const INACTIVITY_REMINDER_CRON_SECRET = process.env.INACTIVITY_REMINDER_CRON_SECRET || '';
 
@@ -88,12 +88,12 @@ async function runInactivityReminderJob() {
     if (!ids.length) return { sent: 0, failed: 0 };
 
     const text = [
-        '🔔 <b>Star to Planet</b>',
+        '⚡ <b>Star to Planet</b>',
         '',
-        'Ты давно не заходил в игру — загляни, пока энергия и задания не простаивают ⚡',
-        'Забери пассивный доход и ежедневные награды.',
+        'Давно не было тебя в игре — зайди на пару минут.',
+        'Энергия, ежедневные задания и пассивный доход не должны простаивать.',
         '',
-        '<i>Превью текста напоминания (черновик для тестов).</i>'
+        'Нажми «Играть» ниже — быстро вернёшься в ритм 🚀'
     ].join('\n');
 
     let sent = 0;
@@ -108,7 +108,7 @@ async function runInactivityReminderJob() {
             });
             await markInactivityReminderSent(id);
             sent += 1;
-            await new Promise((r) => setTimeout(r, 75));
+            await new Promise((r) => setTimeout(r, 55));
         } catch (e) {
             failed += 1;
             const desc = String(e?.response?.description || e?.message || '');
