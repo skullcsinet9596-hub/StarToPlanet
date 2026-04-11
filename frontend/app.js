@@ -267,9 +267,18 @@ let instantTasksClaimed = { channel: false };
 const ENERGY_MAX_VALUE = 500;
 const ENERGY_MAX_LEVEL = 10;
 const ONLINE_ENERGY_REGEN_PER_SEC = 2;
+/** База без прокачки: 2 энерг/с = 120/мин (офлайн считается через getEnergyRegenPerSecond()). */
 const OFFLINE_ENERGY_REGEN_PER_MIN = 120;
-const ENERGY_REGEN_SPEED_MAX = 10;
+/**
+ * Уровней прокачки скорости регенa: линейный рост от 2 энерг/с до цели на макс. уровне.
+ * При maxEnergy=500 и ур.=MAX: время 0→полной шкалы ≈ ENERGY_REGEN_FULL_TARGET_SEC (~2¾ мин, вилка ~2–5 мин).
+ */
+const ENERGY_REGEN_SPEED_MAX = 30;
 const ENERGY_REGEN_SPEED_BASE_COST = 250;
+/** Рост цены за уровень. */
+const ENERGY_REGEN_SPEED_COST_MULT = 1.06;
+/** Целевое время полного восстановления (сек) при maxEnergy = ENERGY_MAX_VALUE на макс. уровне прокачки. */
+const ENERGY_REGEN_FULL_TARGET_SEC = 165;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
@@ -277,6 +286,9 @@ let lastSeenAtMs = Date.now();
 let offlineAppliedOnBoot = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let energyRegenIntervalId = null;
+/** Для dt в rechargeEnergy (фикс. тик, не равен «виртуальному» интервалу ур. 1–5). */
+let lastEnergyRegenAtMs = Date.now();
+const ENERGY_REGEN_TICK_MS = 100;
 let isRegistering = false;
 let lastBoostTapAt = 0;
 
@@ -419,7 +431,8 @@ function applyOfflineEarnings() {
     coins += offlineCoins;
     dailyCoinsEarned += offlineCoins;
     weeklyCoinsEarned += offlineCoins;
-    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * OFFLINE_ENERGY_REGEN_PER_MIN);
+    const regenPerMin = getEnergyRegenPerSecond() * 60;
+    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * regenPerMin);
     if (offlineEnergyRecover > 0) energy += offlineEnergyRecover;
     showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${formatCompactCoins(offlineMinutes * perMinute)} 🪙`);
 }
@@ -1191,8 +1204,13 @@ function updateUI() {
     if (regenLvEl) regenLvEl.textContent = String(energyRegenSpeedLevel);
     if (regenMaxEl) regenMaxEl.textContent = String(ENERGY_REGEN_SPEED_MAX);
     if (regenIntEl) {
-        const sec = getEnergyRegenIntervalMs() / 1000;
-        regenIntEl.textContent = sec < 1 ? String(sec.toFixed(1)).replace('.', ',') : sec.toFixed(1).replace('.', ',');
+        const r = getEnergyRegenPerSecond();
+        const period = 1 / r;
+        if (period < 0.095) {
+            regenIntEl.textContent = `~${Math.round(period * 1000)} мс/энерг · офлайн так же`;
+        } else {
+            regenIntEl.textContent = `~${r.toFixed(1).replace('.', ',')} энерг/с · офлайн так же`;
+        }
     }
     if (regenCostEl) {
         regenCostEl.textContent =
@@ -1431,7 +1449,9 @@ function normalizeUpgradeCosts() {
     const expectedClickCost = Math.floor(100 * Math.pow(1.3, Math.max(0, clickUpgradeLevel - 1)));
     const expectedEnergyCost = Math.floor(200 * Math.pow(1.25, Math.max(0, energyUpgradeLevel - 1)));
     const expectedPassiveCost = Math.floor(500 * Math.pow(1.25, Math.max(0, passiveIncomeLevel)));
-    const expectedRegenSpeedCost = Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
+    const expectedRegenSpeedCost = Math.floor(
+        ENERGY_REGEN_SPEED_BASE_COST * Math.pow(ENERGY_REGEN_SPEED_COST_MULT, energyRegenSpeedLevel)
+    );
 
     if (!Number.isFinite(clickUpgradeCost) || clickUpgradeCost !== expectedClickCost) {
         clickUpgradeCost = expectedClickCost;
@@ -1653,7 +1673,7 @@ async function loadFromServer() {
                     : 0;
                 energyRegenSpeedCost = Number.isFinite(Number(data.energyRegenSpeedCost))
                     ? Math.floor(Number(data.energyRegenSpeedCost))
-                    : Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
+                    : Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(ENERGY_REGEN_SPEED_COST_MULT, energyRegenSpeedLevel));
                 taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate)) ? Number(data.taskPassiveBonusRate) : (taskPassiveBonusRate || 0);
                 if (Number.isFinite(Number(data.ownedRankLevel))) {
                     const serverOwnedRank = clampInt(data.ownedRankLevel, -1, 10);
@@ -1871,13 +1891,15 @@ function upgradeEnergyRegenSpeed() {
         energyRegenSpeedLevel++;
         dailyUpgradesBought++;
         weeklyUpgradesBought++;
-        energyRegenSpeedCost = Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(1.28, energyRegenSpeedLevel));
+        energyRegenSpeedCost = Math.floor(
+            ENERGY_REGEN_SPEED_BASE_COST * Math.pow(ENERGY_REGEN_SPEED_COST_MULT, energyRegenSpeedLevel)
+        );
         rescheduleEnergyRegen();
         updateUI();
         saveGame();
         syncWithBot();
-        const s = (getEnergyRegenIntervalMs() / 1000).toFixed(1).replace('.', ',');
-        showMessage(`✅ Скорость энергии: шаг каждые ${s} с`);
+        const r = getEnergyRegenPerSecond();
+        showMessage(`✅ Скорость энергии: ~${r.toFixed(1).replace('.', ',')} энерг/с (онлайн и офлайн)`);
     } else if (energyRegenSpeedLevel >= ENERGY_REGEN_SPEED_MAX) showMessage('⚠️ Максимальный уровень!', true);
     else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
@@ -2345,16 +2367,21 @@ function applyPassiveIncome() {
     } 
 }
 
-/** Интервал тика онлайн-регена: 0 ур. = 1 с; с 1 ур. 1000/(1+9*L) мс, минимум 0,1 с (ур. 1 → 0,1 с). */
-function getEnergyRegenIntervalMs() {
+/**
+ * Скорость восстановления энергии (энерг/с), онлайн и офлайн одинаково.
+ * Ур. 0: база ONLINE_ENERGY_REGEN_PER_SEC (2/с → 500 энергии за ~250 с).
+ * Ур. 1…MAX: линейно к rMax, где rMax сдвинут от базы пропорционально maxEnergy/ENERGY_MAX_VALUE,
+ * так что при maxEnergy=500 на макс. уровне: 500/rMax ≈ ENERGY_REGEN_FULL_TARGET_SEC (≈2 мин 45 с).
+ */
+function getEnergyRegenPerSecond() {
     const lv = clampInt(energyRegenSpeedLevel, 0, ENERGY_REGEN_SPEED_MAX);
-    if (lv <= 0) return 1000;
-    return Math.max(100, Math.round(1000 / (1 + 9 * lv)));
-}
-
-function getEnergyRegenTickAmount() {
-    const ms = getEnergyRegenIntervalMs();
-    return Math.max(1, Math.ceil((ONLINE_ENERGY_REGEN_PER_SEC * ms) / 1000));
+    const r0 = ONLINE_ENERGY_REGEN_PER_SEC;
+    if (lv <= 0) return r0;
+    const rAtFullCap = ENERGY_MAX_VALUE / ENERGY_REGEN_FULL_TARGET_SEC;
+    const scaleToCap = Math.min(1, Math.max(0, maxEnergy) / ENERGY_MAX_VALUE);
+    const rMax = r0 + (rAtFullCap - r0) * scaleToCap;
+    const t = lv / ENERGY_REGEN_SPEED_MAX;
+    return r0 + (rMax - r0) * t;
 }
 
 function rescheduleEnergyRegen() {
@@ -2362,15 +2389,20 @@ function rescheduleEnergyRegen() {
         clearInterval(energyRegenIntervalId);
         energyRegenIntervalId = null;
     }
-    energyRegenIntervalId = setInterval(rechargeEnergy, getEnergyRegenIntervalMs());
+    lastEnergyRegenAtMs = Date.now();
+    energyRegenIntervalId = setInterval(rechargeEnergy, ENERGY_REGEN_TICK_MS);
 }
 
 function rechargeEnergy() {
-    if (energy < maxEnergy) {
-        const energyToAdd = Math.min(getEnergyRegenTickAmount(), maxEnergy - energy);
-        energy += energyToAdd;
-        updateUI();
-    }
+    if (energy >= maxEnergy) return;
+    const now = Date.now();
+    let dt = (now - lastEnergyRegenAtMs) / 1000;
+    lastEnergyRegenAtMs = now;
+    if (!Number.isFinite(dt) || dt <= 0) dt = ENERGY_REGEN_TICK_MS / 1000;
+    if (dt > 3) dt = 3;
+    const add = getEnergyRegenPerSecond() * dt;
+    energy = Math.min(maxEnergy, energy + add);
+    updateUI();
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========

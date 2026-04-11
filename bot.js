@@ -376,7 +376,7 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
             energy_upgrade_level: Math.max(1, int(gameData.energyUpgradeLevel, 1)),
             energy_upgrade_cost: Math.max(0, int(gameData.energyUpgradeCost, 200)),
             passive_income_cost: Math.max(0, int(gameData.passiveIncomeUpgradeCost, 500)),
-            energy_regen_speed_level: Math.max(0, Math.min(20, int(gameData.energyRegenSpeedLevel, 0))),
+            energy_regen_speed_level: Math.max(0, Math.min(30, int(gameData.energyRegenSpeedLevel, 0))),
             energy_regen_speed_cost: Math.max(0, int(gameData.energyRegenSpeedCost, 250)),
             sound_enabled: Boolean(gameData.soundEnabled),
             task_state: {
