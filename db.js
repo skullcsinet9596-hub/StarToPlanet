@@ -71,6 +71,7 @@ export async function initDB() {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS task_state JSONB DEFAULT '{}'::jsonb`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS task_passive_bonus_rate INTEGER DEFAULT 0`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS owned_rank_level INTEGER DEFAULT -1`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_inactivity_reminder_at TIMESTAMP`);
 
         // Таблица рефералов
         await pool.query(`
@@ -926,5 +927,52 @@ export async function getMarketingMetricsAdmin() {
     } catch (err) {
         console.error('Ошибка getMarketingMetricsAdmin:', err.message);
         return null;
+    }
+}
+
+/**
+ * Игроки без активности (last_seen_at — последний /api/save), которым пора напоминание.
+ * @param inactiveAfterHours — считать «давно не заходил», если нет сохранения столько часов
+ * @param reminderCooldownHours — не слать повторно чаще, чем раз в столько часов
+ */
+export async function getUsersEligibleForInactivityReminders({
+    inactiveAfterHours = 4,
+    reminderCooldownHours = 5,
+    limit = 25
+} = {}) {
+    const h1 = Math.max(1, Math.min(168, Number(inactiveAfterHours) || 4));
+    const h2 = Math.max(1, Math.min(168, Number(reminderCooldownHours) || 5));
+    const lim = Math.max(1, Math.min(100, Number(limit) || 25));
+    try {
+        const res = await pool.query(
+            `
+            SELECT telegram_id
+            FROM users
+            WHERE COALESCE(last_seen_at, created_at) < NOW() - ($1::int * INTERVAL '1 hour')
+              AND (
+                last_inactivity_reminder_at IS NULL
+                OR last_inactivity_reminder_at < NOW() - ($2::int * INTERVAL '1 hour')
+              )
+            ORDER BY COALESCE(last_seen_at, created_at) ASC
+            LIMIT $3
+            `,
+            [h1, h2, lim]
+        );
+        return res.rows.map((r) => Number(r.telegram_id)).filter(Boolean);
+    } catch (err) {
+        console.error('Ошибка getUsersEligibleForInactivityReminders:', err.message);
+        return [];
+    }
+}
+
+export async function markInactivityReminderSent(telegramId) {
+    if (!telegramId || isNaN(parseInt(telegramId))) return;
+    try {
+        await pool.query(
+            'UPDATE users SET last_inactivity_reminder_at = CURRENT_TIMESTAMP WHERE telegram_id = $1',
+            [telegramId]
+        );
+    } catch (err) {
+        console.error('Ошибка markInactivityReminderSent:', err.message);
     }
 }

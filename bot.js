@@ -26,7 +26,9 @@ import {
     trackBotStart,
     getMarketingMetricsAdmin,
     ensureLeaderboardRow,
-    attachReferrerForExistingUser
+    attachReferrerForExistingUser,
+    getUsersEligibleForInactivityReminders,
+    markInactivityReminderSent
 } from './db.js';
 
 dotenv.config();
@@ -45,6 +47,14 @@ const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'virtual_wallet').toLo
 const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET || crypto.createHash('sha256').update(BOT_TOKEN + ':pay').digest('hex').slice(0, 24);
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const ADMIN_TELEGRAM_ID = Number(process.env.ADMIN_TELEGRAM_ID || 0) || null;
+
+/** Напоминания в личку бота неактивным (last_seen = последний save). Отключить: INACTIVITY_REMINDER_ENABLED=false */
+const INACTIVITY_REMINDER_ENABLED = process.env.INACTIVITY_REMINDER_ENABLED !== 'false';
+const INACTIVITY_REMINDER_AFTER_HOURS = Number(process.env.INACTIVITY_REMINDER_AFTER_HOURS || 4);
+const INACTIVITY_REMINDER_COOLDOWN_HOURS = Number(process.env.INACTIVITY_REMINDER_COOLDOWN_HOURS || 5);
+const INACTIVITY_REMINDER_BATCH = Number(process.env.INACTIVITY_REMINDER_BATCH || 25);
+/** Секрет для GET /api/cron/inactivity-reminders — внешний cron (Render sleep) будет будить сервис */
+const INACTIVITY_REMINDER_CRON_SECRET = process.env.INACTIVITY_REMINDER_CRON_SECRET || '';
 
 const PREMIUM_PRODUCTS = {
     moon: { title: 'Уровень 8 · Луна', amountRub: 50, amountXTR: 50, dbField: 'has_moon' },
@@ -67,6 +77,51 @@ const WEBHOOK_PATH = `/tg-hook/${webhookSecret}`;
 
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
+
+async function runInactivityReminderJob() {
+    if (!INACTIVITY_REMINDER_ENABLED) return { skipped: true, sent: 0, failed: 0 };
+    const ids = await getUsersEligibleForInactivityReminders({
+        inactiveAfterHours: INACTIVITY_REMINDER_AFTER_HOURS,
+        reminderCooldownHours: INACTIVITY_REMINDER_COOLDOWN_HOURS,
+        limit: INACTIVITY_REMINDER_BATCH
+    });
+    if (!ids.length) return { sent: 0, failed: 0 };
+
+    const text = [
+        '🔔 <b>Star to Planet</b>',
+        '',
+        'Ты давно не заходил в игру — загляни, пока энергия и задания не простаивают ⚡',
+        'Забери пассивный доход и ежедневные награды.',
+        '',
+        '<i>Превью текста напоминания (черновик для тестов).</i>'
+    ].join('\n');
+
+    let sent = 0;
+    let failed = 0;
+    for (const id of ids) {
+        try {
+            await bot.telegram.sendMessage(id, text, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[{ text: '✨ ИГРАТЬ ✨', web_app: { url: APP_URL } }]]
+                }
+            });
+            await markInactivityReminderSent(id);
+            sent += 1;
+            await new Promise((r) => setTimeout(r, 75));
+        } catch (e) {
+            failed += 1;
+            const desc = String(e?.response?.description || e?.message || '');
+            if (/403|blocked|deactivated|chat not found/i.test(desc)) {
+                await markInactivityReminderSent(id);
+            }
+        }
+    }
+    if (sent || failed) {
+        console.log(`📣 Напоминания неактивным: отправлено ${sent}, ошибок ${failed}`);
+    }
+    return { sent, failed };
+}
 
 const rateBuckets = new Map();
 function rateLimit(key, maxHits, windowMs) {
@@ -144,6 +199,27 @@ app.get('/healthz', (req, res) => {
         uptimeSec: Math.floor(process.uptime()),
         timestamp: new Date().toISOString()
     });
+});
+
+/** Внешний cron (cron-job.org, UptimeRobot): раз в 1–2 ч, чтобы на Render будить сервис и слать напоминания */
+app.get('/api/cron/inactivity-reminders', async (req, res) => {
+    if (!INACTIVITY_REMINDER_CRON_SECRET) {
+        res.status(503).json({ ok: false, message: 'Задайте INACTIVITY_REMINDER_CRON_SECRET в env' });
+        return;
+    }
+    const q = req.query.secret?.toString() || '';
+    const h = req.headers['x-cron-secret']?.toString() || '';
+    if (q !== INACTIVITY_REMINDER_CRON_SECRET && h !== INACTIVITY_REMINDER_CRON_SECRET) {
+        res.status(403).json({ ok: false, message: 'Неверный секрет' });
+        return;
+    }
+    try {
+        const r = await runInactivityReminderJob();
+        res.json({ ok: true, ...r });
+    } catch (e) {
+        console.error('cron inactivity-reminders:', e);
+        res.status(500).json({ ok: false, message: e?.message || 'error' });
+    }
 });
 
 if (useWebhookMode) {
@@ -722,4 +798,19 @@ if (useWebhookMode) {
     await bot.telegram.deleteWebhook({ drop_pending_updates: false });
     await bot.launch();
     console.log('🤖 Бот в режиме long polling (убедись, что нет второго инстанса с тем же BOT_TOKEN)');
+}
+
+if (INACTIVITY_REMINDER_ENABLED) {
+    const tickMs = 60 * 60 * 1000;
+    setInterval(() => {
+        runInactivityReminderJob().catch((e) => console.error('inactivity reminder tick:', e));
+    }, tickMs);
+    setTimeout(() => {
+        runInactivityReminderJob().catch((e) => console.error('inactivity reminder initial:', e));
+    }, 150_000);
+    if (INACTIVITY_REMINDER_CRON_SECRET) {
+        console.log('📅 Напоминания: cron GET /api/cron/inactivity-reminders?secret=… + таймер раз в 1 ч');
+    } else {
+        console.log('📅 Напоминания: таймер раз в 1 ч (для Render sleep задайте INACTIVITY_REMINDER_CRON_SECRET и внешний cron)');
+    }
 }
