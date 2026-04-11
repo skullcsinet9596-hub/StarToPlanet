@@ -62,3 +62,32 @@ pre {
 .tab.active { background: #2e8b57; }
 .tabPanel { display: none; }
 .tabPanel.active { display: block; }
+.hint { font-size: 12px; color: #8a9aad; margin: 0 0 10px; line-height: 1.4; }
+.hint code { font-size: 11px; color: #b8c4d6; }
+.player-picker {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.2fr);
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .player-picker { grid-template-columns: 1fr; }
+}
+#playerListSelect {
+  width: 100%;
+  font-size: 13px;
+  line-height: 1.35;
+  min-height: 280px;
+}
+.player-picker-side { min-width: 0; }
+.row.tight { margin-bottom: 6px; }
+label.inline-limit { flex-direction: row; align-items: center; gap: 8px; min-width: 120px; }
+label.inline-limit select { min-width: 72px; }
+.referrer-box {
+  border: 1px solid #2f3a4d;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #121826;
+}

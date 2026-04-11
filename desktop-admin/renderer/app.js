@@ -8,6 +8,10 @@ const elems = {
   verifyBtn: document.getElementById('verifyBtn'),
   clearCredsBtn: document.getElementById('clearCredsBtn'),
 
+  playerListLimit: document.getElementById('playerListLimit'),
+  playerSearchInput: document.getElementById('playerSearchInput'),
+  refreshPlayerListBtn: document.getElementById('refreshPlayerListBtn'),
+  playerListSelect: document.getElementById('playerListSelect'),
   playerTelegramId: document.getElementById('playerTelegramId'),
   loadPlayerBtn: document.getElementById('loadPlayerBtn'),
   coinsInput: document.getElementById('coinsInput'),
@@ -15,6 +19,8 @@ const elems = {
   moonInput: document.getElementById('moonInput'),
   earthInput: document.getElementById('earthInput'),
   sunInput: document.getElementById('sunInput'),
+  referrerIdInput: document.getElementById('referrerIdInput'),
+  saveReferrerBtn: document.getElementById('saveReferrerBtn'),
   savePlayerBtn: document.getElementById('savePlayerBtn'),
   deletePlayerBtn: document.getElementById('deletePlayerBtn'),
   playerOut: document.getElementById('playerOut'),
@@ -57,6 +63,14 @@ function jsonOut(el, data) {
   el.textContent = JSON.stringify(data, null, 2);
 }
 
+function formatPlayerListLabel(u) {
+  const id = u.telegram_id;
+  const name = (u.first_name || '').trim() || '—';
+  const un = u.username ? `@${u.username}` : '';
+  const coins = Number(u.coins || 0);
+  return `${id} · ${name} ${un} · ${coins} 🪙`;
+}
+
 function bindTabs() {
   const tabs = document.querySelectorAll('.tab');
   const panels = document.querySelectorAll('.tabPanel');
@@ -69,6 +83,23 @@ function bindTabs() {
       if (panel) panel.classList.add('active');
     });
   });
+}
+
+function applyLoadedUser(user) {
+  if (!user) return;
+  loadedPlayer = user;
+  const tid = String(user.telegram_id);
+  elems.playerTelegramId.value = tid;
+  elems.referralTelegramId.value = tid;
+  elems.coinsInput.value = Number(user.coins || 0);
+  elems.levelInput.value = Number(user.level || 1);
+  elems.moonInput.value = String(Boolean(user.has_moon));
+  elems.earthInput.value = String(Boolean(user.has_earth));
+  elems.sunInput.value = String(Boolean(user.has_sun));
+  const ref = user.referrer_id;
+  elems.referrerIdInput.value = ref != null && ref !== '' ? String(ref) : '';
+  jsonOut(elems.playerOut, user);
+  setStatus(`Игрок ${tid} загружен`);
 }
 
 async function initCreds() {
@@ -116,7 +147,53 @@ async function onClearCreds() {
   elems.baseUrl.value = '';
   elems.adminToken.value = '';
   elems.adminTelegramId.value = '';
+  elems.playerListSelect.innerHTML = '';
   setStatus('Credentials очищены');
+}
+
+async function onRefreshPlayerList() {
+  elems.refreshPlayerListBtn.disabled = true;
+  try {
+    const q = elems.playerSearchInput.value.trim();
+    const limit = Number(elems.playerListLimit.value || 200);
+    const data = await window.desktopAdmin.loadUsers(getCreds(), q, limit);
+    const users = Array.isArray(data.users) ? data.users : [];
+    const sel = elems.playerListSelect;
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = `— Игроков: ${users.length} —`;
+    sel.appendChild(opt0);
+    for (const u of users) {
+      const o = document.createElement('option');
+      o.value = String(u.telegram_id);
+      o.textContent = formatPlayerListLabel(u);
+      sel.appendChild(o);
+    }
+    if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+    setStatus(`Список обновлён (${users.length})`);
+  } catch (err) {
+    setStatus(window.desktopAdmin.formatError(err, 'Ошибка списка игроков'), true);
+  } finally {
+    elems.refreshPlayerListBtn.disabled = false;
+  }
+}
+
+async function onPlayerListSelectChange() {
+  const id = elems.playerListSelect.value.trim();
+  if (!id) return;
+  elems.playerListSelect.disabled = true;
+  try {
+    const data = await window.desktopAdmin.loadUserById(getCreds(), id);
+    const user = data.user;
+    if (!user) throw new Error('Пустой ответ');
+    applyLoadedUser(user);
+  } catch (err) {
+    setStatus(window.desktopAdmin.formatError(err, 'Ошибка загрузки профиля'), true);
+  } finally {
+    elems.playerListSelect.disabled = false;
+  }
 }
 
 async function onLoadPlayer() {
@@ -124,18 +201,14 @@ async function onLoadPlayer() {
   try {
     const query = elems.playerTelegramId.value.trim();
     if (!query) throw new Error('Введите Telegram ID игрока');
-    const data = await window.desktopAdmin.loadUsers(getCreds(), query);
-    const user = Array.isArray(data.users) ? data.users.find((u) => String(u.telegram_id) === query) || data.users[0] : null;
+    const data = await window.desktopAdmin.loadUserById(getCreds(), query);
+    const user = data.user;
     if (!user) throw new Error('Игрок не найден');
-    loadedPlayer = user;
-    elems.playerTelegramId.value = String(user.telegram_id);
-    elems.coinsInput.value = Number(user.coins || 0);
-    elems.levelInput.value = Number(user.level || 1);
-    elems.moonInput.value = String(Boolean(user.has_moon));
-    elems.earthInput.value = String(Boolean(user.has_earth));
-    elems.sunInput.value = String(Boolean(user.has_sun));
-    jsonOut(elems.playerOut, user);
-    setStatus(`Игрок ${user.telegram_id} загружен`);
+    applyLoadedUser(user);
+    const sel = elems.playerListSelect;
+    if ([...sel.options].some((o) => o.value === String(user.telegram_id))) {
+      sel.value = String(user.telegram_id);
+    }
   } catch (err) {
     setStatus(window.desktopAdmin.formatError(err, 'Ошибка загрузки игрока'), true);
   } finally {
@@ -147,7 +220,7 @@ async function onSavePlayer() {
   elems.savePlayerBtn.disabled = true;
   try {
     const telegramId = elems.playerTelegramId.value.trim();
-    if (!telegramId) throw new Error('Введите Telegram ID игрока');
+    if (!telegramId) throw new Error('Нет выбранного игрока');
     const patch = {
       coins: Number(elems.coinsInput.value || 0),
       level: Number(elems.levelInput.value || 1),
@@ -156,9 +229,9 @@ async function onSavePlayer() {
       has_sun: toBool(elems.sunInput.value)
     };
     const data = await window.desktopAdmin.adjustUser(getCreds(), telegramId, patch);
-    loadedPlayer = data.user || loadedPlayer;
-    jsonOut(elems.playerOut, data);
-    setStatus(`Игрок ${telegramId} обновлен`);
+    if (data.user) applyLoadedUser(data.user);
+    else jsonOut(elems.playerOut, data);
+    setStatus(`Игрок ${telegramId} обновлён`);
   } catch (err) {
     setStatus(window.desktopAdmin.formatError(err, 'Ошибка изменения игрока'), true);
   } finally {
@@ -166,11 +239,28 @@ async function onSavePlayer() {
   }
 }
 
+async function onSaveReferrer() {
+  elems.saveReferrerBtn.disabled = true;
+  try {
+    const telegramId = elems.playerTelegramId.value.trim();
+    if (!telegramId) throw new Error('Нет выбранного игрока');
+    const raw = elems.referrerIdInput.value.trim();
+    const data = await window.desktopAdmin.setReferrer(getCreds(), telegramId, raw === '' ? null : raw);
+    if (data.user) applyLoadedUser(data.user);
+    else jsonOut(elems.playerOut, data);
+    setStatus(`Реферер для ${telegramId} обновлён`);
+  } catch (err) {
+    setStatus(window.desktopAdmin.formatError(err, 'Ошибка смены реферера'), true);
+  } finally {
+    elems.saveReferrerBtn.disabled = false;
+  }
+}
+
 async function onDeletePlayer() {
   elems.deletePlayerBtn.disabled = true;
   try {
     const telegramId = elems.playerTelegramId.value.trim();
-    if (!telegramId) throw new Error('Введите Telegram ID игрока');
+    if (!telegramId) throw new Error('Нет выбранного игрока');
     const approved = window.confirm(`Удалить профиль ${telegramId}? Это действие необратимо.`);
     if (!approved) {
       setStatus('Удаление отменено');
@@ -179,13 +269,17 @@ async function onDeletePlayer() {
     const data = await window.desktopAdmin.deleteUser(getCreds(), telegramId);
     loadedPlayer = null;
     elems.playerTelegramId.value = '';
+    elems.referralTelegramId.value = '';
     elems.coinsInput.value = '';
     elems.levelInput.value = '';
     elems.moonInput.value = 'false';
     elems.earthInput.value = 'false';
     elems.sunInput.value = 'false';
+    elems.referrerIdInput.value = '';
+    elems.playerListSelect.value = '';
     jsonOut(elems.playerOut, data);
     setStatus(`Профиль ${telegramId} удален`);
+    await onRefreshPlayerList();
   } catch (err) {
     setStatus(window.desktopAdmin.formatError(err, 'Ошибка удаления профиля'), true);
   } finally {
@@ -255,8 +349,11 @@ function bindEvents() {
   elems.saveCredsBtn.addEventListener('click', onSaveCreds);
   elems.verifyBtn.addEventListener('click', onVerify);
   elems.clearCredsBtn.addEventListener('click', onClearCreds);
+  elems.refreshPlayerListBtn.addEventListener('click', onRefreshPlayerList);
+  elems.playerListSelect.addEventListener('change', onPlayerListSelectChange);
   elems.loadPlayerBtn.addEventListener('click', onLoadPlayer);
   elems.savePlayerBtn.addEventListener('click', onSavePlayer);
+  elems.saveReferrerBtn.addEventListener('click', onSaveReferrer);
   elems.deletePlayerBtn.addEventListener('click', onDeletePlayer);
   elems.loadReferralsBtn.addEventListener('click', onLoadReferrals);
   elems.loadPaymentsBtn.addEventListener('click', onLoadPayments);

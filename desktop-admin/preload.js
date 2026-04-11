@@ -35,7 +35,13 @@ const api = {
   clearCreds: () => ipcRenderer.invoke('creds:clear'),
 
   verifyAccess: async (creds) => apiFetch(creds, '/api/admin/users?q=&limit=1'),
-  loadUsers: async (creds, query) => apiFetch(creds, `/api/admin/users?q=${encodeURIComponent(query || '')}`),
+  loadUsers: async (creds, query, limit = 200) =>
+    apiFetch(
+      creds,
+      `/api/admin/users?q=${encodeURIComponent(query || '')}&limit=${encodeURIComponent(String(limit))}`
+    ),
+  loadUserById: async (creds, telegramId) =>
+    apiFetch(creds, `/api/admin/user/${encodeURIComponent(String(telegramId))}`),
   loadReferrals: async (creds, telegramId, depth = 4) =>
     apiFetch(creds, `/api/admin/referrals/${encodeURIComponent(telegramId)}?depth=${encodeURIComponent(depth)}`),
   loadPayments: async (creds, limit = 100) =>
@@ -51,7 +57,13 @@ const api = {
     apiFetch(creds, '/api/admin/delete-user', {
       method: 'POST',
       body: JSON.stringify({ telegramId: Number(telegramId) })
-    })
+    }),
+  setReferrer: async (creds, telegramId, referrerId) => {
+    const body = { telegramId: Number(telegramId) };
+    if (referrerId === '' || referrerId === undefined || referrerId === null) body.referrerId = null;
+    else body.referrerId = Number(referrerId);
+    return apiFetch(creds, '/api/admin/set-referrer', { method: 'POST', body: JSON.stringify(body) });
+  }
 };
 
 contextBridge.exposeInMainWorld('desktopAdmin', {

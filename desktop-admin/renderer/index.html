@@ -42,27 +42,53 @@
       </div>
 
       <div id="playerTab" class="tabPanel active">
-        <h2>Поиск и изменение игрока</h2>
+        <h2>Игрок из БД</h2>
+        <p class="hint">Список приходит с сервера (<code>/api/admin/users</code>). Выберите строку — подтянется полный профиль. Поиск по ID или части имени/username.</p>
         <div class="row">
-          <input id="playerTelegramId" placeholder="Telegram ID игрока" />
-          <button id="loadPlayerBtn">Загрузить</button>
+          <label class="inline-limit">Лимит
+            <select id="playerListLimit">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+            </select>
+          </label>
+          <input id="playerSearchInput" placeholder="Поиск: ID или имя…" style="min-width:200px;flex:1" />
+          <button id="refreshPlayerListBtn" type="button">Обновить список</button>
         </div>
-        <div class="grid3">
-          <label>coins<input id="coinsInput" type="number" /></label>
-          <label>level<input id="levelInput" type="number" min="1" /></label>
-          <label>has_moon
-            <select id="moonInput"><option value="false">false</option><option value="true">true</option></select>
-          </label>
-          <label>has_earth
-            <select id="earthInput"><option value="false">false</option><option value="true">true</option></select>
-          </label>
-          <label>has_sun
-            <select id="sunInput"><option value="false">false</option><option value="true">true</option></select>
-          </label>
-        </div>
-        <div class="row">
-          <button id="savePlayerBtn">Применить изменения</button>
-          <button id="deletePlayerBtn" class="danger">Удалить профиль</button>
+        <div class="player-picker">
+          <select id="playerListSelect" size="14"></select>
+          <div class="player-picker-side">
+            <div class="row tight">
+              <input id="playerTelegramId" placeholder="Telegram ID (выбранный)" />
+              <button id="loadPlayerBtn" type="button">Загрузить по ID</button>
+            </div>
+            <div class="grid3">
+              <label>coins<input id="coinsInput" type="number" /></label>
+              <label>level<input id="levelInput" type="number" min="1" /></label>
+              <label>has_moon
+                <select id="moonInput"><option value="false">false</option><option value="true">true</option></select>
+              </label>
+              <label>has_earth
+                <select id="earthInput"><option value="false">false</option><option value="true">true</option></select>
+              </label>
+              <label>has_sun
+                <select id="sunInput"><option value="false">false</option><option value="true">true</option></select>
+              </label>
+            </div>
+            <div class="referrer-box">
+              <label>Реферер (referrer_id)
+                <input id="referrerIdInput" type="text" inputmode="numeric" placeholder="пусто = отвязать" />
+              </label>
+              <div class="row tight">
+                <button id="saveReferrerBtn" type="button" class="secondary">Сохранить реферера</button>
+              </div>
+            </div>
+            <div class="row">
+              <button id="savePlayerBtn">Применить монеты / уровень / премиум</button>
+              <button id="deletePlayerBtn" class="danger">Удалить профиль</button>
+            </div>
+          </div>
         </div>
         <pre id="playerOut"></pre>
       </div>

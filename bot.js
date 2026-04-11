@@ -23,6 +23,7 @@ import {
     getEconomyConfig,
     adjustUserAdmin,
     deleteUserAdmin,
+    setUserReferrerAdmin,
     trackBotStart,
     getMarketingMetricsAdmin,
     ensureLeaderboardRow,
@@ -336,7 +337,10 @@ app.get('/api/friends/:userId', async (req, res) => {
             success: true,
             referralsCount: Number(stats.referralsCount || 0),
             totalReferralBonus: Number(stats.totalReferralBonus || 0),
-            referrals: Array.isArray(stats.referrals) ? stats.referrals : []
+            referrals: Array.isArray(stats.referrals) ? stats.referrals : [],
+            referralLine2: Array.isArray(stats.referralLine2) ? stats.referralLine2 : [],
+            referralLine3: Array.isArray(stats.referralLine3) ? stats.referralLine3 : [],
+            referralLine4: Array.isArray(stats.referralLine4) ? stats.referralLine4 : []
         });
     } catch (e) {
         console.error('Ошибка /api/friends/:userId:', e);
@@ -548,6 +552,20 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     res.json({ success: true, users: rows });
 });
 
+app.get('/api/admin/user/:telegramId', requireAdmin, async (req, res) => {
+    const telegramId = parseInt(req.params.telegramId, 10);
+    if (!telegramId) {
+        res.status(400).json({ success: false, message: 'Неверный telegramId' });
+        return;
+    }
+    const user = await getUser(telegramId);
+    if (!user) {
+        res.status(404).json({ success: false, message: 'Пользователь не найден' });
+        return;
+    }
+    res.json({ success: true, user });
+});
+
 app.get('/api/admin/referrals/:telegramId', requireAdmin, async (req, res) => {
     const telegramId = parseInt(req.params.telegramId);
     const depth = Number(req.query.depth || 4);
@@ -593,6 +611,21 @@ app.post('/api/admin/adjust-user', requireAdmin, async (req, res) => {
     }
     const updated = await adjustUserAdmin(telegramId, patch);
     res.json({ success: true, user: updated });
+});
+
+app.post('/api/admin/set-referrer', requireAdmin, async (req, res) => {
+    const telegramId = parseInt(req.body?.telegramId, 10);
+    const rawRef = req.body?.referrerId;
+    if (!telegramId) {
+        res.status(400).json({ success: false, message: 'Неверный telegramId' });
+        return;
+    }
+    const result = await setUserReferrerAdmin(telegramId, rawRef);
+    if (!result?.ok) {
+        res.status(400).json({ success: false, message: result?.message || 'Не удалось обновить реферера' });
+        return;
+    }
+    res.json({ success: true, user: result.user });
 });
 
 app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {

@@ -579,7 +579,7 @@ if (!telegramId || isNaN(parseInt(telegramId))) return null;
     
 try {
 const user = await getUser(telegramId);
-const referrals = await getReferrals(telegramId);
+const network = await getReferralNetworkByLines(telegramId);
         
 const leaderboardPositionRes = await pool.query(`
 SELECT COUNT(*) + 1 as position
@@ -589,8 +589,11 @@ WHERE coins > (SELECT coins FROM leaderboard WHERE telegram_id = $1)
         
 return {
 user,
-referralsCount: referrals.length,
-referrals,
+referralsCount: Number(user?.referrals_count ?? network.line1.length),
+referrals: network.line1,
+referralLine2: network.line2,
+referralLine3: network.line3,
+referralLine4: network.line4,
 leaderboardPosition: leaderboardPositionRes.rows[0]?.position || 1,
 totalReferralBonus: (user?.referrals_count || 0) * 1000
 };
@@ -615,6 +618,58 @@ return res.rows;
 console.error('Ошибка getReferrals:', err.message);
 return [];
 }
+}
+
+/** Лимиты отображения по линиям (как на экране «Друзья»). */
+const REFERRAL_LINE_CAPS = [5, 15, 25, 500];
+
+/**
+ * Реферальная сеть от корня: 1-я линия — прямые; 2-я — приглашённые ими; и т.д.
+ */
+export async function getReferralNetworkByLines(rootTelegramId) {
+    const root = parseInt(rootTelegramId, 10);
+    if (!root || Number.isNaN(root)) {
+        return { line1: [], line2: [], line3: [], line4: [] };
+    }
+    try {
+        const l1 = await pool.query(
+            `
+            SELECT u.telegram_id, u.username, u.first_name, u.coins, r.created_at
+            FROM referrals r
+            JOIN users u ON r.referred_id = u.telegram_id
+            WHERE r.referrer_id = $1
+            ORDER BY r.created_at DESC
+            LIMIT $2
+        `,
+            [root, REFERRAL_LINE_CAPS[0]]
+        );
+        const line1 = l1.rows;
+        const ids = (rows) =>
+            rows.map((r) => Number(r.telegram_id)).filter((id) => Number.isFinite(id) && id > 0);
+
+        let parents = ids(line1);
+        const lines = [line1, [], [], []];
+        for (let depth = 1; depth < 4; depth++) {
+            if (!parents.length) break;
+            const res = await pool.query(
+                `
+                SELECT u.telegram_id, u.username, u.first_name, u.coins, r.created_at
+                FROM referrals r
+                JOIN users u ON r.referred_id = u.telegram_id
+                WHERE r.referrer_id = ANY($1::bigint[])
+                ORDER BY r.created_at DESC
+                LIMIT $2
+            `,
+                [parents, REFERRAL_LINE_CAPS[depth]]
+            );
+            lines[depth] = res.rows;
+            parents = ids(res.rows);
+        }
+        return { line1: lines[0], line2: lines[1], line3: lines[2], line4: lines[3] };
+    } catch (err) {
+        console.error('Ошибка getReferralNetworkByLines:', err.message);
+        return { line1: [], line2: [], line3: [], line4: [] };
+    }
 }
 
 export async function claimDailyBonus(telegramId) {
@@ -753,7 +808,7 @@ export async function listPayments(limit = 100) {
 export async function searchUsersAdmin(query = '', limit = 50) {
     try {
         const q = String(query || '').trim();
-        const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+        const safeLimit = Math.max(1, Math.min(500, Number(limit) || 50));
         if (!q) {
             const res = await pool.query(`
                 SELECT telegram_id, username, first_name, coins, level, referrals_count, referrer_id, created_at
@@ -851,6 +906,85 @@ export async function adjustUserAdmin(telegramId, patch = {}) {
     }
     if (!Object.keys(updates).length) return await getUser(telegramId);
     return await updateUser(telegramId, updates);
+}
+
+/**
+ * Админ: сменить реферера (синхронизация referrals + referrals_count). Без бонусных монет.
+ * referrerId: null | '' — отвязать.
+ */
+export async function setUserReferrerAdmin(telegramId, newReferrerId) {
+    const tid = parseInt(telegramId, 10);
+    if (!tid || Number.isNaN(tid)) return { ok: false, message: 'Неверный telegramId' };
+
+    let newRef = null;
+    if (newReferrerId !== undefined && newReferrerId !== null && newReferrerId !== '') {
+        newRef = parseInt(newReferrerId, 10);
+        if (Number.isNaN(newRef) || newRef === tid) {
+            return { ok: false, message: 'Неверный referrer_id' };
+        }
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const uRes = await client.query(
+            'SELECT telegram_id, referrer_id FROM users WHERE telegram_id = $1 FOR UPDATE',
+            [tid]
+        );
+        if (!uRes.rows.length) {
+            await client.query('ROLLBACK');
+            return { ok: false, message: 'Пользователь не найден' };
+        }
+        const oldRef =
+            uRes.rows[0].referrer_id != null ? Number(uRes.rows[0].referrer_id) : null;
+
+        if (newRef !== null) {
+            const refUser = await client.query('SELECT telegram_id FROM users WHERE telegram_id = $1', [newRef]);
+            if (!refUser.rows.length) {
+                await client.query('ROLLBACK');
+                return { ok: false, message: 'Реферер не найден' };
+            }
+        }
+
+        const del = await client.query('DELETE FROM referrals WHERE referred_id = $1 RETURNING referrer_id', [tid]);
+        if (del.rowCount > 0 && del.rows[0]?.referrer_id != null) {
+            const prev = Number(del.rows[0].referrer_id);
+            await client.query(
+                'UPDATE users SET referrals_count = GREATEST(0, referrals_count - 1) WHERE telegram_id = $1',
+                [prev]
+            );
+        } else if (oldRef != null) {
+            await client.query(
+                'UPDATE users SET referrals_count = GREATEST(0, referrals_count - 1) WHERE telegram_id = $1',
+                [oldRef]
+            );
+        }
+
+        await client.query('UPDATE users SET referrer_id = $1 WHERE telegram_id = $2', [newRef, tid]);
+
+        if (newRef !== null) {
+            const ins = await client.query(
+                'INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2) RETURNING id',
+                [newRef, tid]
+            );
+            if (ins.rowCount > 0) {
+                await client.query(
+                    'UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1',
+                    [newRef]
+                );
+            }
+        }
+
+        await client.query('COMMIT');
+        return { ok: true, user: await getUser(tid) };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Ошибка setUserReferrerAdmin:', err.message);
+        return { ok: false, message: err.message || 'Ошибка смены реферера' };
+    } finally {
+        client.release();
+    }
 }
 
 export async function deleteUserAdmin(telegramId) {

@@ -237,8 +237,14 @@ async function registerCurrentUser() {
 }
 
 function renderFriendsFallback() {
-    const container = document.getElementById('level1List');
-    if (container) container.innerHTML = `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`;
+    renderReferralLineList(
+        'level1List',
+        [],
+        `<div class="level-item"><span>👥 Пригласите друзей через реферальную ссылку</span><span></span></div>`
+    );
+    renderReferralLineList('level2List', [], `<div class="level-item"><span>✨ Бонус от друзей друзей</span><span></span></div>`);
+    renderReferralLineList('level3List', [], `<div class="level-item"><span>💫 Третья линия</span><span></span></div>`);
+    renderReferralLineList('level4List', [], `<div class="level-item"><span>💎 Почётный статус</span><span></span></div>`);
     const referralCount = document.getElementById('referralCount');
     const referralBonus = document.getElementById('referralBonus');
     const profileReferrals = document.getElementById('profileReferrals');
@@ -1201,18 +1207,14 @@ function updateUI() {
     document.getElementById('passiveUpgradeCostDisplay').textContent = `${formatCompactCoins(passiveIncomeUpgradeCost)} 🪙`;
     const regenLvEl = document.getElementById('energyRegenSpeedLevelDisplay');
     const regenMaxEl = document.getElementById('energyRegenSpeedMaxDisplay');
-    const regenIntEl = document.getElementById('energyRegenIntervalDisplay');
+    const regenStepEl = document.getElementById('energyRegenStepDisplay');
     const regenCostEl = document.getElementById('energyRegenSpeedCostDisplay');
     if (regenLvEl) regenLvEl.textContent = String(energyRegenSpeedLevel);
     if (regenMaxEl) regenMaxEl.textContent = String(ENERGY_REGEN_SPEED_MAX);
-    if (regenIntEl) {
+    if (regenStepEl) {
         const r = getEnergyRegenPerSecond();
-        const period = 1 / r;
-        if (period < 0.095) {
-            regenIntEl.textContent = `~${Math.round(period * 1000)} мс/энерг · офлайн так же`;
-        } else {
-            regenIntEl.textContent = `~${r.toFixed(1).replace('.', ',')} энерг/с · офлайн так же`;
-        }
+        const sec = 1 / r;
+        regenStepEl.textContent = `Шаг ~${sec.toFixed(2).replace('.', ',')} с`;
     }
     if (regenCostEl) {
         regenCostEl.textContent =
@@ -1900,8 +1902,7 @@ function upgradeEnergyRegenSpeed() {
         updateUI();
         saveGame();
         syncWithBot();
-        const r = getEnergyRegenPerSecond();
-        showMessage(`✅ Скорость энергии: ~${r.toFixed(1).replace('.', ',')} энерг/с (онлайн и офлайн)`);
+        showMessage(`✅ Скорость энергии: уровень ${energyRegenSpeedLevel}/${ENERGY_REGEN_SPEED_MAX}`);
     } else if (energyRegenSpeedLevel >= ENERGY_REGEN_SPEED_MAX) showMessage('⚠️ Максимальный уровень!', true);
     else showMessage(`❌ Нужно ${formatCompactCoins(cost)} монет`, true);
 }
@@ -2195,6 +2196,22 @@ async function loadLeaderboard() {
     }
 }
 
+function renderReferralLineList(containerId, items, emptyHtml) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!items.length) {
+        el.innerHTML = emptyHtml;
+        return;
+    }
+    el.innerHTML = items
+        .map((u) => {
+            const name = (u.username && `@${u.username}`) || u.first_name || `ID ${u.telegram_id}`;
+            const coinsVal = Number(u.coins || 0);
+            return `<div class="level-item"><span>${name}</span><span>${formatCompactCoins(coinsVal)} 🪙</span></div>`;
+        })
+        .join('');
+}
+
 async function loadFriends() {
     if (!userId) {
         renderFriendsFallback();
@@ -2202,7 +2219,12 @@ async function loadFriends() {
     }
     const container = document.getElementById('level1List');
     if (!container) return;
-    container.innerHTML = `<div class="level-item"><span>⏳ Загрузка рефералов...</span><span></span></div>`;
+    const loading = `<div class="level-item"><span>⏳ Загрузка рефералов...</span><span></span></div>`;
+    container.innerHTML = loading;
+    ['level2List', 'level3List', 'level4List'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = loading;
+    });
     try {
         const res = await fetch(`${API_BASE}/api/friends/${userId}`);
         const data = await res.json();
@@ -2211,6 +2233,9 @@ async function loadFriends() {
             return;
         }
         const refs = Array.isArray(data.referrals) ? data.referrals : [];
+        const line2 = Array.isArray(data.referralLine2) ? data.referralLine2 : [];
+        const line3 = Array.isArray(data.referralLine3) ? data.referralLine3 : [];
+        const line4 = Array.isArray(data.referralLine4) ? data.referralLine4 : [];
         const referralCount = Number(data.referralsCount || refs.length || 0);
         const bonus = Number(data.totalReferralBonus || 0);
         const referralCountEl = document.getElementById('referralCount');
@@ -2220,15 +2245,15 @@ async function loadFriends() {
         if (referralBonusEl) referralBonusEl.textContent = String(bonus);
         if (profileReferralsEl) profileReferralsEl.textContent = String(referralCount);
 
-        if (!refs.length) {
-            container.innerHTML = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;
-            return;
-        }
-        container.innerHTML = refs.map((u) => {
-            const name = (u.username && `@${u.username}`) || u.first_name || `ID ${u.telegram_id}`;
-            const coinsVal = Number(u.coins || 0);
-            return `<div class="level-item"><span>${name}</span><span>${formatCompactCoins(coinsVal)} 🪙</span></div>`;
-        }).join('');
+        const empty1 = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;
+        const empty2 = `<div class="level-item"><span>✨ Пока никого во 2-й линии</span><span></span></div>`;
+        const empty3 = `<div class="level-item"><span>💫 Пока никого в 3-й линии</span><span></span></div>`;
+        const empty4 = `<div class="level-item"><span>💎 Пока никого в 4-й линии</span><span></span></div>`;
+
+        renderReferralLineList('level1List', refs, empty1);
+        renderReferralLineList('level2List', line2, empty2);
+        renderReferralLineList('level3List', line3, empty3);
+        renderReferralLineList('level4List', line4, empty4);
     } catch (e) {
         renderFriendsFallback();
     }
