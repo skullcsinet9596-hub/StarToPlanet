@@ -425,14 +425,22 @@ function buyRank(level) {
     syncWithBot();
 }
 
-function applyOfflineEarnings() {
+/**
+ * Пассив и энергия за время без учёта (свёрнуто приложение, нет сети, таймеры в фоне).
+ * Дробные минуты — чтобы не терять начисления при коротких паузах.
+ * lastSeenAtMs обновляется внутри; в saveGame() тот же маркер синхронизируется в память.
+ */
+/** @returns {boolean} было ли начисление монет или энергии */
+function applyOfflineEarnings(options = {}) {
+    const { silentToast = false } = options;
     const now = Date.now();
     const last = Number(lastSeenAtMs) || now;
-    const minutes = Math.floor((now - last) / 60000);
-    const offlineMinutes = Math.max(0, Math.min(minutes, OFFLINE_CAP_MINUTES));
-    if (offlineMinutes <= 0) return;
+    const deltaMs = now - last;
+    if (deltaMs < 800) return false;
 
-    // Считаем пассивку по состоянию ДО оффлайн начисления (чтобы не разгонять уровень «сам из себя»).
+    const awayMinutes = Math.max(0, Math.min(deltaMs / 60000, OFFLINE_CAP_MINUTES));
+    if (awayMinutes <= 0) return false;
+
     const effRank = getEffectiveRankLevel();
     let perMinute = passiveIncomeLevel * 5 + taskPassiveBonusRate;
     if (hasSun) perMinute += 100000;
@@ -440,14 +448,29 @@ function applyOfflineEarnings() {
     else if (hasMoon) perMinute += 20000;
     perMinute += getRankSalaryPerMinute(effRank);
 
-    const offlineCoins = offlineMinutes * perMinute;
-    coins += offlineCoins;
-    dailyCoinsEarned += offlineCoins;
-    weeklyCoinsEarned += offlineCoins;
+    const offlineCoins = Math.floor(awayMinutes * perMinute);
     const regenPerMin = getEnergyRegenPerSecond() * 60;
-    const offlineEnergyRecover = Math.min(maxEnergy - energy, offlineMinutes * regenPerMin);
-    if (offlineEnergyRecover > 0) energy += offlineEnergyRecover;
-    showMessage(`⏱️ Оффлайн доход за ${offlineMinutes} мин: +${formatCompactCoins(offlineMinutes * perMinute)} 🪙`);
+    const offlineEnergyRecover = Math.min(maxEnergy - energy, Math.floor(awayMinutes * regenPerMin));
+
+    lastSeenAtMs = now;
+
+    let gained = false;
+    if (offlineCoins > 0) {
+        coins += offlineCoins;
+        dailyCoinsEarned += offlineCoins;
+        weeklyCoinsEarned += offlineCoins;
+        gained = true;
+    }
+    if (offlineEnergyRecover > 0) {
+        energy += offlineEnergyRecover;
+        gained = true;
+    }
+
+    if (!silentToast && offlineCoins > 0) {
+        const shownMin = awayMinutes >= 1 ? awayMinutes.toFixed(0) : '<1';
+        showMessage(`⏱️ Пока вас не было (~${shownMin} мин): +${formatCompactCoins(offlineCoins)} 🪙`);
+    }
+    return gained;
 }
 
 // Делаем функцию глобальной
@@ -1428,6 +1451,8 @@ async function buyPremium(type) {
 }
 
 function saveGame() {
+    const now = Date.now();
+    lastSeenAtMs = now;
     const gameData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
@@ -1438,7 +1463,7 @@ function saveGame() {
         lastDailyCycleKey, lastWeeklyCycleKey,
         hasMoon, hasEarth, hasSun, soundEnabled,
         ownedRankLevel,
-        lastSeenAtMs: Date.now()
+        lastSeenAtMs: now
     };
     localStorage.setItem(gameStorageKey(), JSON.stringify(gameData));
 }
@@ -1751,7 +1776,6 @@ async function loadFromServer() {
                 if (!offlineAppliedOnBoot) {
                     applyOfflineEarnings();
                     offlineAppliedOnBoot = true;
-                    lastSeenAtMs = Date.now();
                 }
                 updateUI();
                 updateTaskButtons(); // Обновляем кнопки заданий
@@ -2642,6 +2666,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (hydrated) break;
             await new Promise((resolve) => setTimeout(resolve, 1200 + attempt * 600));
         }
+        if (!offlineAppliedOnBoot) {
+            applyOfflineEarnings();
+            offlineAppliedOnBoot = true;
+            updateUI();
+            saveGame();
+            syncWithBot();
+        }
         await loadPremiumConfig();
         updateUI();
         fillRanksPreviewGrid();
@@ -2721,20 +2752,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             flushTapPersistIfPending();
             return;
         }
-        // После возврата из Telegram-ссылок иногда остается "черный экран":
-        // принудительно восстанавливаем активную панель и закрываем оверлеи.
+        const gained = applyOfflineEarnings({ silentToast: true });
+        lastEnergyRegenAtMs = Date.now();
         boostModal?.classList.remove('active');
         applyViewportHeight();
         applyTopHudVisibilityFix();
         restoreActivePanelView();
         updateUI();
+        saveGame();
+        if (gained) syncWithBot();
         setTimeout(ensureUiRecoveredOrReload, 220);
     });
     window.addEventListener('pagehide', flushTapPersistIfPending);
     window.addEventListener('focus', () => {
+        const gained = applyOfflineEarnings({ silentToast: true });
+        lastEnergyRegenAtMs = Date.now();
         boostModal?.classList.remove('active');
         restoreActivePanelView();
         updateUI();
+        saveGame();
+        if (gained) syncWithBot();
         setTimeout(ensureUiRecoveredOrReload, 220);
     });
     
