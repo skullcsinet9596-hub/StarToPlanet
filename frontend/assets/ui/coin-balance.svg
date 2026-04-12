@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+  <defs>
+    <radialGradient id="coinFace" cx="30%" cy="25%" r="75%">
+      <stop offset="0%" stop-color="#fffef0"/>
+      <stop offset="25%" stop-color="#ffe566"/>
+      <stop offset="55%" stop-color="#ffd60a"/>
+      <stop offset="85%" stop-color="#d4a000"/>
+      <stop offset="100%" stop-color="#8a6500"/>
+    </radialGradient>
+    <radialGradient id="coinInner" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#ffee88"/>
+      <stop offset="100%" stop-color="#e8ac00"/>
+    </radialGradient>
+    <linearGradient id="coinRim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5c4200"/>
+      <stop offset="35%" stop-color="#ffd60a"/>
+      <stop offset="65%" stop-color="#fff2a0"/>
+      <stop offset="100%" stop-color="#4a3200"/>
+    </linearGradient>
+    <linearGradient id="dollarStroke" x1="24" y1="10" x2="24" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff8d4"/>
+      <stop offset="45%" stop-color="#e6a800"/>
+      <stop offset="100%" stop-color="#4a3200"/>
+    </linearGradient>
+    <filter id="softShadow" x="-0.35" y="-0.35" width="1.7" height="1.7">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.4" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <circle cx="24" cy="24" r="22" fill="url(#coinFace)" stroke="url(#coinRim)" stroke-width="2.4" filter="url(#softShadow)"/>
+  <circle cx="24" cy="24" r="17.5" fill="url(#coinInner)" opacity="0.45"/>
+  <circle cx="24" cy="24" r="17.5" fill="none" stroke="#a67c00" stroke-width="0.85" opacity="0.65"/>
+  <ellipse cx="17.5" cy="15" rx="8" ry="5" fill="#ffffff" opacity="0.35"/>
+  <g transform="translate(24 23.5) scale(1.22) translate(-12 -12)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23" stroke="#1a1000" stroke-width="3.4"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="#1a1000" stroke-width="3.4"/>
+    <line x1="12" y1="1" x2="12" y2="23" stroke="url(#dollarStroke)" stroke-width="2.15"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="url(#dollarStroke)" stroke-width="2.15"/>
+  </g>
+</svg>

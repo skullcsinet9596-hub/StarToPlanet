@@ -285,8 +285,13 @@ let energyRegenSpeedLevel = 0;
 let energyRegenSpeedCost = ENERGY_REGEN_SPEED_BASE_COST;
 let passiveIncomeRate = 0;
 let taskPassiveBonusRate = 0;
+/** Локальный флаг только если сервер без INFO_CHANNEL_CHAT_ID (старый режим). */
 let instantTaskChannelOpened = false;
 let instantTasksClaimed = { channel: false };
+let infoChannelConfigured = false;
+let infoChannelSubscribed = false;
+let infoChannelCanClaim = false;
+let infoChannelClaimInFlight = false;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
@@ -794,6 +799,7 @@ function setupBoostModalTabs() {
         Object.entries(panels).forEach(([k, p]) => {
             if (p) p.classList.toggle('active', k === id);
         });
+        if (id === 'instant') refreshInfoChannelState();
     };
     tabs.forEach((t) => {
         t.addEventListener('click', () => {
@@ -802,6 +808,33 @@ function setupBoostModalTabs() {
         });
     });
     activate('upgrades');
+}
+
+async function refreshInfoChannelState() {
+    if (!userId) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/tasks/info-channel?userId=${encodeURIComponent(userId)}`);
+        if (!res.ok) return;
+        const j = await res.json();
+        if (!j.ok) return;
+        if (j.configured === true) {
+            infoChannelConfigured = true;
+            infoChannelSubscribed = j.subscribed === true;
+            infoChannelCanClaim = j.canClaim === true;
+            instantTasksClaimed = { ...defaultInstantTasksClaimed(), channel: j.claimed === true };
+            if (Number.isFinite(Number(j.taskPassiveBonusRate))) {
+                taskPassiveBonusRate = Number(j.taskPassiveBonusRate);
+            }
+        } else {
+            infoChannelConfigured = false;
+            infoChannelSubscribed = false;
+            infoChannelCanClaim = false;
+        }
+        updateTaskButtons();
+        updateUI();
+    } catch (e) {
+        console.log('info-channel refresh:', e);
+    }
 }
 let tapPersistTimer = null;
 
@@ -1237,13 +1270,14 @@ function updateUI() {
     
     let rate = getPassiveRate();
     passiveIncomeRate = rate;
-    document.getElementById('passiveIncomeRate').textContent = rate;
+    const rateLabel = formatCompactCoins(rate);
+    document.getElementById('passiveIncomeRate').textContent = rateLabel;
     updatePlanetByLevel();
     
     document.getElementById('profileCoins').textContent = formatCompactCoins(coins);
     document.getElementById('profileClickPower').textContent = clickPower;
     document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-    document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
+    document.getElementById('profilePassiveIncome').textContent = `${rateLabel} /мин`;
     document.getElementById('profileId').textContent = userId || 'Гость';
     document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
     document.getElementById('dailyClickProgress').textContent = `${dailyClickCount}/${TASK_TARGETS.dailyClick}`;
@@ -1678,7 +1712,12 @@ async function loadFromServer() {
                 energyRegenSpeedCost = Number.isFinite(Number(data.energyRegenSpeedCost))
                     ? Math.floor(Number(data.energyRegenSpeedCost))
                     : Math.floor(ENERGY_REGEN_SPEED_BASE_COST * Math.pow(ENERGY_REGEN_SPEED_COST_MULT, energyRegenSpeedLevel));
-                taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate)) ? Number(data.taskPassiveBonusRate) : (taskPassiveBonusRate || 0);
+                taskPassiveBonusRate = Number.isFinite(Number(data.taskPassiveBonusRate))
+                    ? Number(data.taskPassiveBonusRate)
+                    : (taskPassiveBonusRate || 0);
+                infoChannelConfigured = data.infoChannelConfigured === true;
+                infoChannelSubscribed = data.infoChannelSubscribed === true;
+                infoChannelCanClaim = data.infoChannelCanClaim === true;
                 if (Number.isFinite(Number(data.ownedRankLevel))) {
                     const serverOwnedRank = clampInt(data.ownedRankLevel, -1, 10);
                     // Защита от случайного отката звания: не понижаем локально купленное звание,
@@ -1944,12 +1983,14 @@ function updateTaskButtons() {
     setTaskClaimButton(document.getElementById('weeklyEnergyClaim'), weeklyEnergySpent >= TASK_TARGETS.weeklyEnergy && !weeklyTasksClaimed.energy);
     setTaskClaimButton(document.getElementById('weeklyUpgradeClaim'), weeklyUpgradesBought >= TASK_TARGETS.weeklyUpgrade && !weeklyTasksClaimed.upgrade);
     setTaskClaimButton(document.getElementById('weeklyPassiveClaim'), getPassiveRate() >= TASK_TARGETS.weeklyPassive && !weeklyTasksClaimed.passive);
-    const canClaimInstantChannel = !instantTasksClaimed.channel && instantTaskChannelOpened;
+    const canClaimInstantChannel = !instantTasksClaimed.channel
+        && (infoChannelConfigured ? infoChannelCanClaim : instantTaskChannelOpened);
     setTaskClaimButton(document.getElementById('boostInstantClaimInfoChannelBtn'), canClaimInstantChannel);
     const instantClaimBtn = document.getElementById('boostInstantClaimInfoChannelBtn');
-    const instantStatusEl = document.getElementById('boostInstantChannelStatus');
     const instantOpenBtn = document.getElementById('boostInstantOpenInfoChannelBtn');
     const instantActionsWrap = document.getElementById('boostInstantChannelActions');
+    const doneHint = document.getElementById('boostInstantChannelDoneHint');
+    if (doneHint) doneHint.style.display = instantTasksClaimed.channel ? 'block' : 'none';
     if (instantClaimBtn) {
         if (instantTasksClaimed.channel) {
             instantClaimBtn.textContent = '✅ Выполнено';
@@ -1961,18 +2002,6 @@ function updateTaskButtons() {
             instantClaimBtn.textContent = '+20/мин';
             if (instantOpenBtn) instantOpenBtn.style.display = '';
             if (instantActionsWrap) instantActionsWrap.classList.remove('single');
-        }
-    }
-    if (instantStatusEl) {
-        if (instantTasksClaimed.channel) {
-            instantStatusEl.textContent = 'Статус: выполнено';
-            instantStatusEl.classList.add('done');
-        } else if (instantTaskChannelOpened) {
-            instantStatusEl.textContent = 'Статус: можно получить награду';
-            instantStatusEl.classList.remove('done');
-        } else {
-            instantStatusEl.textContent = 'Статус: активно';
-            instantStatusEl.classList.remove('done');
         }
     }
 
@@ -1990,7 +2019,7 @@ function updateTaskButtons() {
 }
 
 function openInfoChannel(markOpened = false) {
-    if (markOpened) instantTaskChannelOpened = true;
+    if (markOpened && !infoChannelConfigured) instantTaskChannelOpened = true;
     const boostModal = document.getElementById('boostModal');
     boostModal?.classList.remove('active');
     try {
@@ -2003,12 +2032,15 @@ function openInfoChannel(markOpened = false) {
     setTimeout(() => {
         restoreActivePanelView();
         updateUI();
+        refreshInfoChannelState();
     }, 350);
     setTimeout(() => {
         restoreActivePanelView();
         updateUI();
+        refreshInfoChannelState();
     }, 1400);
     updateTaskButtons();
+    refreshInfoChannelState();
 }
 
 function ensurePanelVisibleHeartbeat() {
@@ -2020,13 +2052,56 @@ function ensurePanelVisibleHeartbeat() {
     }
 }
 
-function claimInstantChannelTask() {
+async function claimInstantChannelTask() {
     if (instantTasksClaimed.channel) {
-        showMessage('ℹ️ Награда за подписку уже получена');
+        showMessage('ℹ️ Вы уже получили награду');
+        return;
+    }
+    if (infoChannelConfigured) {
+        if (!userId) {
+            showMessage('ℹ️ Войдите через Telegram, чтобы получить награду', true);
+            return;
+        }
+        if (infoChannelClaimInFlight) return;
+        infoChannelClaimInFlight = true;
+        try {
+            const res = await fetch(`${API_BASE}/api/tasks/claim-info-channel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            const j = await res.json().catch(() => ({}));
+            if (res.ok && j.ok) {
+                if (j.already) {
+                    showMessage(j.message || 'ℹ️ Вы уже получили награду');
+                    instantTasksClaimed = { ...defaultInstantTasksClaimed(), channel: true };
+                } else {
+                    instantTasksClaimed = { ...defaultInstantTasksClaimed(), ...(j.instantTasksClaimed || { channel: true }) };
+                    if (Number.isFinite(Number(j.taskPassiveBonusRate))) {
+                        taskPassiveBonusRate = Number(j.taskPassiveBonusRate);
+                    } else {
+                        taskPassiveBonusRate += 20;
+                    }
+                    showMessage('🎉 Пассивный доход +20/мин');
+                }
+                updateUI();
+                saveGame();
+                syncWithBot();
+                await refreshInfoChannelState();
+                return;
+            }
+            showMessage(j.message || 'Не удалось выдать награду', true);
+            await refreshInfoChannelState();
+        } catch (e) {
+            console.error(e);
+            showMessage('Ошибка сети. Попробуйте снова.', true);
+        } finally {
+            infoChannelClaimInFlight = false;
+        }
         return;
     }
     if (!instantTaskChannelOpened) {
-        showMessage('ℹ️ Сначала откройте канал. Без выполнения награда не выдается.', true);
+        showMessage('ℹ️ Сначала нажмите «Перейти» и откройте канал.', true);
         return;
     }
     instantTasksClaimed.channel = true;

@@ -79,6 +79,79 @@ const WEBHOOK_PATH = `/tg-hook/${webhookSecret}`;
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
 
+/** @see https://core.telegram.org/bots/api#getchatmember — бот должен быть админом канала. Пример: @channelname или -1001234567890 */
+const INFO_CHANNEL_CHAT_ID = (process.env.INFO_CHANNEL_CHAT_ID || '').trim();
+const INFO_CHANNEL_PASSIVE_BONUS = 20;
+
+function asInt(v, d = 0) {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) ? n : d;
+}
+
+function isInfoChannelMemberStatus(status) {
+    return (
+        status === 'creator' ||
+        status === 'administrator' ||
+        status === 'member' ||
+        status === 'restricted'
+    );
+}
+
+/** @returns {boolean|null} true/false или null при ошибке API (состояние не меняем) */
+async function checkInfoChannelMembership(telegramUserId) {
+    if (!INFO_CHANNEL_CHAT_ID) return null;
+    try {
+        const m = await bot.telegram.getChatMember(INFO_CHANNEL_CHAT_ID, telegramUserId);
+        return isInfoChannelMemberStatus(m.status);
+    } catch (e) {
+        const desc = String(e?.response?.description || e?.message || '');
+        console.warn('[info-channel] getChatMember:', desc);
+        return null;
+    }
+}
+
+/** Старые профили: бонус канала был в task_passive_bonus_rate, флаг — в task_state. */
+async function migrateLegacyInfoChannelBonus(telegramId) {
+    const u = await getUser(telegramId);
+    if (!u) return;
+    const ts = u.task_state || {};
+    const claimed = Boolean(ts.instantTasksClaimed?.channel);
+    const chCol = asInt(u.info_channel_passive_bonus, 0);
+    if (!claimed || chCol > 0) return;
+    const total = Math.max(0, asInt(u.task_passive_bonus_rate, 0));
+    if (total <= 0) return;
+    const take = Math.min(INFO_CHANNEL_PASSIVE_BONUS, total);
+    await updateUser(telegramId, {
+        info_channel_passive_bonus: take,
+        task_passive_bonus_rate: total - take
+    });
+}
+
+/** Отписка от канала → снять флаг и отдельный бонус (столбец info_channel_passive_bonus). */
+async function reconcileInfoChannelReward(telegramId) {
+    if (!INFO_CHANNEL_CHAT_ID) return { changed: false };
+    await migrateLegacyInfoChannelBonus(telegramId);
+    const u = await getUser(telegramId);
+    if (!u) return { changed: false };
+    const chBonus = Math.max(0, asInt(u.info_channel_passive_bonus, 0));
+    const ts = u.task_state && typeof u.task_state === 'object' ? { ...u.task_state } : {};
+    const claimed = Boolean(ts.instantTasksClaimed?.channel);
+    if (!claimed && chBonus <= 0) return { changed: false };
+
+    const subscribed = await checkInfoChannelMembership(telegramId);
+    if (subscribed !== false) return { changed: false };
+
+    const newTs = {
+        ...ts,
+        instantTasksClaimed: { ...(ts.instantTasksClaimed || {}), channel: false }
+    };
+    await updateUser(telegramId, {
+        info_channel_passive_bonus: 0,
+        task_state: newTs
+    });
+    return { changed: true, revoked: true };
+}
+
 async function runInactivityReminderJob() {
     if (!INACTIVITY_REMINDER_ENABLED) return { skipped: true, sent: 0, failed: 0 };
     const ids = await getUsersEligibleForInactivityReminders({
@@ -238,6 +311,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/user/:userId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.userId);
+        await reconcileInfoChannelReward(telegramId);
         const user = await getUser(telegramId);
         if (!user) {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
@@ -245,6 +319,15 @@ app.get('/api/user/:userId', async (req, res) => {
         }
         await ensureLeaderboardRow(telegramId);
         const lastSeenAtMs = user.last_seen_at ? new Date(user.last_seen_at).getTime() : Date.now();
+
+        const basePassive = asInt(user.task_passive_bonus_rate, 0);
+        const chPassive = asInt(user.info_channel_passive_bonus, 0);
+        const infoChannelClaimed = Boolean(user.task_state?.instantTasksClaimed?.channel);
+        let infoChannelSubscribed = false;
+        if (INFO_CHANNEL_CHAT_ID) {
+            const sub = await checkInfoChannelMembership(telegramId);
+            infoChannelSubscribed = sub === true;
+        }
 
         res.json({
             registered: true,
@@ -263,7 +346,11 @@ app.get('/api/user/:userId', async (req, res) => {
             passiveIncomeUpgradeCost: user.passive_income_cost,
             energyRegenSpeedLevel: Number(user.energy_regen_speed_level ?? 0),
             energyRegenSpeedCost: Number(user.energy_regen_speed_cost ?? 250),
-            taskPassiveBonusRate: Number(user.task_passive_bonus_rate || 0),
+            taskPassiveBonusRate: basePassive + chPassive,
+            infoChannelConfigured: Boolean(INFO_CHANNEL_CHAT_ID),
+            infoChannelClaimed,
+            infoChannelSubscribed,
+            infoChannelCanClaim: Boolean(INFO_CHANNEL_CHAT_ID) && infoChannelSubscribed && !infoChannelClaimed,
             ownedRankLevel: Number(user.owned_rank_level ?? -1),
             lastSeenAtMs,
             soundEnabled: user.sound_enabled,
@@ -357,11 +444,22 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
             res.status(400).json({ success: false, message: 'Неверный userId' });
             return;
         }
-        const num = (v, d = 0) => Number.isFinite(Number(v)) ? Number(v) : d;
+        const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
         const int = (v, d = 0) => Math.floor(num(v, d));
+
+        await reconcileInfoChannelReward(telegramId);
         const existingUser = await getUser(telegramId);
         const previousCoins = existingUser ? Number(existingUser.coins) : 0;
         const currentCoins = Math.max(0, int(gameData.coins, 0));
+
+        const serverChPassive = Math.max(0, asInt(existingUser?.info_channel_passive_bonus, 0));
+        const incomingPassiveTotal = Math.max(0, int(gameData.taskPassiveBonusRate, 0));
+        const basePassiveStored = Math.max(0, incomingPassiveTotal - serverChPassive);
+
+        const serverTs = existingUser?.task_state && typeof existingUser.task_state === 'object' ? existingUser.task_state : {};
+        const serverChannelClaimed = Boolean(serverTs.instantTasksClaimed?.channel);
+        const clientInstant = gameData.instantTasksClaimed && typeof gameData.instantTasksClaimed === 'object' ? gameData.instantTasksClaimed : {};
+        const mergedInstantTasks = { ...clientInstant, channel: serverChannelClaimed };
 
         await updateUser(telegramId, {
             last_seen_at: new Date(),
@@ -370,7 +468,8 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
             max_energy: Math.max(100, int(gameData.maxEnergy, 100)),
             click_power: Math.max(1, int(gameData.clickPower, 1)),
             passive_income_level: Math.max(0, int(gameData.passiveIncomeLevel, 0)),
-            task_passive_bonus_rate: Math.max(0, int(gameData.taskPassiveBonusRate, 0)),
+            task_passive_bonus_rate: basePassiveStored,
+            info_channel_passive_bonus: serverChPassive,
             owned_rank_level: Math.max(-1, Math.min(10, int(gameData.ownedRankLevel, -1))),
             has_moon: Boolean(gameData.hasMoon),
             has_earth: Boolean(gameData.hasEarth),
@@ -394,7 +493,7 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
                 weeklyUpgradesBought: int(gameData.weeklyUpgradesBought, 0),
                 dailyTasksClaimed: gameData.dailyTasksClaimed || {},
                 weeklyTasksClaimed: gameData.weeklyTasksClaimed || {},
-                instantTasksClaimed: gameData.instantTasksClaimed || {},
+                instantTasksClaimed: mergedInstantTasks,
                 lastDailyCycleKey: typeof gameData.lastDailyCycleKey === 'string' ? gameData.lastDailyCycleKey : null,
                 lastWeeklyCycleKey: typeof gameData.lastWeeklyCycleKey === 'string' ? gameData.lastWeeklyCycleKey : null
             }
@@ -407,6 +506,98 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
         res.json({ success: true });
     } else {
         res.json({ success: false });
+    }
+});
+
+app.get('/api/tasks/info-channel', rateLimit('info_ch', 90, 60_000), async (req, res) => {
+    try {
+        const telegramId = parseInt(req.query.userId);
+        if (!telegramId) {
+            res.status(400).json({ ok: false, message: 'Неверный userId' });
+            return;
+        }
+        if (!INFO_CHANNEL_CHAT_ID) {
+            res.json({
+                ok: true,
+                configured: false,
+                claimed: false,
+                subscribed: false,
+                canClaim: false
+            });
+            return;
+        }
+        await reconcileInfoChannelReward(telegramId);
+        const u = await getUser(telegramId);
+        if (!u) {
+            res.json({ ok: true, configured: true, claimed: false, subscribed: false, canClaim: false });
+            return;
+        }
+        const claimed = Boolean(u.task_state?.instantTasksClaimed?.channel);
+        const sub = await checkInfoChannelMembership(telegramId);
+        const subscribed = sub === true;
+        const passiveTotal = asInt(u.task_passive_bonus_rate, 0) + asInt(u.info_channel_passive_bonus, 0);
+        res.json({
+            ok: true,
+            configured: true,
+            claimed,
+            subscribed,
+            canClaim: subscribed && !claimed,
+            taskPassiveBonusRate: passiveTotal
+        });
+    } catch (e) {
+        console.error('Ошибка /api/tasks/info-channel:', e);
+        res.status(500).json({ ok: false, message: 'Ошибка' });
+    }
+});
+
+app.post('/api/tasks/claim-info-channel', rateLimit('claim_info_ch', 25, 60_000), async (req, res) => {
+    try {
+        const { userId } = req.body || {};
+        const telegramId = parseInt(userId);
+        if (!telegramId) {
+            res.status(400).json({ ok: false, message: 'Неверный userId' });
+            return;
+        }
+        if (!INFO_CHANNEL_CHAT_ID) {
+            res.status(503).json({ ok: false, message: 'Проверка канала не настроена на сервере' });
+            return;
+        }
+        await reconcileInfoChannelReward(telegramId);
+        let u = await getUser(telegramId);
+        if (!u) {
+            res.status(404).json({ ok: false, message: 'Профиль не найден' });
+            return;
+        }
+        if (u.task_state?.instantTasksClaimed?.channel) {
+            res.json({ ok: true, already: true, message: 'Вы уже получили награду' });
+            return;
+        }
+        const sub = await checkInfoChannelMembership(telegramId);
+        if (sub !== true) {
+            res.status(400).json({ ok: false, message: 'Сначала подпишитесь на канал' });
+            return;
+        }
+        const ts = u.task_state && typeof u.task_state === 'object' ? { ...u.task_state } : {};
+        const newTs = {
+            ...ts,
+            instantTasksClaimed: { ...(ts.instantTasksClaimed || {}), channel: true }
+        };
+        const base = asInt(u.task_passive_bonus_rate, 0);
+        const newCh = asInt(u.info_channel_passive_bonus, 0) + INFO_CHANNEL_PASSIVE_BONUS;
+        await updateUser(telegramId, {
+            task_state: newTs,
+            info_channel_passive_bonus: newCh,
+            task_passive_bonus_rate: base
+        });
+        u = await getUser(telegramId);
+        res.json({
+            ok: true,
+            taskPassiveBonusRate: asInt(u.task_passive_bonus_rate, 0) + asInt(u.info_channel_passive_bonus, 0),
+            instantTasksClaimed: newTs.instantTasksClaimed || { channel: true }
+        });
+    } catch (e) {
+        console.error('Ошибка /api/tasks/claim-info-channel:', e);
+        res.status(500).json({ ok: false, message: 'Ошибка сервера' });
     }
 });
 
@@ -846,6 +1037,12 @@ bot.on('message', async (ctx) => {
 // ========== ЗАПУСК ==========
 // Сначала БД, потом HTTP — иначе webhook может прийти до initDB и /start упадёт молча.
 await initDB();
+
+if (!INFO_CHANNEL_CHAT_ID) {
+    console.warn(
+        '⚠️ INFO_CHANNEL_CHAT_ID не задан — бонус за канал без проверки getChatMember; задайте @username или -100… (бот — админ канала).'
+    );
+}
 
 const HOST = '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {

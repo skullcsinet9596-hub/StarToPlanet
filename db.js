@@ -74,6 +74,7 @@ export async function initDB() {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_inactivity_reminder_at TIMESTAMP`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_regen_speed_level INTEGER DEFAULT 0`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_regen_speed_cost INTEGER DEFAULT 250`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS info_channel_passive_bonus INTEGER DEFAULT 0`);
 
         // Таблица рефералов
         await pool.query(`

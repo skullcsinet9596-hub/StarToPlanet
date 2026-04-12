@@ -109,6 +109,16 @@
             backdrop-filter: blur(8px);
         }
 
+        .coin-balance-icon {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            display: block;
+            object-fit: contain;
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
         .sound-btn {
             background: rgba(0, 0, 0, 0.5);
             border: 0.5px solid rgba(255, 214, 10, 0.3);
@@ -743,6 +753,7 @@
         .boost-info { flex: 1; }
         .boost-name { font-weight: 590; font-size: 15px; }
         .boost-desc { font-size: 11px; opacity: 0.7; color: #98989E; }
+        .boost-instant-done-hint { font-size: 12px; color: #7d7; margin-top: 6px; font-weight: 500; }
         .boost-level, .boost-cost { font-size: 12px; color: #FFD60A; margin-top: 4px; }
         .boost-buy-btn {
             background: #FFD60A;
@@ -1140,7 +1151,10 @@
             </div>
             <div class="top-controls" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                 <button class="sound-btn" id="soundToggle">🔊</button>
-                <div class="balance">🪙 <span id="coins">0</span></div>
+                <div class="balance">
+                    <img class="coin-balance-icon" src="assets/ui/coin-balance.svg" width="22" height="22" alt="" decoding="async" fetchpriority="high">
+                    <span id="coins">0</span>
+                </div>
             </div>
         </div>
 
@@ -1200,11 +1214,11 @@
                         <div class="boost-card">
                             <div class="boost-info">
                                 <div class="boost-name">📣 Подписка на канал</div>
-                                <div class="boost-desc">Откройте канал и заберите +20/мин</div>
-                                <div class="task-progress" id="boostInstantChannelStatus">Статус: активно</div>
+                                <div class="boost-desc">+20/мин за подписку</div>
+                                <div class="boost-instant-done-hint" id="boostInstantChannelDoneHint" style="display:none;">Вы уже получили награду</div>
                             </div>
                             <div class="task-actions" id="boostInstantChannelActions">
-                                <button class="task-action-btn" id="boostInstantOpenInfoChannelBtn">Открыть</button>
+                                <button class="task-action-btn" id="boostInstantOpenInfoChannelBtn">Перейти</button>
                                 <button class="boost-buy-btn disabled" id="boostInstantClaimInfoChannelBtn" disabled>+20/мин</button>
                             </div>
                         </div>
@@ -1327,7 +1341,7 @@
                 <div class="info-row"><span>📊 Всего монет</span><span id="profileCoins">0</span></div>
                 <div class="info-row"><span>⭐ Сила клика</span><span id="profileClickPower">1</span></div>
                 <div class="info-row"><span>⚡ Макс. энергия</span><span id="profileMaxEnergy">100</span></div>
-                <div class="info-row"><span>🤖 Пассивный доход</span><span id="profilePassiveIncome">0/мин</span></div>
+                <div class="info-row"><span>🤖 Пассивный доход</span><span id="profilePassiveIncome">0 /мин</span></div>
                 <div class="info-row"><span>👥 Приглашено</span><span id="profileReferrals">0</span></div>
                 <div class="info-row"><span>🏆 Рейтинг</span><span id="profileRank">#—</span></div>
             </div>
@@ -1940,6 +1954,35 @@
             return rate;
         }
 
+        function formatCompactCoins(value) {
+            const x = Math.max(0, Math.floor(Number(value) || 0));
+            if (x < 1000) return String(x);
+            const tiers = [
+                { min: 1e12, div: 1e12, s: 'T' },
+                { min: 1e9, div: 1e9, s: 'B' },
+                { min: 1e6, div: 1e6, s: 'M' },
+                { min: 1e3, div: 1e3, s: 'K' }
+            ];
+            for (const { min, div, s } of tiers) {
+                if (x >= min) {
+                    const d = x / div;
+                    let num;
+                    if (d >= 100) {
+                        num = String(Math.floor(d));
+                    } else {
+                        const r = Math.round(d * 10) / 10;
+                        if (Number.isInteger(r)) num = String(r);
+                        else {
+                            num = r.toFixed(1);
+                            if (num.endsWith('.0')) num = num.slice(0, -2);
+                        }
+                    }
+                    return num.replace('.', ',') + s;
+                }
+            }
+            return String(x);
+        }
+
         function checkLevelUp() {
             const currentLevel = getLevel();
             if (currentLevel > previousLevel) {
@@ -1964,7 +2007,7 @@
             const level = getLevel();
             const levelNames = ['⭐ Белая звезда', '☿ Меркурий', '♂ Марс', '♀ Венера', '♆ Нептун', '⛢ Уран', '♄ Сатурн', '♃ Юпитер', '🌙 Луна', '🌍 Земля', '☀️ Солнце'];
             document.getElementById('userLevel').textContent = `Уровень ${level} · ${levelNames[level]}`;
-            document.getElementById('coins').textContent = Math.floor(coins);
+            document.getElementById('coins').textContent = formatCompactCoins(coins);
             document.getElementById('energyValue').textContent = `${Math.floor(energy)}/${maxEnergy}`;
             document.getElementById('energyFill').style.width = (energy / maxEnergy) * 100 + '%';
             document.getElementById('clickPower').textContent = clickPower;
@@ -1978,14 +2021,15 @@
             
             let rate = getPassiveRate();
             passiveIncomeRate = rate;
-            document.getElementById('passiveIncomeRate').textContent = rate;
+            const rateLabel = formatCompactCoins(rate);
+            document.getElementById('passiveIncomeRate').textContent = rateLabel;
             
             // updatePlanet3D(level); // ЗАБЛОКИРОВАНО - планета создается в app.js
             
-            document.getElementById('profileCoins').textContent = Math.floor(coins);
+            document.getElementById('profileCoins').textContent = formatCompactCoins(coins);
             document.getElementById('profileClickPower').textContent = clickPower;
             document.getElementById('profileMaxEnergy').textContent = maxEnergy;
-            document.getElementById('profilePassiveIncome').textContent = passiveIncomeRate;
+            document.getElementById('profilePassiveIncome').textContent = `${rateLabel} /мин`;
             document.getElementById('profileId').textContent = userId;
             document.getElementById('profileDate').textContent = new Date().toLocaleDateString();
             
