@@ -318,10 +318,11 @@ app.get('/api/user/:userId', async (req, res) => {
             return;
         }
         await ensureLeaderboardRow(telegramId);
+        const rawSeen = user.last_seen_at ?? user.created_at;
         let lastSeenAtMs = null;
-        if (user.last_seen_at != null) {
-            const t = new Date(user.last_seen_at).getTime();
-            if (Number.isFinite(t)) lastSeenAtMs = t;
+        if (rawSeen != null) {
+            const t = new Date(rawSeen).getTime();
+            if (Number.isFinite(t) && t > 0) lastSeenAtMs = t;
         }
 
         const basePassive = asInt(user.task_passive_bonus_rate, 0);
@@ -465,8 +466,18 @@ app.post('/api/save', rateLimit('save', 240, 60_000), async (req, res) => {
         const clientInstant = gameData.instantTasksClaimed && typeof gameData.instantTasksClaimed === 'object' ? gameData.instantTasksClaimed : {};
         const mergedInstantTasks = { ...clientInstant, channel: serverChannelClaimed };
 
+        const nowMs = Date.now();
+        const anchorRaw = num(gameData.lastSeenAtMs, NaN);
+        let lastSeenAt = new Date(nowMs);
+        if (Number.isFinite(anchorRaw) && anchorRaw > 1_000_000_000_000) {
+            const maxAheadMs = 120_000;
+            const maxBackMs = 30 * 24 * 60 * 60 * 1000;
+            const clamped = Math.min(nowMs + maxAheadMs, Math.max(nowMs - maxBackMs, Math.floor(anchorRaw)));
+            lastSeenAt = new Date(clamped);
+        }
+
         await updateUser(telegramId, {
-            last_seen_at: new Date(),
+            last_seen_at: lastSeenAt,
             coins: currentCoins,
             energy: Math.max(0, int(gameData.energy, 100)),
             max_energy: Math.max(100, int(gameData.maxEnergy, 100)),

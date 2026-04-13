@@ -295,7 +295,8 @@ let infoChannelClaimInFlight = false;
 
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
-let lastSeenAtMs = Date.now();
+/** 0 = нет сохранённой метки (после loadGame подставится с сервера или Date.now()). */
+let lastSeenAtMs = 0;
 
 /** Валидная метка времени (мс) для оффлайна; 0/null/NaN из JSON ломали расчёт (delta≈0). */
 function isValidEpochMs(t) {
@@ -303,6 +304,8 @@ function isValidEpochMs(t) {
     return Number.isFinite(n) && n > 1_000_000_000_000;
 }
 let offlineAppliedOnBoot = false;
+/** Пока false — не считаем оффлайн из visibility/focus (иначе гонка с loadFromServer затирает паузу). */
+let gameStateHydrated = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let energyRegenIntervalId = null;
 /** Для dt в rechargeEnergy (фикс. тик, не равен «виртуальному» интервалу ур. 1–5). */
@@ -440,7 +443,8 @@ function buyRank(level) {
 function applyOfflineEarnings(options = {}) {
     const { silentToast = false } = options;
     const now = Date.now();
-    const last = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : now;
+    const lastRaw = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : now;
+    const last = Math.min(lastRaw, now);
     const deltaMs = now - last;
     if (deltaMs < 800) return false;
 
@@ -475,6 +479,8 @@ function applyOfflineEarnings(options = {}) {
     if (!silentToast && offlineCoins > 0) {
         const shownMin = awayMinutes >= 1 ? awayMinutes.toFixed(0) : '<1';
         showMessage(`⏱️ Пока вас не было (~${shownMin} мин): +${formatCompactCoins(offlineCoins)} 🪙`);
+    } else if (!silentToast && offlineEnergyRecover > 0 && offlineCoins <= 0) {
+        showMessage(`⚡ Пока вас не было: +${offlineEnergyRecover} энергии`);
     }
     return gained;
 }
@@ -1457,9 +1463,14 @@ async function buyPremium(type) {
 }
 
 function saveGame(options = {}) {
-    const { touchLastSeen = true } = options;
+    let { touchLastSeen = true } = options;
+    if (touchLastSeen && !gameStateHydrated) {
+        touchLastSeen = false;
+    }
     const now = Date.now();
-    const seenMark = touchLastSeen ? now : (Number(lastSeenAtMs) || now);
+    const seenMark = touchLastSeen
+        ? now
+        : (isValidEpochMs(lastSeenAtMs) ? Math.floor(Number(lastSeenAtMs)) : 0);
     if (touchLastSeen) lastSeenAtMs = now;
     const gameData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
@@ -1584,7 +1595,7 @@ function loadGame() {
             hasSun = data.hasSun || false;
             soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
             ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : -1;
-            lastSeenAtMs = isValidEpochMs(data.lastSeenAtMs) ? Number(data.lastSeenAtMs) : Date.now();
+            lastSeenAtMs = isValidEpochMs(data.lastSeenAtMs) ? Number(data.lastSeenAtMs) : 0;
             if (energy > maxEnergy) energy = maxEnergy;
             normalized = normalizeUpgradeCosts();
         } catch(e) { console.log(e); }
@@ -1684,7 +1695,8 @@ async function syncWithBot() {
         weeklyTasksClaimed,
         instantTasksClaimed,
         lastDailyCycleKey,
-        lastWeeklyCycleKey
+        lastWeeklyCycleKey,
+        lastSeenAtMs: isValidEpochMs(lastSeenAtMs) ? Math.floor(Number(lastSeenAtMs)) : Math.floor(Date.now())
     };
     
     // В Mini App запуске через menu/start кнопки частый sendData может приводить к закрытию WebApp.
@@ -1723,10 +1735,11 @@ async function loadFromServer() {
             }
             isRegistered = true;
             
-            // Проверяем что данные валидны
-            if (data && typeof data.coins === 'number') {
+            // coins с API может прийти числом или строкой (BIGINT); иначе блок не выполнялся — оффлайн не считался.
+            const serverCoins = Number(data.coins);
+            if (data && Number.isFinite(serverCoins)) {
                 const preLocalLastSeen = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : null;
-                coins = Math.floor(data.coins);
+                coins = Math.floor(serverCoins);
                 energy = data.energy ?? 100;
                 maxEnergy = data.maxEnergy ?? 100;
                 clickPower = data.clickPower || 1;
@@ -1769,6 +1782,9 @@ async function loadFromServer() {
                 } else if (preLocalLastSeen != null) {
                     lastSeenAtMs = preLocalLastSeen;
                 }
+                if (!isValidEpochMs(lastSeenAtMs)) {
+                    lastSeenAtMs = Date.now();
+                }
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                 const taskState = (data.taskState && typeof data.taskState === 'object') ? data.taskState : null;
                 if (taskState) {
@@ -1807,7 +1823,10 @@ async function loadFromServer() {
         console.log('❌ Ошибка загрузки:', e); 
     }
     
-    if (loaded) saveGame();
+    if (loaded) {
+        saveGame();
+        syncWithBot();
+    }
     return loaded;
 }
 
@@ -2678,28 +2697,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
     Promise.resolve().then(async () => {
         let hydrated = false;
-        for (let attempt = 0; attempt < 6; attempt++) {
-            hydrated = await loadFromServer();
-            if (hydrated) break;
-            await new Promise((resolve) => setTimeout(resolve, 1200 + attempt * 600));
-        }
-        if (!offlineAppliedOnBoot) {
-            applyOfflineEarnings();
-            offlineAppliedOnBoot = true;
+        try {
+            for (let attempt = 0; attempt < 6; attempt++) {
+                hydrated = await loadFromServer();
+                if (hydrated) break;
+                await new Promise((resolve) => setTimeout(resolve, 1200 + attempt * 600));
+            }
+            if (!offlineAppliedOnBoot) {
+                applyOfflineEarnings();
+                offlineAppliedOnBoot = true;
+                updateUI();
+                saveGame();
+                syncWithBot();
+            }
+            await loadPremiumConfig();
             updateUI();
-            saveGame();
-            syncWithBot();
+            fillRanksPreviewGrid();
+            updateMilitaryRankHUD();
+            if (hydrated) {
+                loadLeaderboard();
+                loadFriends();
+            }
+        } catch (e) {
+            console.log('Отложенная серверная инициализация:', e);
+        } finally {
+            gameStateHydrated = true;
         }
-        await loadPremiumConfig();
-        updateUI();
-        fillRanksPreviewGrid();
-        updateMilitaryRankHUD();
-        // После догрузки профиля повторяем сетевые вкладки.
-        if (hydrated) {
-            loadLeaderboard();
-            loadFriends();
-        }
-    }).catch((e) => console.log('Отложенная серверная инициализация:', e));
+    });
     
     // Инициализируем 3D только если canvas-container существует
     const container = document.getElementById('canvas-container');
@@ -2767,28 +2791,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             flushTapPersistIfPending();
+            saveGame({ touchLastSeen: false });
             return;
         }
-        const gained = applyOfflineEarnings({ silentToast: true });
-        lastEnergyRegenAtMs = Date.now();
+        let gained = false;
+        if (gameStateHydrated) {
+            gained = applyOfflineEarnings({ silentToast: true });
+            lastEnergyRegenAtMs = Date.now();
+            saveGame();
+            if (gained) syncWithBot();
+        }
         boostModal?.classList.remove('active');
         applyViewportHeight();
         applyTopHudVisibilityFix();
         restoreActivePanelView();
         updateUI();
-        saveGame();
-        if (gained) syncWithBot();
         setTimeout(ensureUiRecoveredOrReload, 220);
     });
-    window.addEventListener('pagehide', flushTapPersistIfPending);
+    window.addEventListener('pagehide', () => {
+        flushTapPersistIfPending();
+        saveGame({ touchLastSeen: false });
+    });
     window.addEventListener('focus', () => {
-        const gained = applyOfflineEarnings({ silentToast: true });
-        lastEnergyRegenAtMs = Date.now();
+        let gained = false;
+        if (gameStateHydrated) {
+            gained = applyOfflineEarnings({ silentToast: true });
+            lastEnergyRegenAtMs = Date.now();
+            saveGame();
+            if (gained) syncWithBot();
+        }
         boostModal?.classList.remove('active');
         restoreActivePanelView();
         updateUI();
-        saveGame();
-        if (gained) syncWithBot();
         setTimeout(ensureUiRecoveredOrReload, 220);
     });
     
