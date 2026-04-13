@@ -1450,9 +1450,11 @@ async function buyPremium(type) {
     }
 }
 
-function saveGame() {
+function saveGame(options = {}) {
+    const { touchLastSeen = true } = options;
     const now = Date.now();
-    lastSeenAtMs = now;
+    const seenMark = touchLastSeen ? now : (Number(lastSeenAtMs) || now);
+    if (touchLastSeen) lastSeenAtMs = now;
     const gameData = {
         coins, energy, maxEnergy, clickPower, clickUpgradeCost, clickUpgradeLevel,
         energyUpgradeCost, energyUpgradeLevel, passiveIncomeLevel, passiveIncomeUpgradeCost,
@@ -1463,7 +1465,7 @@ function saveGame() {
         lastDailyCycleKey, lastWeeklyCycleKey,
         hasMoon, hasEarth, hasSun, soundEnabled,
         ownedRankLevel,
-        lastSeenAtMs: now
+        lastSeenAtMs: seenMark
     };
     localStorage.setItem(gameStorageKey(), JSON.stringify(gameData));
 }
@@ -1603,7 +1605,8 @@ function loadGame() {
     updateUI();
     rescheduleEnergyRegen();
     fillRanksPreviewGrid();
-    if (normalized) saveGame();
+    // Не затираем метку последней активности до оффлайн-начисления на старте.
+    if (normalized) saveGame({ touchLastSeen: false });
 }
 
 function ensureTaskCyclesCurrent() {
