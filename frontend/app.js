@@ -296,6 +296,12 @@ let infoChannelClaimInFlight = false;
 // ========== ЗВАНИЯ: ЭКОНОМИКА (превью, localStorage) ==========
 let ownedRankLevel = -1; // -1 = ничего не куплено
 let lastSeenAtMs = Date.now();
+
+/** Валидная метка времени (мс) для оффлайна; 0/null/NaN из JSON ломали расчёт (delta≈0). */
+function isValidEpochMs(t) {
+    const n = Number(t);
+    return Number.isFinite(n) && n > 1_000_000_000_000;
+}
 let offlineAppliedOnBoot = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let energyRegenIntervalId = null;
@@ -434,7 +440,7 @@ function buyRank(level) {
 function applyOfflineEarnings(options = {}) {
     const { silentToast = false } = options;
     const now = Date.now();
-    const last = Number(lastSeenAtMs) || now;
+    const last = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : now;
     const deltaMs = now - last;
     if (deltaMs < 800) return false;
 
@@ -1578,7 +1584,7 @@ function loadGame() {
             hasSun = data.hasSun || false;
             soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
             ownedRankLevel = Number.isFinite(Number(data.ownedRankLevel)) ? clampInt(data.ownedRankLevel, -1, 10) : -1;
-            lastSeenAtMs = Number.isFinite(Number(data.lastSeenAtMs)) ? Number(data.lastSeenAtMs) : Date.now();
+            lastSeenAtMs = isValidEpochMs(data.lastSeenAtMs) ? Number(data.lastSeenAtMs) : Date.now();
             if (energy > maxEnergy) energy = maxEnergy;
             normalized = normalizeUpgradeCosts();
         } catch(e) { console.log(e); }
@@ -1719,6 +1725,7 @@ async function loadFromServer() {
             
             // Проверяем что данные валидны
             if (data && typeof data.coins === 'number') {
+                const preLocalLastSeen = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : null;
                 coins = Math.floor(data.coins);
                 energy = data.energy ?? 100;
                 maxEnergy = data.maxEnergy ?? 100;
@@ -1754,7 +1761,14 @@ async function loadFromServer() {
                         ownedRankLevel = serverOwnedRank;
                     }
                 }
-                if (Number.isFinite(Number(data.lastSeenAtMs))) lastSeenAtMs = Number(data.lastSeenAtMs);
+                const serverSeen = isValidEpochMs(data.lastSeenAtMs) ? Number(data.lastSeenAtMs) : null;
+                if (serverSeen != null && preLocalLastSeen != null) {
+                    lastSeenAtMs = Math.min(serverSeen, preLocalLastSeen);
+                } else if (serverSeen != null) {
+                    lastSeenAtMs = serverSeen;
+                } else if (preLocalLastSeen != null) {
+                    lastSeenAtMs = preLocalLastSeen;
+                }
                 soundEnabled = data.soundEnabled !== undefined ? data.soundEnabled : true;
                 const taskState = (data.taskState && typeof data.taskState === 'object') ? data.taskState : null;
                 if (taskState) {

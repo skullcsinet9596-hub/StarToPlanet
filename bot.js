@@ -318,7 +318,11 @@ app.get('/api/user/:userId', async (req, res) => {
             return;
         }
         await ensureLeaderboardRow(telegramId);
-        const lastSeenAtMs = user.last_seen_at ? new Date(user.last_seen_at).getTime() : Date.now();
+        let lastSeenAtMs = null;
+        if (user.last_seen_at != null) {
+            const t = new Date(user.last_seen_at).getTime();
+            if (Number.isFinite(t)) lastSeenAtMs = t;
+        }
 
         const basePassive = asInt(user.task_passive_bonus_rate, 0);
         const chPassive = asInt(user.info_channel_passive_bonus, 0);
@@ -352,7 +356,7 @@ app.get('/api/user/:userId', async (req, res) => {
             infoChannelSubscribed,
             infoChannelCanClaim: Boolean(INFO_CHANNEL_CHAT_ID) && infoChannelSubscribed && !infoChannelClaimed,
             ownedRankLevel: Number(user.owned_rank_level ?? -1),
-            lastSeenAtMs,
+            ...(lastSeenAtMs != null ? { lastSeenAtMs } : {}),
             soundEnabled: user.sound_enabled,
             taskState: user.task_state || {}
         });
