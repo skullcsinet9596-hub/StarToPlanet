@@ -311,7 +311,11 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/user/:userId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.userId);
-        await reconcileInfoChannelReward(telegramId);
+        // Не блокируем загрузку клиента внешними Telegram-проверками:
+        // reconcile/check membership могут быть медленными при "холодном" старте.
+        Promise.resolve().then(() => reconcileInfoChannelReward(telegramId)).catch((e) => {
+            console.log('reconcileInfoChannelReward background:', e?.message || e);
+        });
         const user = await getUser(telegramId);
         if (!user) {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
@@ -328,11 +332,9 @@ app.get('/api/user/:userId', async (req, res) => {
         const basePassive = asInt(user.task_passive_bonus_rate, 0);
         const chPassive = asInt(user.info_channel_passive_bonus, 0);
         const infoChannelClaimed = Boolean(user.task_state?.instantTasksClaimed?.channel);
-        let infoChannelSubscribed = false;
-        if (INFO_CHANNEL_CHAT_ID) {
-            const sub = await checkInfoChannelMembership(telegramId);
-            infoChannelSubscribed = sub === true;
-        }
+        // Подписку не проверяем здесь синхронно — иначе /api/user тормозит запуск игры.
+        // Точный статус догружается отдельным /api/tasks/info-channel.
+        const infoChannelSubscribed = false;
 
         res.json({
             registered: true,

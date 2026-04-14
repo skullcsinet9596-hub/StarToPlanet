@@ -306,6 +306,7 @@ function isValidEpochMs(t) {
 let offlineAppliedOnBoot = false;
 /** Пока false — не считаем оффлайн из visibility/focus (иначе гонка с loadFromServer затирает паузу). */
 let gameStateHydrated = false;
+let startupSocialPrefetchDone = false;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let energyRegenIntervalId = null;
 /** Для dt в rechargeEnergy (фикс. тик, не равен «виртуальному» интервалу ур. 1–5). */
@@ -2529,6 +2530,14 @@ function applyPassiveIncome() {
     } 
 }
 
+function prefetchStartupSocialPanels() {
+    if (startupSocialPrefetchDone) return;
+    startupSocialPrefetchDone = true;
+    // Подгружаем тяжелые вкладки параллельно старту, чтобы не ждать их после гидратации профиля.
+    Promise.resolve().then(() => loadLeaderboard()).catch((e) => console.log('startup leaderboard:', e));
+    Promise.resolve().then(() => loadFriends()).catch((e) => console.log('startup friends:', e));
+}
+
 /**
  * Скорость восстановления энергии (энерг/с), онлайн и офлайн одинаково.
  * Ур. 0: база ONLINE_ENERGY_REGEN_PER_SEC (2/с → 500 энергии за ~250 с).
@@ -2693,6 +2702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyDailyTaskConfig();
     setupTabs();
     setupTasksTabs();
+    prefetchStartupSocialPanels();
 
     // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
     Promise.resolve().then(async () => {
@@ -2710,14 +2720,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saveGame();
                 syncWithBot();
             }
-            await loadPremiumConfig();
+            // Premium-конфиг не должен блокировать отображение рейтинга/друзей и завершение гидратации.
+            loadPremiumConfig().catch((e) => console.log('premium config:', e));
             updateUI();
             fillRanksPreviewGrid();
             updateMilitaryRankHUD();
-            if (hydrated) {
-                loadLeaderboard();
-                loadFriends();
-            }
+            if (hydrated && !startupSocialPrefetchDone) prefetchStartupSocialPanels();
         } catch (e) {
             console.log('Отложенная серверная инициализация:', e);
         } finally {
