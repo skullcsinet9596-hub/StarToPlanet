@@ -1726,7 +1726,7 @@ async function loadFromServer() {
     let loaded = false;
     try {
         console.log('🔄 Загрузка данных с сервера...');
-        const response = await fetch(`${API_BASE}/api/user/${userId}`);
+        const response = await fetchWithTimeout(`${API_BASE}/api/user/${userId}`, {}, 7000);
         if (response.ok) {
             const data = await response.json();
             console.log('📥 Полученные данные:', data);
@@ -2301,7 +2301,7 @@ async function loadLeaderboard() {
     if (!container) return;
     container.innerHTML = '<div class="leaderboard-item glass-panel">🏆 Загрузка...</div>';
     try {
-        const response = await fetch(`${API_BASE}/api/leaderboard`);
+        const response = await fetchWithTimeout(`${API_BASE}/api/leaderboard`, {}, 6000);
         if (!response.ok) {
             container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Не удалось загрузить рейтинг</div>';
             return;
@@ -2362,7 +2362,7 @@ async function loadFriends() {
         if (el) el.innerHTML = loading;
     });
     try {
-        const res = await fetch(`${API_BASE}/api/friends/${userId}`);
+        const res = await fetchWithTimeout(`${API_BASE}/api/friends/${userId}`, {}, 6000);
         const data = await res.json();
         if (!res.ok || !data?.success) {
             renderFriendsFallback();

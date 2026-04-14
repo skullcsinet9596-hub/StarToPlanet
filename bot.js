@@ -321,7 +321,9 @@ app.get('/api/user/:userId', async (req, res) => {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
-        await ensureLeaderboardRow(telegramId);
+        Promise.resolve().then(() => ensureLeaderboardRow(telegramId)).catch((e) => {
+            console.log('ensureLeaderboardRow background:', e?.message || e);
+        });
         const rawSeen = user.last_seen_at ?? user.created_at;
         let lastSeenAtMs = null;
         if (rawSeen != null) {
