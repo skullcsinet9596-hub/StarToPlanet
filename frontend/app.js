@@ -1726,7 +1726,7 @@ async function loadFromServer() {
     let loaded = false;
     try {
         console.log('🔄 Загрузка данных с сервера...');
-        const response = await fetchWithTimeout(`${API_BASE}/api/user/${userId}`, {}, 7000);
+        const response = await fetchWithTimeout(`${API_BASE}/api/user/${userId}`, {}, 28000);
         if (response.ok) {
             const data = await response.json();
             console.log('📥 Полученные данные:', data);
@@ -2720,6 +2720,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saveGame();
                 syncWithBot();
             }
+            // Сразу после профиля/оффлайна: иначе длинные ретраи держат gameStateHydrated=false,
+            // пользователь открывает рейтинг — второй fetch конкурирует с /api/user и тянет тайминги.
+            gameStateHydrated = true;
             // Premium-конфиг не должен блокировать отображение рейтинга/друзей и завершение гидратации.
             loadPremiumConfig().catch((e) => console.log('premium config:', e));
             updateUI();
@@ -2729,7 +2732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             console.log('Отложенная серверная инициализация:', e);
         } finally {
-            gameStateHydrated = true;
+            if (!gameStateHydrated) gameStateHydrated = true;
         }
     });
     
