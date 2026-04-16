@@ -311,19 +311,11 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/user/:userId', async (req, res) => {
     try {
         const telegramId = parseInt(req.params.userId);
-        // Не блокируем загрузку клиента внешними Telegram-проверками:
-        // reconcile/check membership могут быть медленными при "холодном" старте.
-        Promise.resolve().then(() => reconcileInfoChannelReward(telegramId)).catch((e) => {
-            console.log('reconcileInfoChannelReward background:', e?.message || e);
-        });
         const user = await getUser(telegramId);
         if (!user) {
             res.json({ registered: false, coins: 0, energy: 100, maxEnergy: 100, clickPower: 1, passiveIncomeLevel: 0 });
             return;
         }
-        Promise.resolve().then(() => ensureLeaderboardRow(telegramId)).catch((e) => {
-            console.log('ensureLeaderboardRow background:', e?.message || e);
-        });
         const rawSeen = user.last_seen_at ?? user.created_at;
         let lastSeenAtMs = null;
         if (rawSeen != null) {
