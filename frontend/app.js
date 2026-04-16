@@ -2533,7 +2533,8 @@ function applyPassiveIncome() {
 function prefetchStartupSocialPanels() {
     if (startupSocialPrefetchDone) return;
     startupSocialPrefetchDone = true;
-    // Подгружаем тяжелые вкладки параллельно старту, чтобы не ждать их после гидратации профиля.
+    // Только после гидратации профиля: иначе параллельные запросы к тому же API
+    // конкурируют с /api/user и откладывают оффлайн-начисление (видно на записи экрана).
     Promise.resolve().then(() => loadLeaderboard()).catch((e) => console.log('startup leaderboard:', e));
     Promise.resolve().then(() => loadFriends()).catch((e) => console.log('startup friends:', e));
 }
@@ -2702,7 +2703,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyDailyTaskConfig();
     setupTabs();
     setupTasksTabs();
-    prefetchStartupSocialPanels();
 
     // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
     Promise.resolve().then(async () => {

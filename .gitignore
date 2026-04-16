@@ -4,3 +4,5 @@ node_modules/
 *.log
 desktop-admin/dist/
 desktop-admin/admin menu/
+video-tools/
+debug-video/analysis_frames/
