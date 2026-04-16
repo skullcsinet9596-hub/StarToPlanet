@@ -2301,7 +2301,7 @@ async function loadLeaderboard() {
     if (!container) return;
     container.innerHTML = '<div class="leaderboard-item glass-panel">🏆 Загрузка...</div>';
     try {
-        const response = await fetchWithTimeout(`${API_BASE}/api/leaderboard`, {}, 6000);
+        const response = await fetchWithTimeout(`${API_BASE}/api/leaderboard`, {}, 25000);
         if (!response.ok) {
             container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Не удалось загрузить рейтинг</div>';
             return;
@@ -2362,7 +2362,7 @@ async function loadFriends() {
         if (el) el.innerHTML = loading;
     });
     try {
-        const res = await fetchWithTimeout(`${API_BASE}/api/friends/${userId}`, {}, 6000);
+        const res = await fetchWithTimeout(`${API_BASE}/api/friends/${userId}`, {}, 25000);
         const data = await res.json();
         if (!res.ok || !data?.success) {
             renderFriendsFallback();
@@ -2858,12 +2858,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     console.log('✅ Игра загружена! 3D планеты, мультитап, звук, реферальная программа, задания');
-    
-    // Загружаем лидерборд и друзей после инициализации
-    setTimeout(() => {
-        loadLeaderboard();
-        loadFriends();
-    }, 1000);
     
     const soundToggleBtn = document.getElementById('soundToggle');
     if (soundToggleBtn) {
