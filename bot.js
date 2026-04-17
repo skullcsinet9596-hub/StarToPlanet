@@ -303,9 +303,54 @@ if (useWebhookMode) {
     });
 }
 
+// ---------- Кэш лидерборда (мгновенный ответ после холодного старта, фоновое обновление) ----------
+const LEADERBOARD_CACHE_LIMIT = 20;
+const LEADERBOARD_REFRESH_INTERVAL_MS = Number(process.env.LEADERBOARD_REFRESH_INTERVAL_MS || 25_000);
+const LEADERBOARD_WARMUP_DELAY_MS = Number(process.env.LEADERBOARD_WARMUP_DELAY_MS || 400);
+
+let leaderboardCachePayload = null;
+let leaderboardCacheInterval = null;
+
+function serializeLeaderboardRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows.map((r) => ({
+        telegram_id: r.telegram_id != null ? Number(r.telegram_id) : r.telegram_id,
+        username: r.username ?? null,
+        first_name: r.first_name ?? null,
+        coins: Number(r.coins) || 0,
+        level: Number(r.level ?? 0) || 0,
+        referrals_count: Number(r.referrals_count ?? 0) || 0
+    }));
+}
+
+async function refreshLeaderboardCache() {
+    const rows = await getLeaderboard(LEADERBOARD_CACHE_LIMIT);
+    leaderboardCachePayload = serializeLeaderboardRows(rows);
+    return leaderboardCachePayload;
+}
+
+function startLeaderboardCacheWarmer() {
+    if (leaderboardCacheInterval) return;
+    leaderboardCacheInterval = setInterval(() => {
+        refreshLeaderboardCache().catch((e) => console.error('leaderboard cache tick:', e?.message || e));
+    }, LEADERBOARD_REFRESH_INTERVAL_MS);
+    setTimeout(() => {
+        refreshLeaderboardCache().catch((e) => console.error('leaderboard cache warm:', e?.message || e));
+    }, LEADERBOARD_WARMUP_DELAY_MS);
+}
+
 app.get('/api/leaderboard', async (req, res) => {
-    const top = await getLeaderboard(20);
-    res.json(top);
+    try {
+        if (leaderboardCachePayload != null) {
+            res.json(leaderboardCachePayload);
+            return;
+        }
+        const top = await refreshLeaderboardCache();
+        res.json(top);
+    } catch (e) {
+        console.error('/api/leaderboard:', e);
+        res.status(500).json([]);
+    }
 });
 
 app.get('/api/user/:userId', async (req, res) => {
@@ -988,7 +1033,10 @@ bot.use(async (ctx, next) => {
 });
 
 bot.command('rating', async (ctx) => {
-    const top = await getLeaderboard(10);
+    const top =
+        leaderboardCachePayload && leaderboardCachePayload.length
+            ? leaderboardCachePayload.slice(0, 10)
+            : serializeLeaderboardRows(await getLeaderboard(10));
     let msg = '🏆 <b>ТОП ИГРОКОВ</b> 🏆\n\n';
     for (let i = 0; i < top.length; i++) {
         const name = top[i].username || top[i].first_name || 'Аноним';
@@ -1048,6 +1096,7 @@ bot.on('message', async (ctx) => {
 // ========== ЗАПУСК ==========
 // Сначала БД, потом HTTP — иначе webhook может прийти до initDB и /start упадёт молча.
 await initDB();
+startLeaderboardCacheWarmer();
 
 if (!INFO_CHANNEL_CHAT_ID) {
     console.warn(
