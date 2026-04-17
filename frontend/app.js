@@ -307,6 +307,7 @@ let offlineAppliedOnBoot = false;
 /** Пока false — не считаем оффлайн из visibility/focus (иначе гонка с loadFromServer затирает паузу). */
 let gameStateHydrated = false;
 let startupSocialPrefetchDone = false;
+let bootOfflineFallbackTimer = null;
 const OFFLINE_CAP_MINUTES = 180; // 3 часа
 let energyRegenIntervalId = null;
 /** Для dt в rechargeEnergy (фикс. тик, не равен «виртуальному» интервалу ур. 1–5). */
@@ -1739,9 +1740,14 @@ async function loadFromServer() {
             // coins с API может прийти числом или строкой (BIGINT); иначе блок не выполнялся — оффлайн не считался.
             const serverCoins = Number(data.coins);
             if (data && Number.isFinite(serverCoins)) {
+                const preHydrateCoins = Math.floor(Number(coins) || 0);
+                const preHydrateEnergy = Math.max(0, Number(energy) || 0);
                 const preLocalLastSeen = isValidEpochMs(lastSeenAtMs) ? Number(lastSeenAtMs) : null;
-                coins = Math.floor(serverCoins);
-                energy = data.energy ?? 100;
+                const serverCoinsInt = Math.floor(serverCoins);
+                const serverEnergyVal = Number.isFinite(Number(data.energy)) ? Number(data.energy) : 100;
+                // Если оффлайн уже применили локально по fallback-таймеру, не даём позднему серверу откатить UI.
+                coins = offlineAppliedOnBoot ? Math.max(serverCoinsInt, preHydrateCoins) : serverCoinsInt;
+                energy = offlineAppliedOnBoot ? Math.max(serverEnergyVal, preHydrateEnergy) : serverEnergyVal;
                 maxEnergy = data.maxEnergy ?? 100;
                 clickPower = data.clickPower || 1;
                 passiveIncomeLevel = data.passiveIncomeLevel || 0;
@@ -2703,6 +2709,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyDailyTaskConfig();
     setupTabs();
     setupTasksTabs();
+    if (bootOfflineFallbackTimer) clearTimeout(bootOfflineFallbackTimer);
+    // Если серверная гидратация затянулась, применяем локальный оффлайн и продолжаем работу.
+    // При позднем ответе /api/user защита в loadFromServer не даст откатить начисления.
+    bootOfflineFallbackTimer = setTimeout(() => {
+        if (offlineAppliedOnBoot) return;
+        const gained = applyOfflineEarnings();
+        offlineAppliedOnBoot = true;
+        gameStateHydrated = true;
+        updateUI();
+        saveGame({ touchLastSeen: false });
+        if (gained) syncWithBot();
+    }, 9000);
 
     // Не блокируем запуск интерфейса из-за сетевых запросов (важно для Menu button/cold start).
     Promise.resolve().then(async () => {
@@ -2720,6 +2738,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saveGame();
                 syncWithBot();
             }
+            if (bootOfflineFallbackTimer) {
+                clearTimeout(bootOfflineFallbackTimer);
+                bootOfflineFallbackTimer = null;
+            }
             // Сразу после профиля/оффлайна: иначе длинные ретраи держат gameStateHydrated=false,
             // пользователь открывает рейтинг — второй fetch конкурирует с /api/user и тянет тайминги.
             gameStateHydrated = true;
@@ -2732,6 +2754,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             console.log('Отложенная серверная инициализация:', e);
         } finally {
+            if (bootOfflineFallbackTimer) {
+                clearTimeout(bootOfflineFallbackTimer);
+                bootOfflineFallbackTimer = null;
+            }
             if (!gameStateHydrated) gameStateHydrated = true;
         }
     });
