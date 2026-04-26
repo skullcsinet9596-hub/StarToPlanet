@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Star to Planet — 3D игра</title>
+    <!-- Самый ранний запрос к API: пока грузятся CSS/three/app, Node на Render уже обрабатывает соединение (холодный старт). -->
+    <script>
+    (function () {
+        try {
+            var bust = '?_=' + Date.now();
+            fetch('/healthz' + bust, { cache: 'no-store', keepalive: true }).catch(function () {});
+            setTimeout(function () {
+                try { fetch('/healthz?_=' + Date.now(), { cache: 'no-store' }).catch(function () {}); } catch (e) {}
+            }, 350);
+        } catch (e) {}
+    })();
+    </script>
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <style>
         * {
             margin: 0;
@@ -1310,7 +1324,7 @@
             <h2>👥 Реферальная программа</h2>
             <div class="referral-stats">
                 <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
-                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Бонусов</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Монет с рефералов</span></div>
                 <div class="stat-card glass-panel"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
             </div>
             <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%) — до 5 рефералов</div><div id="level1List" class="level-list"><div class="level-item">👥 Пригласите друзей</div></div></div>

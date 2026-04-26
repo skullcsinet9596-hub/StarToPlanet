@@ -5,4 +5,6 @@ node_modules/
 desktop-admin/dist/
 desktop-admin/admin menu/
 video-tools/
+tools/ffmpeg-extract/
+tools/ffmpeg-release-essentials.zip
 debug-video/analysis_frames/

@@ -10,6 +10,12 @@ if (window.location.hostname === 'star-to-planet-bot.onrender.com') {
 const API_BASE = window.API_BASE || 'https://startoplanet.onrender.com';
 const INFO_CHANNEL_URL = 'https://t.me/Startoplanet_info';
 
+(function primeBackendFromApp() {
+    try {
+        fetch(`${API_BASE}/healthz?app=1&_=${Date.now()}`, { cache: 'no-store', keepalive: true }).catch(() => {});
+    } catch (e) {}
+})();
+
 // ========== Telegram WebApp ==========
 let tg = null;
 let userId = null;
@@ -2306,36 +2312,47 @@ async function loadLeaderboard() {
     const container = document.getElementById('leaderboardList');
     if (!container) return;
     container.innerHTML = '<div class="leaderboard-item glass-panel">🏆 Загрузка...</div>';
-    try {
-        const response = await fetchWithTimeout(`${API_BASE}/api/leaderboard`, {}, 25000);
-        if (!response.ok) {
-            container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Не удалось загрузить рейтинг</div>';
+    const timeouts = [12000, 22000, 28000];
+    for (let attempt = 0; attempt < timeouts.length; attempt++) {
+        try {
+            const response = await fetchWithTimeout(`${API_BASE}/api/leaderboard`, {}, timeouts[attempt]);
+            if (!response.ok) {
+                if (attempt < timeouts.length - 1) {
+                    await new Promise((r) => setTimeout(r, 450 + attempt * 350));
+                    continue;
+                }
+                container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Не удалось загрузить рейтинг</div>';
+                return;
+            }
+            const players = await response.json();
+            if (!Array.isArray(players) || players.length === 0) {
+                container.innerHTML = '<div class="leaderboard-item glass-panel">Пока никого в таблице — сыграйте и сохраните прогресс</div>';
+                return;
+            }
+            let currentRankText = '#—';
+            container.innerHTML = players.map((p, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                const name = (p.username && `@${p.username}`) || p.first_name || 'Аноним';
+                const coinsVal = Number(p.coins) || 0;
+                const lvl = getLevelForCoins(coinsVal);
+                const tid = p.telegram_id != null ? p.telegram_id : p.id;
+                const isCurrent = userId != null && String(tid) === String(userId);
+                if (isCurrent) currentRankText = `#${i + 1}`;
+                return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i + 1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${formatCompactCoins(coinsVal)} 🪙</div><div class="leaderboard-level">Уровень ${lvl}</div></div>`;
+            }).join('');
+            const profileRankEl = document.getElementById('profileRank');
+            const friendsRankEl = document.getElementById('leaderboardRank');
+            if (profileRankEl) profileRankEl.textContent = currentRankText;
+            if (friendsRankEl) friendsRankEl.textContent = currentRankText;
             return;
+        } catch (e) {
+            console.log('loadLeaderboard', e);
+            if (attempt < timeouts.length - 1) {
+                await new Promise((r) => setTimeout(r, 450 + attempt * 350));
+            }
         }
-        const players = await response.json();
-        if (!Array.isArray(players) || players.length === 0) {
-            container.innerHTML = '<div class="leaderboard-item glass-panel">Пока никого в таблице — сыграйте и сохраните прогресс</div>';
-            return;
-        }
-        let currentRankText = '#—';
-        container.innerHTML = players.map((p, i) => {
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
-            const name = (p.username && `@${p.username}`) || p.first_name || 'Аноним';
-            const coinsVal = Number(p.coins) || 0;
-            const lvl = getLevelForCoins(coinsVal);
-            const tid = p.telegram_id != null ? p.telegram_id : p.id;
-            const isCurrent = userId != null && String(tid) === String(userId);
-            if (isCurrent) currentRankText = `#${i + 1}`;
-            return `<div class="leaderboard-item" style="${isCurrent ? 'border:1px solid #ffd700;background:rgba(255,215,0,0.1);' : ''}"><div class="leaderboard-rank ${i < 3 ? `top-${i + 1}` : ''}">${medal}</div><div class="leaderboard-name">${name} ${isCurrent ? '👤' : ''}</div><div class="leaderboard-coins">${formatCompactCoins(coinsVal)} 🪙</div><div class="leaderboard-level">Уровень ${lvl}</div></div>`;
-        }).join('');
-        const profileRankEl = document.getElementById('profileRank');
-        const friendsRankEl = document.getElementById('leaderboardRank');
-        if (profileRankEl) profileRankEl.textContent = currentRankText;
-        if (friendsRankEl) friendsRankEl.textContent = currentRankText;
-    } catch (e) {
-        console.log(e);
-        container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Ошибка сети</div>';
     }
+    container.innerHTML = '<div class="leaderboard-item glass-panel">❌ Ошибка сети</div>';
 }
 
 function renderReferralLineList(containerId, items, emptyHtml) {
@@ -2367,38 +2384,50 @@ async function loadFriends() {
         const el = document.getElementById(id);
         if (el) el.innerHTML = loading;
     });
-    try {
-        const res = await fetchWithTimeout(`${API_BASE}/api/friends/${userId}`, {}, 25000);
-        const data = await res.json();
-        if (!res.ok || !data?.success) {
-            renderFriendsFallback();
+    const timeouts = [10000, 18000, 28000];
+    for (let attempt = 0; attempt < timeouts.length; attempt++) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/api/friends/${userId}`, {}, timeouts[attempt]);
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+                if (attempt < timeouts.length - 1) {
+                    await new Promise((r) => setTimeout(r, 500 + attempt * 400));
+                    continue;
+                }
+                renderFriendsFallback();
+                return;
+            }
+            const refs = Array.isArray(data.referrals) ? data.referrals : [];
+            const line2 = Array.isArray(data.referralLine2) ? data.referralLine2 : [];
+            const line3 = Array.isArray(data.referralLine3) ? data.referralLine3 : [];
+            const line4 = Array.isArray(data.referralLine4) ? data.referralLine4 : [];
+            const referralCount = Number(data.referralsCount || refs.length || 0);
+            const bonus = Number(data.totalReferralBonus || 0);
+            const referralCountEl = document.getElementById('referralCount');
+            const referralBonusEl = document.getElementById('referralBonus');
+            const profileReferralsEl = document.getElementById('profileReferrals');
+            if (referralCountEl) referralCountEl.textContent = String(referralCount);
+            if (referralBonusEl) referralBonusEl.textContent = String(bonus);
+            if (profileReferralsEl) profileReferralsEl.textContent = String(referralCount);
+
+            const empty1 = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;
+            const empty2 = `<div class="level-item"><span>✨ Пока никого во 2-й линии</span><span></span></div>`;
+            const empty3 = `<div class="level-item"><span>💫 Пока никого в 3-й линии</span><span></span></div>`;
+            const empty4 = `<div class="level-item"><span>💎 Пока никого в 4-й линии</span><span></span></div>`;
+
+            renderReferralLineList('level1List', refs, empty1);
+            renderReferralLineList('level2List', line2, empty2);
+            renderReferralLineList('level3List', line3, empty3);
+            renderReferralLineList('level4List', line4, empty4);
             return;
+        } catch (e) {
+            console.log('loadFriends', e);
+            if (attempt < timeouts.length - 1) {
+                await new Promise((r) => setTimeout(r, 500 + attempt * 400));
+            }
         }
-        const refs = Array.isArray(data.referrals) ? data.referrals : [];
-        const line2 = Array.isArray(data.referralLine2) ? data.referralLine2 : [];
-        const line3 = Array.isArray(data.referralLine3) ? data.referralLine3 : [];
-        const line4 = Array.isArray(data.referralLine4) ? data.referralLine4 : [];
-        const referralCount = Number(data.referralsCount || refs.length || 0);
-        const bonus = Number(data.totalReferralBonus || 0);
-        const referralCountEl = document.getElementById('referralCount');
-        const referralBonusEl = document.getElementById('referralBonus');
-        const profileReferralsEl = document.getElementById('profileReferrals');
-        if (referralCountEl) referralCountEl.textContent = String(referralCount);
-        if (referralBonusEl) referralBonusEl.textContent = String(bonus);
-        if (profileReferralsEl) profileReferralsEl.textContent = String(referralCount);
-
-        const empty1 = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;
-        const empty2 = `<div class="level-item"><span>✨ Пока никого во 2-й линии</span><span></span></div>`;
-        const empty3 = `<div class="level-item"><span>💫 Пока никого в 3-й линии</span><span></span></div>`;
-        const empty4 = `<div class="level-item"><span>💎 Пока никого в 4-й линии</span><span></span></div>`;
-
-        renderReferralLineList('level1List', refs, empty1);
-        renderReferralLineList('level2List', line2, empty2);
-        renderReferralLineList('level3List', line3, empty3);
-        renderReferralLineList('level4List', line4, empty4);
-    } catch (e) {
-        renderFriendsFallback();
     }
+    renderFriendsFallback();
 }
 
 function updateReferralLink() { 
@@ -2603,7 +2632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1200);
         return;
     }
-    const registrationStatus = await checkRegistrationStatus(1, 250);
+    const registrationStatus = await checkRegistrationStatus(4, 400);
     const alreadyRegistered = registrationStatus === true;
     const unknownRegistrationState = registrationStatus === null;
     const registerIntent = isRegisterIntentLaunch();
@@ -2726,10 +2755,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     Promise.resolve().then(async () => {
         let hydrated = false;
         try {
-            for (let attempt = 0; attempt < 6; attempt++) {
+            for (let attempt = 0; attempt < 8; attempt++) {
                 hydrated = await loadFromServer();
                 if (hydrated) break;
-                await new Promise((resolve) => setTimeout(resolve, 1200 + attempt * 600));
+                await new Promise((resolve) => setTimeout(resolve, 650 + attempt * 550));
             }
             if (!offlineAppliedOnBoot) {
                 applyOfflineEarnings();

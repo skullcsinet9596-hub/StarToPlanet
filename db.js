@@ -75,6 +75,7 @@ export async function initDB() {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_regen_speed_level INTEGER DEFAULT 0`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_regen_speed_cost INTEGER DEFAULT 250`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS info_channel_passive_bonus INTEGER DEFAULT 0`);
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_income_total BIGINT DEFAULT 0`);
 
         // Таблица рефералов
         await pool.query(`
@@ -231,7 +232,7 @@ export async function attachReferrerForExistingUser(telegramId, referrerId) {
         if (existingReferral.rows.length === 0) {
             await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [rid, tid]);
             await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [rid]);
-            await addCoins(rid, 1000);
+            await addCoins(rid, 1000, { trackReferralIncome: true });
             await addCoins(tid, 500);
         }
         return { ok: true };
@@ -388,7 +389,7 @@ export async function createUser(telegramId, username, firstName, referrerId = n
                 if (existingReferral.rows.length === 0) {
                     await pool.query('INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)', [effectiveReferrerId, telegramId]);
                     await pool.query('UPDATE users SET referrals_count = referrals_count + 1 WHERE telegram_id = $1', [effectiveReferrerId]);
-                    await addCoins(effectiveReferrerId, 1000);
+                    await addCoins(effectiveReferrerId, 1000, { trackReferralIncome: true });
                     await addCoins(telegramId, 500);
                 }
             }
@@ -417,32 +418,71 @@ export async function trackBotStart(telegramId) {
     }
 }
 
+/**
+ * Доли 50% / 20% / 10% от заработка, всего до 80% в целых монетах.
+ * Отдельные Math.floor по каждой доле давали 0 для 2–3 линии при малых earnedAmount
+ * (типичный случай между сохранениями), хотя суммарный пул floor(amount * 0.8) > 0.
+ */
+function integerReferralBonusParts(amount) {
+    const pool = Math.floor((amount * 8) / 10);
+    if (pool <= 0) return [0, 0, 0];
+
+    const weights = [5, 2, 1];
+    const totalW = 8;
+    const exact = weights.map((w) => (pool * w) / totalW);
+    const parts = exact.map((x) => Math.floor(x));
+    let rem = pool - parts.reduce((a, b) => a + b, 0);
+    const order = exact
+        .map((x, i) => ({ i, frac: x - parts[i] }))
+        .sort((a, b) => b.frac - a.frac || a.i - b.i);
+    for (let k = 0; k < rem; k++) {
+        parts[order[k].i]++;
+    }
+    return parts;
+}
+
 export async function distributeReferralRewards(telegramId, earnedAmount) {
     if (!telegramId || isNaN(parseInt(telegramId))) return;
     const amount = Math.floor(Number(earnedAmount) || 0);
     if (amount <= 0) return;
 
-    const rates = { 1: 0.5, 2: 0.2, 3: 0.1 };
+    const [b1, b2, b3] = integerReferralBonusParts(amount);
+    const byDepth = { 1: b1, 2: b2, 3: b3 };
     try {
         const ancestors = await getReferralAncestors(telegramId, 3);
         for (const a of ancestors) {
             const depth = Number(a.depth);
             const ancestorId = Number(a.ancestor_id);
-            const rate = rates[depth];
-            if (!ancestorId || !rate) continue;
-            const bonus = Math.floor(amount * rate);
-            if (bonus > 0) await addCoins(ancestorId, bonus);
+            const bonus = byDepth[depth];
+            if (!ancestorId || bonus == null || bonus <= 0) continue;
+            await addCoins(ancestorId, bonus, { trackReferralIncome: true });
         }
     } catch (err) {
         console.error('Ошибка distributeReferralRewards:', err.message);
     }
 }
 
-export async function addCoins(telegramId, amount) {
+/** @param {{ trackReferralIncome?: boolean }} [opts] — накопитель «доход с рефералов» только для реферальных выплат */
+export async function addCoins(telegramId, amount, opts = {}) {
     if (!telegramId || isNaN(parseInt(telegramId))) return;
+    const n = Math.floor(Number(amount) || 0);
+    if (n <= 0) return;
+    const trackReferralIncome = Boolean(opts.trackReferralIncome);
     try {
-        await pool.query('UPDATE users SET coins = coins + $1 WHERE telegram_id = $2', [amount, telegramId]);
-        await pool.query('UPDATE leaderboard SET coins = coins + $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2', [amount, telegramId]);
+        if (trackReferralIncome) {
+            await pool.query(
+                `UPDATE users SET coins = coins + $1,
+                    referral_income_total = COALESCE(referral_income_total, 0) + $1
+                 WHERE telegram_id = $2`,
+                [n, telegramId]
+            );
+        } else {
+            await pool.query('UPDATE users SET coins = coins + $1 WHERE telegram_id = $2', [n, telegramId]);
+        }
+        await pool.query(
+            'UPDATE leaderboard SET coins = coins + $1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = $2',
+            [n, telegramId]
+        );
     } catch (err) {
         console.error('Ошибка addCoins:', err.message);
     }
@@ -596,7 +636,7 @@ referralLine2: network.line2,
 referralLine3: network.line3,
 referralLine4: network.line4,
 leaderboardPosition: leaderboardPositionRes.rows[0]?.position || 1,
-totalReferralBonus: (user?.referrals_count || 0) * 1000
+totalReferralBonus: Math.max(0, Math.floor(Number(user?.referral_income_total ?? 0)))
 };
 } catch (err) {
 console.error('Ошибка getStats:', err.message);
