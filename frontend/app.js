@@ -255,7 +255,7 @@ function renderFriendsFallback() {
     const referralBonus = document.getElementById('referralBonus');
     const profileReferrals = document.getElementById('profileReferrals');
     if (referralCount) referralCount.textContent = '0';
-    if (referralBonus) referralBonus.textContent = '0';
+    if (referralBonus) referralBonus.textContent = formatCompactCoins(0);
     if (profileReferrals) profileReferrals.textContent = '0';
 }
 
@@ -2407,7 +2407,7 @@ async function loadFriends() {
             const referralBonusEl = document.getElementById('referralBonus');
             const profileReferralsEl = document.getElementById('profileReferrals');
             if (referralCountEl) referralCountEl.textContent = String(referralCount);
-            if (referralBonusEl) referralBonusEl.textContent = String(bonus);
+            if (referralBonusEl) referralBonusEl.textContent = formatCompactCoins(Number(bonus) || 0);
             if (profileReferralsEl) profileReferralsEl.textContent = String(referralCount);
 
             const empty1 = `<div class="level-item"><span>👥 Пока нет приглашенных. Поделитесь ссылкой ниже</span><span></span></div>`;

@@ -861,17 +861,43 @@
         .referral-stats {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            gap: 8px;
             margin-bottom: 20px;
         }
         .stat-card {
             background: rgba(44,44,48,0.6);
             border-radius: 24px;
-            padding: 12px;
+            padding: 10px 8px;
             text-align: center;
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            overflow: hidden;
         }
-        .stat-value { font-size: 22px; font-weight: 700; color: #FFD60A; }
+        .stat-value {
+            font-size: clamp(14px, 3.8vw, 22px);
+            font-weight: 700;
+            color: #FFD60A;
+            line-height: 1.1;
+            max-width: 100%;
+            word-break: break-all;
+        }
+        /* компактные суммы в одну строку без «ломания» сетки */
+        .stat-card .stat-value.stat-value--compact {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: normal;
+        }
+        .stat-label {
+            font-size: 10px;
+            line-height: 1.2;
+            color: rgba(235, 235, 245, 0.78);
+            padding: 0 2px;
+        }
         .level-card {
             background: rgba(44,44,48,0.5);
             border-radius: 24px;
@@ -885,6 +911,19 @@
             border-bottom: 0.5px solid rgba(255,255,255,0.1);
             display: flex;
             justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+        }
+        .level-item > span:first-child {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .level-item > span:last-child {
+            flex-shrink: 0;
         }
 
         .referral-link-container {
@@ -1323,9 +1362,9 @@
         <div class="tab-panel" id="friendsPanel">
             <h2>👥 Реферальная программа</h2>
             <div class="referral-stats">
-                <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span>Приглашено</span></div>
-                <div class="stat-card glass-panel"><span class="stat-value" id="referralBonus">0</span><span>Монет с рефералов</span></div>
-                <div class="stat-card glass-panel"><span class="stat-value" id="leaderboardRank">#—</span><span>Рейтинг</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value" id="referralCount">0</span><span class="stat-label">Приглашено</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value stat-value--compact" id="referralBonus">0</span><span class="stat-label">Монет с рефералов</span></div>
+                <div class="stat-card glass-panel"><span class="stat-value stat-value--compact" id="leaderboardRank">#—</span><span class="stat-label">Рейтинг</span></div>
             </div>
             <div class="level-card glass-panel"><div class="level-title">⭐ 1 уровень (50%) — до 5 рефералов</div><div id="level1List" class="level-list"><div class="level-item">👥 Пригласите друзей</div></div></div>
             <div class="level-card glass-panel"><div class="level-title">✨ 2 уровень (20%) — до 15 рефералов</div><div id="level2List" class="level-list"><div class="level-item">✨ Бонус от друзей друзей</div></div></div>
